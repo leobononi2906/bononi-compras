@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bononi — Painel Gerencial</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+/* ══════════════════════════════════════════
+   RESET + TOKENS GLOBAIS
+   Todos os módulos herdam estas variáveis
+══════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Cores */
+  --bg:           #F0F3F8;
+  --surface:      #FFFFFF;
+  --surface2:     #F7F9FC;
+  --border:       #E2E8F2;
+  --blue-dark:    #1A3A8F;
+  --blue-mid:     #0077CC;
+  --blue-light:   #00AAEE;
+  --blue-pale:    #E8F4FD;
+  --text-primary: #0F1D35;
+  --text-secondary:#5A6A85;
+  --text-muted:   #9AA5B8;
+  --green:        #0F9D6E;
+  --green-bg:     #E8F8F3;
+  --red:          #D93025;
+  --red-bg:       #FEF0EF;
+  --orange:       #E07B00;
+  --orange-bg:    #FEF5E7;
+  --yellow:       #B45309;
+  --yellow-bg:    #FFFBEB;
+  --purple:       #7C3AED;
+  --purple-bg:    #F5F3FF;
+  /* Sombras */
+  --shadow-sm:    0 1px 3px rgba(15,29,53,0.06), 0 1px 2px rgba(15,29,53,0.04);
+  --shadow-md:    0 4px 16px rgba(15,29,53,0.08), 0 2px 4px rgba(15,29,53,0.04);
+  --shadow-lg:    0 12px 40px rgba(15,29,53,0.12);
+  /* Bordas */
+  --radius:       12px;
+  --radius-sm:    8px;
+  /* Sidebar */
+  --sidebar-w:    228px;
+  --sidebar-bg:   #111827;
+}
+
+html, body {
+  height: 100%;
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ══════════════════════════════════════════
+   LAYOUT PRINCIPAL
+══════════════════════════════════════════ */
+.app-shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ══════════════════════════════════════════
+   SIDEBAR
+══════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--sidebar-bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 100;
+  transition: transform 0.25s ease;
+}
+
+.sidebar-brand {
+  padding: 18px 16px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brand-icon {
+  width: 34px; height: 34px;
+  background: var(--blue-mid);
+  border-radius: 9px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+
+.brand-icon svg { width: 18px; height: 18px; }
+
+.brand-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+
+.brand-sub {
+  font-size: 10px;
+  color: rgba(255,255,255,0.35);
+  margin-top: 1px;
+}
+
+/* Nav */
+.sidebar-nav {
+  flex: 1;
+  padding: 12px 10px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.sidebar-nav::-webkit-scrollbar { display: none; }
+
+/* Grupo de módulo — colapsável */
+.nav-module {
+  margin-bottom: 4px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.nav-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 10px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s;
+  user-select: none;
+}
+
+.nav-module-header:hover {
+  background: rgba(255,255,255,0.05);
+}
+
+.nav-module-header.has-active {
+  background: rgba(0,170,238,0.08);
+}
+
+.nav-module-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255,255,255,0.4);
+}
+
+.nav-module-icon { font-size: 13px; }
+
+.nav-module-chevron {
+  font-size: 10px;
+  color: rgba(255,255,255,0.2);
+  transition: transform 0.2s;
+}
+
+.nav-module.collapsed .nav-module-chevron { transform: rotate(-90deg); }
+.nav-module.collapsed .nav-module-items { display: none; }
+
+.nav-module-items {
+  padding: 2px 0 4px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: rgba(255,255,255,0.55);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-decoration: none;
+  margin-bottom: 1px;
+  white-space: nowrap;
+}
+
+.nav-item:hover {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.88);
+}
+
+.nav-item.active {
+  background: rgba(0,170,238,0.18);
+  color: var(--blue-light);
+  font-weight: 600;
+}
+
+.nav-item .nav-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.nav-item.active .nav-dot { opacity: 1; }
+
+/* Badge de módulo não carregado */
+.nav-badge-new {
+  margin-left: auto;
+  font-size: 9px;
+  font-weight: 700;
+  background: var(--blue-mid);
+  color: #fff;
+  padding: 2px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+}
+
+/* Separador */
+.nav-separator {
+  height: 1px;
+  background: rgba(255,255,255,0.06);
+  margin: 8px 6px;
+}
+
+/* Footer da sidebar */
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: 10px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.user-card {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: default;
+}
+
+.user-avatar {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: var(--blue-mid);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; color: #fff;
+  flex-shrink: 0;
+}
+
+.user-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
+.user-perfil { font-size: 10px; color: rgba(255,255,255,0.35); }
+
+.sidebar-actions {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+  margin-top: 6px;
+}
+
+.sidebar-action-btn {
+  flex: 1;
+  padding: 7px 0;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: var(--radius-sm);
+  color: rgba(255,255,255,0.45);
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  text-align: center;
+}
+
+.sidebar-action-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7);
+}
+
+.sidebar-action-btn.danger:hover {
+  background: rgba(217,48,37,0.15);
+  color: #F87171;
+  border-color: rgba(217,48,37,0.25);
+}
+
+/* ══════════════════════════════════════════
+   ÁREA PRINCIPAL
+══════════════════════════════════════════ */
+.main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* Topbar */
+.topbar {
+  height: 54px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 12px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 4px;
+  border-radius: 6px;
+  line-height: 1;
+}
+
+.topbar-title-area { flex: 1; min-width: 0; }
+
+.page-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--blue-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.page-breadcrumb {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.filter-select {
+  height: 34px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 10px;
+  font-size: 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  color: var(--text-primary);
+  background: var(--surface2);
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.filter-select:focus { border-color: var(--blue-mid); }
+
+.btn-refresh {
+  height: 34px;
+  padding: 0 12px;
+  background: var(--blue-dark);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-refresh:hover { background: var(--blue-mid); }
+
+.last-update {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* ── Indicador de módulo carregando ── */
+.module-loading-bar {
+  position: absolute;
+  top: 54px; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--blue-mid), var(--blue-light), var(--blue-mid));
+  background-size: 200% 100%;
+  animation: loadingBar 1.2s linear infinite;
+  display: none;
+  z-index: 50;
+}
+.module-loading-bar.show { display: block; }
+@keyframes loadingBar { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* ══════════════════════════════════════════
+   CONTENT AREA
+══════════════════════════════════════════ */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Cada módulo monta suas páginas aqui */
+.module-slot {
+  display: none;
+  height: 100%;
+}
+
+.module-slot.active {
+  display: block;
+}
+
+/* ── Estado de carregamento do módulo ── */
+.module-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 16px;
+  color: var(--text-muted);
+}
+
+.module-placeholder .spinner {
+  width: 32px; height: 32px;
+  border: 3px solid rgba(26,58,143,0.12);
+  border-top-color: var(--blue-mid);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.module-placeholder p { font-size: 14px; }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══════════════════════════════════════════
+   CSS COMPARTILHADO — todos os módulos herdam
+   (copiado e normalizado do index.html + compras.html)
+══════════════════════════════════════════ */
+
+/* Seção */
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+/* Cards grid */
+.cards-grid {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.cards-grid-2 { grid-template-columns: repeat(2,1fr); }
+.cards-grid-3 { grid-template-columns: repeat(3,1fr); }
+.cards-grid-4 { grid-template-columns: repeat(4,1fr); }
+.cards-grid-5 { grid-template-columns: repeat(5,1fr); }
+
+/* Card */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s;
+}
+.card:hover { box-shadow: var(--shadow-md); }
+.card-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.card-value { font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: 'DM Mono', monospace; line-height: 1.2; }
+.card-value.green  { color: var(--green); }
+.card-value.red    { color: var(--red); }
+.card-value.orange { color: var(--orange); }
+.card-value.blue   { color: var(--blue-mid); }
+.card-value.warning{ color: var(--orange); }
+.card-value.mono   { font-family: 'DM Mono', monospace; }
+.card-sub { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Chart card */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.chart-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.chart-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+.chart-body { padding: 16px 18px; }
+
+/* Table card */
+.table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  overflow: hidden;
+}
+.table-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.table-card-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+
+/* Data table */
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { padding: 10px 14px; text-align: left; font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
+.data-table td { padding: 11px 14px; border-bottom: 1px solid #F0F4FA; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #F8FAFC; }
+.data-table .right { text-align: right; }
+.data-table .mono { font-family: 'DM Mono', monospace; }
+.data-table .green { color: var(--green); }
+.data-table .red   { color: var(--red); }
+.data-table .orange{ color: var(--orange); }
+
+/* Badges */
+.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge-green   { background: var(--green-bg);  color: #065F46; }
+.badge-red     { background: var(--red-bg);    color: #991B1B; }
+.badge-orange  { background: var(--orange-bg); color: #92400E; }
+.badge-blue    { background: var(--blue-pale); color: var(--blue-dark); }
+.badge-gray    { background: var(--surface2);  color: var(--text-muted); }
+.badge-purple  { background: var(--purple-bg); color: var(--purple); }
+/* badges compras */
+.badge-ruptura { background: #FEE2E2; color: #991B1B; }
+.badge-critico { background: #FEF3C7; color: #92400E; }
+.badge-baixo   { background: #FEF9C3; color: #854D0E; }
+.badge-ok      { background: var(--green-bg); color: #065F46; }
+.badge-sem_mov { background: var(--surface2); color: var(--text-muted); }
+.badge-a       { background: #DCFCE7; color: #166534; }
+.badge-b       { background: #DBEAFE; color: #1E40AF; }
+.badge-c       { background: var(--surface2); color: var(--text-muted); }
+.badge-aprovado  { background: var(--green-bg); color: #065F46; }
+.badge-sugerido  { background: var(--blue-pale); color: var(--blue-dark); }
+.badge-rejeitado { background: var(--red-bg);    color: #991B1B; }
+.badge-em_analise{ background: var(--orange-bg); color: #92400E; }
+
+/* Botões */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 14px;
+  border-radius: var(--radius-sm);
+  font-size: 13px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+  border: none; white-space: nowrap;
+  text-decoration: none;
+}
+.btn-primary   { background: var(--blue-dark); color: #fff; }
+.btn-primary:hover { background: var(--blue-mid); }
+.btn-secondary { background: var(--surface2); color: var(--text-primary); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-danger    { background: var(--red-bg); color: var(--red); }
+.btn-danger:hover { background: #FECACA; }
+.btn-success   { background: var(--green-bg); color: var(--green); }
+.btn-success:hover { background: #BBF7D0; }
+.btn-outline   { background: none; color: var(--blue-mid); border: 1.5px solid var(--blue-mid); }
+.btn-outline:hover { background: var(--blue-pale); }
+.btn-sm        { height: 28px; padding: 0 10px; font-size: 12px; }
+.btn-icon      { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; }
+.btn-icon:hover { background: var(--surface2); color: var(--text-primary); }
+
+/* Toggle buttons */
+.fluxo-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.fluxo-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; color: var(--text-muted); background: none; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.fluxo-btn.active { background: var(--blue-dark); color: #fff; }
+.fluxo-btn:hover:not(.active) { background: var(--border); }
+
+/* Search */
+.search-input { height: 32px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--surface2); outline: none; transition: border-color 0.15s; }
+.search-input:focus { border-color: var(--blue-mid); }
+
+/* Page content wrapper padrão para módulos */
+.page-content { display: none; padding: 20px 24px; }
+.page-content.active { display: block; }
+
+/* Loading row */
+.loading-row td { text-align: center; padding: 32px; color: var(--text-muted); }
+
+/* Saldo cards */
+.saldo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 16px; }
+.saldo-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.saldo-header-title { font-size: 13px; font-weight: 700; }
+.saldo-total-badge { font-size: 17px; font-weight: 700; color: var(--blue-dark); font-family: 'DM Mono', monospace; }
+
+/* Fluxo / projeção */
+.fluxo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 16px; overflow: hidden; }
+.fluxo-body { padding: 16px; }
+
+/* Alerta cards */
+.alertas-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.alerta-card { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; box-shadow: var(--shadow-sm); }
+.alerta-card.danger  { border-left-color: var(--red); }
+.alerta-card.warning { border-left-color: var(--orange); }
+.alerta-card.info    { border-left-color: var(--blue-mid); }
+.alerta-label { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.alerta-value { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; }
+.alerta-value.danger  { color: var(--red); }
+.alerta-value.warning { color: var(--orange); }
+.alerta-value.info    { color: var(--blue-mid); }
+
+/* Quinzena grid */
+.quinzena-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+
+/* DRE table */
+.dre-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dre-table td, .dre-table th { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+.dre-table .dre-label { color: var(--text-secondary); }
+.dre-table .dre-total { font-weight: 700; background: var(--surface2); }
+.dre-table .dre-positivo { color: var(--green); font-weight: 700; font-family: 'DM Mono', monospace; }
+.dre-table .dre-negativo { color: var(--red);   font-weight: 700; font-family: 'DM Mono', monospace; }
+.dre-table .right { text-align: right; font-family: 'DM Mono', monospace; }
+
+/* Compras: carrinho, drawer, semáforo */
+.semaforo-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 16px; }
+.semaforo-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.15s; }
+.semaforo-card:hover, .semaforo-card.active { border-color: currentColor; box-shadow: var(--shadow-md); }
+.semaforo-card .sem-count { font-size: 28px; font-weight: 800; font-family: 'DM Mono', monospace; }
+.semaforo-card .sem-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+.semaforo-card.ruptura { color: var(--red); }
+.semaforo-card.critico { color: var(--orange); }
+.semaforo-card.baixo   { color: var(--yellow); }
+.semaforo-card.ok      { color: var(--green); }
+.semaforo-card.sem_mov { color: var(--text-muted); }
+
+/* Cart panel */
+.cart-panel { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; background: var(--surface); border-top: 2px solid var(--blue-mid); box-shadow: 0 -4px 20px rgba(0,0,0,0.1); transform: translateY(100%); transition: transform 0.25s ease; z-index: 90; }
+.cart-panel.open { transform: translateY(0); }
+.cart-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); }
+.cart-title { font-size: 13px; font-weight: 700; }
+.cart-count { background: var(--blue-mid); color: #fff; border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.cart-body { padding: 12px 20px; max-height: 240px; overflow-y: auto; }
+.cart-footer { padding: 10px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
+
+/* Drawer lateral (detalhe produto) */
+.drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 150; }
+.drawer-overlay.open { display: block; }
+.drawer { position: fixed; right: 0; top: 0; bottom: 0; width: 480px; max-width: 95vw; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 160; transform: translateX(100%); transition: transform 0.25s ease; display: flex; flex-direction: column; }
+.drawer.open { transform: translateX(0); }
+.drawer-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.drawer-title { font-size: 15px; font-weight: 700; }
+.drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+.drawer-tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 16px; }
+.drawer-tab { padding: 8px 14px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+.drawer-tab:hover { color: var(--text-primary); }
+.drawer-tab.active { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
+.drawer-tab-content { display: none; }
+.drawer-tab-content.active { display: block; }
+
+/* Modal */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 200; align-items: center; justify-content: center; padding: 24px; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--surface); border-radius: 16px; width: 100%; max-width: 520px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
+.modal-header { padding: 18px 22px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.modal-title { font-size: 15px; font-weight: 700; }
+.modal-body { padding: 22px; }
+.modal-footer { padding: 14px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; }
+
+/* Form fields */
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.field input, .field select, .field textarea { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--surface2); outline: none; transition: all 0.15s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(0,119,204,0.08); }
+.field-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+/* Alert inline */
+.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; }
+.alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; }
+.alert-error   { background: var(--red-bg); border: 1px solid #FECACA; color: #991B1B; }
+.alert-warning { background: var(--orange-bg); border: 1px solid #FCD34D; color: #92400E; }
+.alert-info    { background: var(--blue-pale); border: 1px solid #BAE6FD; color: var(--blue-dark); }
+
+/* Cobrança (futuro) */
+.cobr-status-em_dia      { color: var(--green); }
+.cobr-status-vencido     { color: var(--red); }
+.cobr-status-negociando  { color: var(--orange); }
+.cobr-status-juridico    { color: var(--purple); }
+
+/* ══════════════════════════════════════════
+   LOADING OVERLAY (auth check)
+══════════════════════════════════════════ */
+.auth-loading {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 16px;
+}
+.auth-loading .spinner { width: 36px; height: 36px; border: 3px solid rgba(26,58,143,0.12); border-top-color: var(--blue-mid); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.auth-loading p { font-size: 14px; color: var(--text-muted); }
+
+/* ══════════════════════════════════════════
+   RESPONSIVO
+══════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 200; transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; }
+  .sidebar-overlay.open { display: block; }
+  .menu-toggle { display: block; }
+  .cart-panel { left: 0; }
+  .cards-grid-4 { grid-template-columns: repeat(2,1fr); }
+  .cards-grid-5 { grid-template-columns: repeat(2,1fr); }
+  .quinzena-grid { grid-template-columns: 1fr; }
+  .semaforo-grid { grid-template-columns: repeat(3,1fr); }
+}
+
+@media (max-width: 600px) {
+  .cards-grid-3 { grid-template-columns: 1fr 1fr; }
+  .cards-grid-4 { grid-template-columns: 1fr 1fr; }
+  .page-content { padding: 14px 14px; }
+  .topbar { padding: 0 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Auth loading -->
+<div class="auth-loading" id="auth-loading">
+  <div class="spinner"></div>
+  <p id="auth-loading-msg">Verificando acesso...</p>
+</div>
+
+<!-- App shell (oculto até auth ok) -->
+<div class="app-shell" id="app-shell" style="display:none">
+
+  <!-- Overlay mobile sidebar -->
+  <div class="sidebar-overlay" id="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="sidebar-brand">
+      <div class="brand-row">
+        <div class="brand-icon">
+          <svg viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="1" y="5" width="7" height="9" rx="1.5" fill="white" opacity="0.9"/>
+            <rect x="10" y="1" width="7" height="9" rx="1.5" fill="white" opacity="0.6"/>
+            <rect x="10" y="12" width="7" height="5" rx="1.5" fill="white" opacity="0.8"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">Bononi</div>
+          <div class="brand-sub">Painel Gerencial</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- Módulos renderizados dinamicamente pelo JS -->
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-card">
+        <div class="user-avatar" id="user-avatar">B</div>
+        <div>
+          <div class="user-name" id="user-name">...</div>
+          <div class="user-perfil" id="user-perfil">...</div>
+        </div>
+      </div>
+      <div class="sidebar-actions">
+        <button class="sidebar-action-btn danger" onclick="sair()" style="flex:1">↩ Sair</button>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main-area">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <div class="topbar-title-area">
+        <div class="page-title" id="page-title">Carregando...</div>
+        <div class="page-breadcrumb" id="page-breadcrumb"></div>
+      </div>
+      <div class="topbar-controls" id="topbar-controls">
+        <span class="last-update" id="last-update"></span>
+        <select class="filter-select" id="filtro-empresa" onchange="onFiltroChange()">
+          <option value="">Todas as empresas</option>
+          <option value="1">TRUCKPREST</option>
+          <option value="2">MLB PR</option>
+          <option value="3">MLB SC</option>
+          <option value="4">MLB SP</option>
+          <option value="5">SANTA TEREZA</option>
+          <option value="6">BATTOGO</option>
+          <option value="7">BONONI PR</option>
+          <option value="8">BONONI SC</option>
+          <option value="9">OPERADOR LOGÍSTICO</option>
+        </select>
+        <select class="filter-select" id="filtro-mes"></select>
+        <button class="btn-refresh" onclick="onRefresh()">↻</button>
+      </div>
+    </header>
+
+    <!-- Barra de progresso de carregamento de módulo -->
+    <div class="module-loading-bar" id="module-loading-bar"></div>
+
+    <!-- Content area — cada módulo monta seu conteúdo aqui -->
+    <div class="content-area" id="content-area">
+      <!-- Slots de módulos injetados dinamicamente -->
+    </div>
+
+  </div><!-- end main-area -->
+</div><!-- end app-shell -->
+
+<!-- Supabase -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- Chart.js compartilhado -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════
+// CONFIGURAÇÃO
+// ══════════════════════════════════════════
+const SUPA_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
+const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ══════════════════════════════════════════
+// MÓDULOS INTERNOS (carregam JS no gerencial)
+// ══════════════════════════════════════════
+const MODULOS = [
+  {
+    id: 'financeiro', label: 'Financeiro', icon: '📊', acesso: 'financeiro',
+    script: 'financeiro.js', pronto: true,
+    paginas: [
+      { id: 'fin-visao-geral', label: 'Visão Geral',      titulo: 'Visão Geral Financeira',  breadcrumb: 'Financeiro',       filtros: ['empresa','mes'] },
+      { id: 'fin-cr',          label: 'Contas a Receber',  titulo: 'Contas a Receber',         breadcrumb: 'Financeiro · CR',  filtros: ['empresa'] },
+      { id: 'fin-cp',          label: 'Contas a Pagar',    titulo: 'Contas a Pagar',           breadcrumb: 'Financeiro · CP',  filtros: ['empresa'] },
+      { id: 'fin-dre',         label: 'DRE',               titulo: 'DRE — Resultado',          breadcrumb: 'Financeiro · DRE', filtros: ['empresa','mes'] },
+      { id: 'fin-rh',          label: 'RH',                titulo: 'Recursos Humanos',         breadcrumb: 'Financeiro · RH',  filtros: ['mes'] },
+    ]
+  },
+  {
+    id: 'assistencia', label: 'Assistência Técnica', icon: '🔧', acesso: 'assistencia',
+    script: 'assistencia.js', pronto: true,
+    paginas: [
+      { id: 'ast-visao-geral', label: 'Visão Geral', titulo: 'Assistência Técnica', breadcrumb: 'Assistência', filtros: ['empresa','mes'] },
+    ]
+  },
+];
+
+// ══════════════════════════════════════════
+// APPS EXTERNOS (abrem em nova aba)
+// acesso: chave na metadata do usuário
+// ══════════════════════════════════════════
+const APPS_EXTERNOS = [
+  { id: 'compras',    label: 'Compras',          icon: '📦', acesso: 'compras',    url: null,         descricao: 'Estoque, reposição e importação' },
+  { id: 'cobranca',   label: 'Cobrança',         icon: '📋', acesso: 'cobranca',   url: 'https://bononi-cob.lovable.app/',      descricao: 'Gestão de cobranças e inadimplência' },
+  { id: 'ecommerce',  label: 'E-commerce',       icon: '🛒', acesso: 'ecommerce',  url: 'https://bononiecomm.lovable.app/',     descricao: 'Stonni — loja online' },
+  { id: 'atacado',    label: 'Atacado / CRM',    icon: '🚚', acesso: 'atacado',    url: 'https://stonnidist.lovable.app/',      descricao: 'CRM e gestão de atacado' },
+  { id: 'frete',      label: 'App de Frete',     icon: '📍', acesso: 'frete',      url: 'https://bononifrete.lovable.app/',     descricao: 'Controle de fretes e entregas' },
+  { id: 'loja',       label: 'Loja Física',      icon: '🏪', acesso: 'loja',       url: 'https://bononiloja.lovable.app/',      descricao: 'Painel da loja física' },
+];
+
+// ══════════════════════════════════════════
+// ESTADO GLOBAL
+// ══════════════════════════════════════════
+let usuarioAtual    = null;
+let moduloAtivo     = null;     // id do módulo
+let paginaAtiva     = null;     // id da página
+let modulosCarregados = {};     // { id: true } — scripts já inseridos no DOM
+let filtros = {
+  empresa: '',
+  mes: '',
+};
+
+// ══════════════════════════════════════════
+// UTILS COMPARTILHADOS (disponíveis para módulos via window)
+// ══════════════════════════════════════════
+window.getEmpresa = () => document.getElementById('filtro-empresa')?.value || '';
+window.getSelectedMonth = () => document.getElementById('filtro-mes')?.value || '';
+
+window.getMonthRange = (ym) => {
+  const now = new Date();
+  const [y, m] = (ym || `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`).split('-').map(Number);
+  const start = new Date(Date.UTC(y, m-1, 1));
+  const end   = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+  const pad = (n) => String(n).padStart(2,'0');
+  return {
+    startISO:  start.toISOString(),
+    endISO:    end.toISOString(),
+    startDate: `${y}-${pad(m)}-01`,
+    endDate:   `${y}-${pad(m)}-${new Date(y,m,0).getDate()}`,
+  };
+};
+
+window.getNomeEmpresa = (id) => ({
+  1:'TRUCKPREST', 2:'MLB PR', 3:'MLB SC', 4:'MLB SP', 5:'SANTA TEREZA',
+  6:'BATTOGO', 7:'BONONI PR', 8:'BONONI SC', 9:'OP. LOGÍSTICO'
+})[parseInt(id)] || `Empresa ${id}`;
+
+window.fmt = (v, dec=0) => {
+  const n = parseFloat(v) || 0;
+  const abs = Math.abs(n);
+  let str;
+  if (abs >= 1e6)      str = (n/1e6).toFixed(1).replace('.',',') + 'M';
+  else if (abs >= 1e3) str = (n/1e3).toFixed(1).replace('.',',') + 'K';
+  else                 str = n.toFixed(dec).replace('.',',');
+  return 'R$ ' + str;
+};
+
+window.fmtFull = (v) => {
+  const n = parseFloat(v) || 0;
+  return 'R$ ' + n.toLocaleString('pt-BR', { minimumFractionDigits:2, maximumFractionDigits:2 });
+};
+
+window.fmtDate = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return dt.toLocaleDateString('pt-BR');
+};
+
+// Expor sb globalmente para módulos
+window.sb = sb;
+
+// Expor usuário atual para módulos
+window.getUsuario = () => usuarioAtual;
+
+// ══════════════════════════════════════════
+// SELETOR DE MÊS
+// ══════════════════════════════════════════
+function initMonthSelector() {
+  const sel = document.getElementById('filtro-mes');
+  const now = new Date();
+  sel.innerHTML = '';
+  for (let i = 0; i < 13; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const val = `${y}-${m}`;
+    const label = d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    const opt = document.createElement('option');
+    opt.value = val; opt.textContent = label;
+    if (i === 0) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+// ══════════════════════════════════════════
+// ROTEADOR DE MÓDULOS
+// ══════════════════════════════════════════
+async function navegarPara(moduloId, paginaId) {
+  // ── Página Admin ──
+  if (moduloId === 'admin') {
+    document.getElementById('page-title').textContent = 'Administração';
+    document.getElementById('page-breadcrumb').textContent = 'Admin';
+    const elE = document.getElementById('filtro-empresa');
+    const elM = document.getElementById('filtro-mes');
+    if (elE) elE.style.display = 'none';
+    if (elM) elM.style.display = 'none';
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.querySelector('.nav-item[data-pagina="admin"]')?.classList.add('active');
+    document.querySelectorAll('.module-slot').forEach(el => el.classList.remove('active'));
+    let slot = document.getElementById('slot-admin');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.id = 'slot-admin';
+      slot.className = 'module-slot';
+      document.getElementById('content-area').appendChild(slot);
+    }
+    slot.classList.add('active');
+    moduloAtivo = 'admin'; paginaAtiva = 'admin';
+    renderAdminPage(slot);
+    if (window.innerWidth <= 900) closeSidebar();
+    return;
+  }
+
+  const modDef = MODULOS.find(m => m.id === moduloId);
+  if (!modDef) return;
+
+  const pgDef = modDef.paginas.find(p => p.id === paginaId) || modDef.paginas[0];
+  if (!pgDef) return;
+
+  document.getElementById('page-title').textContent = pgDef.titulo;
+  document.getElementById('page-breadcrumb').textContent = pgDef.breadcrumb;
+
+  const filtrosPagina = pgDef.filtros || [];
+  const elEmpresa = document.getElementById('filtro-empresa');
+  const elMes     = document.getElementById('filtro-mes');
+  if (elEmpresa) elEmpresa.style.display = filtrosPagina.includes('empresa') ? '' : 'none';
+  if (elMes)     elMes.style.display     = filtrosPagina.includes('mes')     ? '' : 'none';
+
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-module-header').forEach(el => el.classList.remove('has-active'));
+  const navItem = document.querySelector(`.nav-item[data-pagina="${paginaId}"]`);
+  if (navItem) {
+    navItem.classList.add('active');
+    navItem.closest('.nav-module')?.querySelector('.nav-module-header')?.classList.add('has-active');
+  }
+
+  document.querySelectorAll('.module-slot').forEach(el => el.classList.remove('active'));
+  let slot = document.getElementById(`slot-${moduloId}`);
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = `slot-${moduloId}`;
+    slot.className = 'module-slot';
+    document.getElementById('content-area').appendChild(slot);
+  }
+  slot.classList.add('active');
+
+  moduloAtivo = moduloId;
+  paginaAtiva = paginaId;
+
+  // ── Módulo "Em breve" ──
+  if (!modDef.pronto) {
+    slot.innerHTML = `
+      <div class="module-placeholder" style="gap:12px">
+        <div style="font-size:48px">${modDef.icon}</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text-primary)">${modDef.label}</div>
+        <div style="font-size:14px;color:var(--text-muted);text-align:center;max-width:340px">
+          Este módulo está em desenvolvimento no Lovable.<br>Em breve disponível aqui.
+        </div>
+      </div>`;
+    if (window.innerWidth <= 900) closeSidebar();
+    return;
+  }
+
+  if (!modulosCarregados[moduloId]) {
+    mostrarLoadingBar(true);
+    slot.innerHTML = `<div class="module-placeholder"><div class="spinner"></div><p>Carregando ${modDef.label}...</p></div>`;
+    await carregarScript(modDef.script, moduloId);
+    modulosCarregados[moduloId] = true;
+    mostrarLoadingBar(false);
+  }
+
+  const nomeModulo = `Modulo${moduloId.charAt(0).toUpperCase() + moduloId.slice(1)}`;
+  const modulo = window[nomeModulo];
+  if (modulo && typeof modulo.showPage === 'function') {
+    modulo.showPage(paginaId, slot, usuarioAtual, { empresa: getEmpresa(), mes: getSelectedMonth() });
+  }
+
+  if (window.innerWidth <= 900) closeSidebar();
+}
+
+function carregarScript(src, moduloId) {
+  return new Promise((resolve) => {
+    if (document.querySelector(`script[data-modulo="${moduloId}"]`)) {
+      resolve(); return;
+    }
+    const s = document.createElement('script');
+    s.src = src + '?v=' + Date.now();
+    s.dataset.modulo = moduloId;
+    s.onload  = resolve;
+    s.onerror = () => {
+      console.error(`Erro ao carregar módulo: ${src}`);
+      resolve();
+    };
+    document.head.appendChild(s);
+  });
+}
+
+// ══════════════════════════════════════════
+// FILTROS GLOBAIS — avisar módulo ativo
+// ══════════════════════════════════════════
+function onFiltroChange() {
+  if (!moduloAtivo) return;
+  const nomeModulo = `Modulo${moduloAtivo.charAt(0).toUpperCase() + moduloAtivo.slice(1)}`;
+  const modulo = window[nomeModulo];
+  if (modulo && typeof modulo.onFiltroChange === 'function') {
+    modulo.onFiltroChange({
+      empresa: getEmpresa(),
+      mes: getSelectedMonth(),
+      pagina: paginaAtiva,
+    });
+  }
+}
+
+function onRefresh() {
+  onFiltroChange();
+  document.getElementById('last-update').textContent =
+    `Atualizado ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+}
+
+window.setLastUpdate = () => {
+  document.getElementById('last-update').textContent =
+    `Atualizado ${new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}`;
+};
+
+// ══════════════════════════════════════════
+// MENU LATERAL — renderização dinâmica
+// ══════════════════════════════════════════
+function renderMenu(usuario) {
+  const nav = document.getElementById('sidebar-nav');
+  nav.innerHTML = '';
+
+  const todosModulos = usuario.admin
+    ? MODULOS
+    : MODULOS.filter(m => (usuario.modulos || []).includes(m.acesso));
+
+  // ── Módulos internos ──
+  todosModulos.forEach(mod => {
+    const div = document.createElement('div');
+    div.className = 'nav-module';
+    div.id = `nav-module-${mod.id}`;
+    div.innerHTML = `
+      <div class="nav-module-header" onclick="toggleNavModule('${mod.id}')">
+        <div class="nav-module-label">
+          <span class="nav-module-icon">${mod.icon}</span>${mod.label}
+        </div>
+        <span class="nav-module-chevron">▼</span>
+      </div>
+      <div class="nav-module-items">
+        ${mod.paginas.map(p => `
+          <a class="nav-item" data-pagina="${p.id}" onclick="navegarPara('${mod.id}','${p.id}')">
+            <span class="nav-dot"></span>${p.label}
+          </a>`).join('')}
+      </div>`;
+    nav.appendChild(div);
+  });
+
+  // ── Apps externos ──
+  const appsVisiveis = usuario.admin
+    ? APPS_EXTERNOS
+    : APPS_EXTERNOS.filter(a => (usuario.modulos || []).includes(a.acesso));
+
+  if (appsVisiveis.length) {
+    nav.insertAdjacentHTML('beforeend', `<div class="nav-separator"></div>
+      <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,0.2);padding:4px 10px 6px">Outros Apps</div>`);
+
+    appsVisiveis.forEach(app => {
+      const semUrl = !app.url;
+      nav.insertAdjacentHTML('beforeend', `
+        <a class="nav-item" onclick="${semUrl ? `alert('App de Compras: configure a URL no código (APPS_EXTERNOS)')` : `window.open('${app.url}','_blank')`}"
+          style="justify-content:space-between;${semUrl ? 'opacity:0.5;cursor:not-allowed' : ''}">
+          <span style="display:flex;align-items:center;gap:9px">
+            <span class="nav-dot"></span>${app.icon} ${app.label}
+          </span>
+          <span style="font-size:10px;opacity:0.4">${semUrl ? '🔗?' : '↗'}</span>
+        </a>`);
+    });
+  }
+
+  // ── Admin ──
+  if (usuario.admin) {
+    nav.insertAdjacentHTML('beforeend', `
+      <div class="nav-separator"></div>
+      <a class="nav-item" data-pagina="admin" onclick="navegarPara('admin','admin')"
+        style="color:rgba(255,255,255,0.4)">
+        <span class="nav-dot"></span>⚙️ Admin
+      </a>`);
+  }
+}
+
+function toggleNavModule(id) {
+  const el = document.getElementById(`nav-module-${id}`);
+  if (el) el.classList.toggle('collapsed');
+}
+
+// ══════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// PÁGINA ADMIN — gerenciar usuários via metadata
+// ══════════════════════════════════════════
+function renderAdminPage(slot) {
+  slot.innerHTML = `
+    <div style="padding:24px;max-width:860px">
+      <div style="font-size:13px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px">
+        Gerenciar Usuários
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">Buscar usuário</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <input id="adm-email" type="email" class="filter-select" style="width:280px;height:36px" placeholder="email@bononi.com.br" />
+          <button class="btn btn-primary" onclick="adminBuscarUsuario()">Buscar</button>
+        </div>
+        <div id="adm-resultado" style="margin-top:16px"></div>
+      </div>
+
+      <div class="card">
+        <div style="font-size:13px;font-weight:600;margin-bottom:4px">Como funciona</div>
+        <div style="font-size:12px;color:var(--text-secondary);line-height:1.7">
+          Os acessos ficam no <strong>Supabase Authentication → Users → Edit User → User Metadata</strong>.<br>
+          Configure assim para cada usuário:
+          <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-top:8px;font-size:12px;overflow-x:auto">{
+  "nome": "João Silva",
+  "admin": false,
+  "modulos": ["financeiro", "compras"],
+  "empresa_padrao": 7
+}</pre>
+          <strong>Módulos disponíveis:</strong> financeiro · compras · assistencia · cobranca · loja · ecommerce · atacado · frete<br>
+          <strong>admin: true</strong> → acessa tudo automaticamente, sem precisar listar módulos.
+        </div>
+      </div>
+    </div>`;
+}
+
+async function adminBuscarUsuario() {
+  const email = document.getElementById('adm-email')?.value?.trim();
+  const res   = document.getElementById('adm-resultado');
+  if (!email) return;
+  res.innerHTML = '<span style="color:var(--text-muted);font-size:13px">Buscando...</span>';
+  try {
+    // Busca via list users (requer service_role — aqui apenas lemos da auth.users via função RPC se existir)
+    // Alternativa: mostrar instrução para editar diretamente no Supabase
+    res.innerHTML = `
+      <div class="alert alert-info">
+        <strong>Para editar ${email}:</strong><br>
+        1. Acesse <a href="https://supabase.com/dashboard/project/vishxwdxqiygbxmtpfoy/auth/users" target="_blank" style="color:var(--blue-mid)">Supabase → Authentication → Users</a><br>
+        2. Localize o e-mail e clique em <strong>...</strong> → <strong>Edit user</strong><br>
+        3. Em <strong>User Metadata</strong> cole o JSON com os módulos desejados
+      </div>`;
+  } catch(e) { res.innerHTML = `<div class="alert alert-error">${e.message}</div>`; }
+}
+window.adminBuscarUsuario = adminBuscarUsuario;
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  // Lê metadata do usuário autenticado — zero tabela extra
+  const meta = session.user.user_metadata || {};
+  const usuarioAtual_local = {
+    id:      session.user.id,
+    email:   session.user.email,
+    nome:    meta.nome || session.user.email.split('@')[0],
+    modulos: meta.modulos || [],   // ex: ["financeiro","compras"]
+    admin:   meta.admin === true,
+    empresa_padrao: meta.empresa_padrao || null,
+  };
+
+  usuarioAtual = usuarioAtual_local;
+  window.getUsuario = () => usuarioAtual;
+
+  // Popular sidebar
+  document.getElementById('user-avatar').textContent = usuarioAtual.nome.charAt(0).toUpperCase();
+  document.getElementById('user-name').textContent = usuarioAtual.nome;
+  document.getElementById('user-perfil').textContent = usuarioAtual.admin ? 'Administrador' : (usuarioAtual.modulos.join(', ') || 'Acesso básico');
+
+  if (usuarioAtual.empresa_padrao) {
+    const el = document.getElementById('filtro-empresa');
+    if (el) el.value = usuarioAtual.empresa_padrao;
+  }
+
+  renderMenu(usuarioAtual);
+  initMonthSelector();
+
+  document.getElementById('auth-loading').style.display = 'none';
+  document.getElementById('app-shell').style.display = 'flex';
+
+  // Navegar para primeira página disponível
+  const mods = usuarioAtual.admin
+    ? MODULOS
+    : MODULOS.filter(m => (usuarioAtual.modulos || []).includes(m.acesso));
+
+  const primeiro = mods.find(m => m.pronto && m.paginas.length);
+  if (primeiro) {
+    await navegarPara(primeiro.id, primeiro.paginas[0].id);
+  } else if (mods.length) {
+    await navegarPara(mods[0].id, mods[0].paginas[0]?.id);
+  }
+}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function mostrarLoadingBar(show) {
+  document.getElementById('module-loading-bar').classList.toggle('show', show);
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('sidebar-overlay').classList.toggle('open');
+}
+
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+async function sair() {
+  await sb.auth.signOut();
+  sessionStorage.removeItem('bononi_usuario');
+  window.location.href = 'login.html';
+}
+
+// ══════════════════════════════════════════
+// START
+// ══════════════════════════════════════════
+init();
+</script>
+</body>
+</html>
