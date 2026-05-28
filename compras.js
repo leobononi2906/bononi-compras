@@ -108,14 +108,14 @@ const PAGINAS_HTML = {
           <thead>
             <tr>
               <th style="width:32px"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" /></th>
-              <th>Produto</th>
+              <th onclick="setOrdemAlertas('nome',this)" style="cursor:pointer;user-select:none">Produto <span class="sort-icon">↕</span></th>
               <th>Grupo</th>
-              <th class="right">Estoque</th>
-              <th class="right">Cobertura</th>
-              <th class="right">Qtd Sugerida</th>
-              <th class="right">Ped. Aberto</th>
-              <th>Situação</th>
-              <th>ABC</th>
+              <th class="right" onclick="setOrdemAlertas('estoque',this)" style="cursor:pointer;user-select:none">Estoque <span class="sort-icon">↕</span></th>
+              <th class="right" onclick="setOrdemAlertas('cobertura',this)" style="cursor:pointer;user-select:none">Cobertura <span class="sort-icon">↕</span></th>
+              <th class="right" onclick="setOrdemAlertas('qtd_sugerida',this)" style="cursor:pointer;user-select:none">Qtd Sugerida <span class="sort-icon">↕</span></th>
+              <th class="right" onclick="setOrdemAlertas('pedido_aberto',this)" style="cursor:pointer;user-select:none">Ped. Aberto <span class="sort-icon">↕</span></th>
+              <th onclick="setOrdemAlertas('prioridade',this)" style="cursor:pointer;user-select:none">Situação <span class="sort-icon">↕</span></th>
+              <th onclick="setOrdemAlertas('abc',this)" style="cursor:pointer;user-select:none">ABC <span class="sort-icon">↕</span></th>
               <th>Fornecedor</th>
               <th style="width:48px"></th>
             </tr>
@@ -127,6 +127,108 @@ const PAGINAS_HTML = {
       </div>
     </div>
 
+  </div>
+
+  <!-- OVERLAY + DRAWER PRODUTO -->
+  <div class="drawer-overlay" id="drawer-overlay" onclick="fecharDrawer()"></div>
+  <div class="drawer" id="produto-drawer">
+    <div class="drawer-header">
+      <div>
+        <div class="drawer-title" id="drawer-produto-nome">—</div>
+        <div class="drawer-sub" id="drawer-produto-ref">—</div>
+      </div>
+      <button class="drawer-close" onclick="fecharDrawer()">✕</button>
+    </div>
+    <div style="padding:0 24px;border-bottom:1px solid var(--border);flex-shrink:0">
+      <div class="drawer-tabs" style="border:none;margin:0">
+        <div class="drawer-tab active" onclick="switchDrawerTab('resumo',this)">Resumo</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('giro',this)">Giro</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('historico',this)">Histórico</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('fornecedores',this)">Fornecedores</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('estoque',this)">Estoque</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('pedido',this)">Fazer Pedido</div>
+      </div>
+    </div>
+    <div style="flex:1;overflow-y:auto">
+      <div class="drawer-tab-content active" id="dtab-resumo" style="padding:20px 24px">
+        <div class="cards-grid cards-grid-3" style="margin-bottom:14px">
+          <div class="card"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total">—</div><div class="card-sub" id="dr-estoque-sub"></div></div>
+          <div class="card"><div class="card-label">Cobertura</div><div class="card-value" id="dr-cobertura">—</div><div class="card-sub">dias de estoque</div></div>
+          <div class="card"><div class="card-label">Consumo Diário</div><div class="card-value" id="dr-consumo">—</div><div class="card-sub">média geral</div></div>
+        </div>
+        <div class="cards-grid cards-grid-4">
+          <div class="card"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida">—</div></div>
+          <div class="card"><div class="card-label">Pedido Aberto</div><div class="card-value" id="dr-pedido-aberto">—</div></div>
+          <div class="card"><div class="card-label">Última Compra</div><div class="card-value" style="font-size:16px" id="dr-ultima-compra">—</div></div>
+          <div class="card"><div class="card-label">Última Venda</div><div class="card-value" style="font-size:16px" id="dr-ultima-venda">—</div></div>
+        </div>
+        <div class="card" style="margin-top:14px">
+          <div class="card-label">Lead Time (pedido→NF)</div>
+          <div class="card-value" id="dr-lead-time">—</div>
+          <div class="card-sub" id="dr-lead-time-sub"></div>
+        </div>
+      </div>
+      <div class="drawer-tab-content" id="dtab-giro" style="padding:20px 24px">
+        <div id="dtab-giro-inner"><div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div></div>
+      </div>
+      <div class="drawer-tab-content" id="dtab-historico" style="padding:20px 24px">
+        <div id="hist-alertas"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:600">Movimentações</div>
+          <div class="toggle-group">
+            <button class="toggle-btn active" onclick="setHistFiltro('todos',this)">Todos</button>
+            <button class="toggle-btn" onclick="setHistFiltro('entradas',this)">Entradas</button>
+            <button class="toggle-btn" onclick="setHistFiltro('saidas',this)">Saídas</button>
+          </div>
+        </div>
+        <div class="table-card"><div style="overflow-x:auto;max-height:420px;overflow-y:auto">
+          <table class="data-table">
+            <thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Empresa</th><th class="right">Qtd</th></tr></thead>
+            <tbody id="dr-historico-body"><tr class="loading-row"><td colspan="5">Carregando...</td></tr></tbody>
+          </table>
+        </div></div>
+      </div>
+      <div class="drawer-tab-content" id="dtab-fornecedores" style="padding:20px 24px">
+        <div id="dr-forn-container"><div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div></div>
+      </div>
+      <div class="drawer-tab-content" id="dtab-estoque" style="padding:20px 24px">
+        <div class="table-card"><div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+          <table class="data-table">
+            <thead><tr><th>Empresa</th><th>Centro</th><th class="right">Estoque</th><th class="right">Reserva</th><th>Status</th></tr></thead>
+            <tbody id="dr-estoque-body"><tr class="loading-row"><td colspan="5">Carregando...</td></tr></tbody>
+          </table>
+        </div></div>
+      </div>
+      <div class="drawer-tab-content" id="dtab-pedido" style="padding:20px 24px">
+        <div id="pedido-forn-list"><div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARRINHO -->
+  <div class="cart-panel" id="cart-panel">
+    <div class="cart-header" onclick="toggleCarrinho()">
+      <div class="cart-title">🛒 Pedido em Andamento <span class="cart-count" id="cart-count">0</span></div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace" id="cart-total-valor">R$ 0</span>
+        <span id="cart-chevron" style="font-size:12px;color:var(--text-muted)">▲</span>
+      </div>
+    </div>
+    <div id="cart-body" style="flex:1;overflow-y:auto">
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Sugerido</th><th class="right">Pedido</th><th class="right">Vl Unit</th><th class="right">Total</th><th></th></tr></thead>
+          <tbody id="cart-items-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="cart-footer">
+      <div style="font-size:13px;color:var(--text-muted)">Pedido de compras</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-outline" onclick="exportarPedido()">↓ Exportar Excel</button>
+        <button class="btn btn-primary" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button>
+      </div>
+    </div>
   </div>`,
 
   'cmp-totais': `<div class="page-content" id="page-cmp-totais">
@@ -477,6 +579,7 @@ const PAGINAS_HTML = {
 let alertasData = [];
 let alertasFiltrados = [];
 let ordemAlertas = 'prioridade';
+let ordemDir = 'desc';
 let filtroSituacaoAtivo = '';
 let cartItems = [];
 let chartGiroMensal = null;
@@ -678,9 +781,28 @@ function filtrarSituacao(sit, card) {
 }
 
 function setOrdemAlertas(ordem, btn) {
-  ordemAlertas = ordem;
-  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
+  // Toggle direção se mesma coluna
+  if (ordemAlertas === ordem) {
+    ordemDir = ordemDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    ordemAlertas = ordem;
+    // Direção padrão por coluna
+    ordemDir = ['cobertura','estoque','pedido_aberto'].includes(ordem) ? 'asc' : 'desc';
+  }
+  // Atualizar ícones nos th
+  document.querySelectorAll('#page-cmp-alertas .sort-icon').forEach(el => el.textContent = '↕');
+  if (btn && btn.querySelector) {
+    const icon = btn.querySelector ? btn.querySelector('.sort-icon') : null;
+    if (icon) icon.textContent = ordemDir === 'asc' ? '↑' : '↓';
+  } else if (btn && btn.tagName === 'TH') {
+    const icon = btn.querySelector('.sort-icon');
+    if (icon) icon.textContent = ordemDir === 'asc' ? '↑' : '↓';
+  }
+  // Compatibilidade com toggle-btn (botões acima da tabela)
+  if (btn && btn.classList && btn.classList.contains('toggle-btn')) {
+    btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
   paginaAtual = 1;
   renderAlertas();
 }
@@ -707,24 +829,29 @@ function renderAlertas() {
 
   // Ordenação
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
+  const abcMap  = { A: 1, B: 2, C: 3 };
+  const dir = ordemDir === 'asc' ? 1 : -1;
+
   if (ordemAlertas === 'prioridade') {
     dados.sort((a, b) => {
       const pa = prioMap[a.situacao_estoque] || 9;
       const pb = prioMap[b.situacao_estoque] || 9;
       if (pa !== pb) return pa - pb;
-      const aa = a.curva_abc_qtd || 'Z', ab = b.curva_abc_qtd || 'Z';
-      return aa.localeCompare(ab);
+      return (abcMap[a.curva_abc_qtd] || 9) - (abcMap[b.curva_abc_qtd] || 9);
     });
   } else if (ordemAlertas === 'cobertura') {
-    dados.sort((a, b) => (a.cobertura_dias || 9999) - (b.cobertura_dias || 9999));
+    dados.sort((a, b) => dir * ((a.cobertura_dias ?? 99999) - (b.cobertura_dias ?? 99999)));
   } else if (ordemAlertas === 'abc') {
-    dados.sort((a, b) => {
-      const aa = a.curva_abc_qtd || 'Z', ab = b.curva_abc_qtd || 'Z';
-      if (aa !== ab) return aa.localeCompare(ab);
-      return (prioMap[a.situacao_estoque] || 9) - (prioMap[b.situacao_estoque] || 9);
-    });
+    dados.sort((a, b) => dir * ((abcMap[a.curva_abc_qtd] || 9) - (abcMap[b.curva_abc_qtd] || 9)));
   } else if (ordemAlertas === 'qtd_sugerida') {
-    dados.sort((a, b) => (b.qtd_sugerida || 0) - (a.qtd_sugerida || 0));
+    dados.sort((a, b) => dir * ((b.qtd_sugerida || 0) - (a.qtd_sugerida || 0)) * -1);
+    dados.sort((a, b) => dir * ((a.qtd_sugerida || 0) - (b.qtd_sugerida || 0)));
+  } else if (ordemAlertas === 'estoque') {
+    dados.sort((a, b) => dir * ((a.estoque_total || 0) - (b.estoque_total || 0)));
+  } else if (ordemAlertas === 'pedido_aberto') {
+    dados.sort((a, b) => dir * ((a.pedido_aberto_total || 0) - (b.pedido_aberto_total || 0)));
+  } else if (ordemAlertas === 'nome') {
+    dados.sort((a, b) => dir * (a.nome || '').localeCompare(b.nome || ''));
   }
 
   alertasFiltrados = dados;
@@ -3435,28 +3562,40 @@ window.ModuloCompras = {
     if (!_iniciado) {
       const wrapper = document.createElement('div');
       wrapper.id = 'compras-pages';
-      const INJECT_BODY = ['cmp-chat'];
+
+      // IDs de elementos que devem ir pro body (position:fixed)
+      const FIXED_IDS = [
+        'chat-overlay','chat-panel','modal-historico-overlay',  // chat
+        'drawer-overlay','produto-drawer',                      // drawer alertas
+        'cart-panel',                                           // carrinho
+        'toast',                                               // toast
+      ];
+
       Object.entries(PAGINAS_HTML).forEach(([pid, html]) => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;
-        if (INJECT_BODY.includes(pid)) {
-          // Injetar direto no body (elementos fixed/overlay)
+
+        if (pid === 'cmp-chat') {
+          // Chat inteiro vai pro body
           while (tmp.firstChild) document.body.appendChild(tmp.firstChild);
           return;
         }
-        // Injetar todos os filhos (página + modais/drawers que vêm depois)
-        while (tmp.firstChild) {
-          const child = tmp.firstChild;
-          tmp.removeChild(child);
-          // Elementos page-content vão no wrapper
-          // Modais e drawers (position:fixed) vão no body
-          if (child.nodeType === 1 && child.id && child.id.startsWith('page-')) {
+
+        // Para as outras páginas: percorrer filhos
+        // - o div.page-content vai pro wrapper
+        // - elementos fixed (drawer, cart, modal, toast) vão pro body
+        Array.from(tmp.children).forEach(child => {
+          if (child.id && FIXED_IDS.includes(child.id)) {
+            // Só injeta se ainda não existe no DOM
+            if (!document.getElementById(child.id)) {
+              document.body.appendChild(child);
+            }
+          } else {
             wrapper.appendChild(child);
-          } else if (child.nodeType === 1) {
-            document.body.appendChild(child);
           }
-        }
+        });
       });
+
       container.innerHTML = '';
       container.appendChild(wrapper);
       _iniciado = true;
