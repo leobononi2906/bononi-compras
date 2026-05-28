@@ -141,36 +141,89 @@ const PAGINAS_HTML = {
     </div>
     <div style="padding:0 24px;border-bottom:1px solid var(--border);flex-shrink:0">
       <div class="drawer-tabs" style="border:none;margin:0">
-        <div class="drawer-tab active" onclick="switchDrawerTab('resumo',this)">Resumo</div>
-        <div class="drawer-tab" onclick="switchDrawerTab('giro',this)">Giro</div>
-        <div class="drawer-tab" onclick="switchDrawerTab('historico',this)">Histórico</div>
-        <div class="drawer-tab" onclick="switchDrawerTab('fornecedores',this)">Fornecedores</div>
-        <div class="drawer-tab" onclick="switchDrawerTab('estoque',this)">Estoque</div>
-        <div class="drawer-tab" onclick="switchDrawerTab('pedido',this)">Fazer Pedido</div>
+        <div class="drawer-tab active" onclick="switchDrawerTab('resumo',this)">📊 Resumo</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('historico',this)">📋 Histórico</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('fornecedores',this)">🏭 Fornecedores</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('estoque',this)">🏪 Estoque</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('pedido',this)">🛒 Pedido</div>
       </div>
     </div>
     <div style="flex:1;overflow-y:auto">
-      <div class="drawer-tab-content active" id="dtab-resumo" style="padding:20px 24px">
-        <div class="cards-grid cards-grid-3" style="margin-bottom:14px">
-          <div class="card"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total">—</div><div class="card-sub" id="dr-estoque-sub"></div></div>
-          <div class="card"><div class="card-label">Cobertura</div><div class="card-value" id="dr-cobertura">—</div><div class="card-sub">dias de estoque</div></div>
-          <div class="card"><div class="card-label">Consumo Diário</div><div class="card-value" id="dr-consumo">—</div><div class="card-sub">média geral</div></div>
+
+      <!-- TAB RESUMO (inclui giro) -->
+      <div class="drawer-tab-content active" id="dtab-resumo" style="padding:16px 20px">
+
+        <!-- Linha 1: situação atual -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Estoque Total</div>
+            <div class="card-value" id="dr-estoque-total" style="font-size:20px">—</div>
+            <div class="card-sub" id="dr-estoque-sub"></div>
+          </div>
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Cobertura</div>
+            <div class="card-value" id="dr-cobertura" style="font-size:20px">—</div>
+            <div class="card-sub">dias de estoque</div>
+          </div>
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Qtd Sugerida</div>
+            <div class="card-value blue" id="dr-sugerida" style="font-size:20px">—</div>
+            <div class="card-sub">reposição sugerida</div>
+          </div>
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Lead Time</div>
+            <div class="card-value" id="dr-lead-time" style="font-size:20px">—</div>
+            <div class="card-sub" id="dr-lead-time-sub"></div>
+          </div>
         </div>
-        <div class="cards-grid cards-grid-4">
-          <div class="card"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida">—</div></div>
-          <div class="card"><div class="card-label">Pedido Aberto</div><div class="card-value" id="dr-pedido-aberto">—</div></div>
-          <div class="card"><div class="card-label">Última Compra</div><div class="card-value" style="font-size:16px" id="dr-ultima-compra">—</div></div>
-          <div class="card"><div class="card-label">Última Venda</div><div class="card-value" style="font-size:16px" id="dr-ultima-venda">—</div></div>
+
+        <!-- Linha 2: datas + pedido -->
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Consumo/dia</div>
+            <div class="card-value" id="dr-consumo" style="font-size:18px">—</div>
+          </div>
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Pedido Aberto</div>
+            <div class="card-value" id="dr-pedido-aberto" style="font-size:18px">—</div>
+          </div>
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Última Compra</div>
+            <div class="card-value" id="dr-ultima-compra" style="font-size:14px">—</div>
+          </div>
+          <div class="card" style="padding:12px 14px">
+            <div class="card-label">Última Venda</div>
+            <div class="card-value" id="dr-ultima-venda" style="font-size:14px">—</div>
+          </div>
         </div>
-        <div class="card" style="margin-top:14px">
-          <div class="card-label">Lead Time (pedido→NF)</div>
-          <div class="card-value" id="dr-lead-time">—</div>
-          <div class="card-sub" id="dr-lead-time-sub"></div>
+
+        <!-- Vendidos por período -->
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:8px">Vendido por período</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+          <div class="card" style="padding:12px 14px;border-left:3px solid var(--red)">
+            <div class="card-label">30 dias</div>
+            <div class="card-value" id="dr-vend-30" style="font-size:20px">—</div>
+          </div>
+          <div class="card" style="padding:12px 14px;border-left:3px solid var(--orange)">
+            <div class="card-label">60 dias</div>
+            <div class="card-value" id="dr-vend-60" style="font-size:20px">—</div>
+          </div>
+          <div class="card" style="padding:12px 14px;border-left:3px solid var(--blue-mid)">
+            <div class="card-label">90 dias</div>
+            <div class="card-value" id="dr-vend-90" style="font-size:20px">—</div>
+          </div>
+          <div class="card" style="padding:12px 14px;border-left:3px solid var(--green)">
+            <div class="card-label">180 dias</div>
+            <div class="card-value" id="dr-vend-180" style="font-size:20px">—</div>
+          </div>
         </div>
-      </div>
-      <div class="drawer-tab-content" id="dtab-giro" style="padding:20px 24px">
-        <div id="dtab-giro-inner"><div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div></div>
-      </div>
+
+        <!-- Gráfico mensal -->
+        <div id="dtab-giro-inner">
+          <div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">Carregando giro...</div>
+        </div>
+
+      </div><!-- /dtab-resumo -->
       <div class="drawer-tab-content" id="dtab-historico" style="padding:20px 24px">
         <div id="hist-alertas"></div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -971,9 +1024,11 @@ async function abrirProduto(idProduto) {
     `Ref: ${prod.referencia || '—'} · ${prod.grupo || ''} › ${prod.subgrupo || ''}`;
 
   // Ativar aba resumo
-  document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.drawer-tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelector('.drawer-tab[onclick*="resumo"]').classList.add('active');
+  const drawer = document.getElementById('produto-drawer');
+  if (!drawer) return;
+  drawer.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+  drawer.querySelectorAll('.drawer-tab-content').forEach(t => t.classList.remove('active'));
+  drawer.querySelector('.drawer-tab[onclick*="resumo"]')?.classList.add('active');
   document.getElementById('dtab-resumo').classList.add('active');
 
   // Abrir drawer
@@ -991,25 +1046,18 @@ function fecharDrawer() {
 }
 
 function switchDrawerTab(tab, btn) {
-  document.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.drawer-tab-content').forEach(t => t.classList.remove('active'));
-
-  // Encontrar o btn pelo evento ou por onclick
-  const tabs = document.querySelectorAll('.drawer-tab');
-  tabs.forEach(t => {
-    if (t.getAttribute('onclick') && t.getAttribute('onclick').includes(`'${tab}'`)) {
-      t.classList.add('active');
-    }
-  });
-
+  const drawer = document.getElementById('produto-drawer');
+  if (!drawer) return;
+  drawer.querySelectorAll('.drawer-tab').forEach(t => t.classList.remove('active'));
+  drawer.querySelectorAll('.drawer-tab-content').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
   const content = document.getElementById(`dtab-${tab}`);
   if (content) content.classList.add('active');
-
-  if (tab === 'resumo' && produtoAtual) { loadDrawerResumo(produtoAtual); loadDrawerGiro(produtoAtual.id_produto); }
-  if (tab === 'historico' && produtoAtual) loadDrawerHistorico(produtoAtual.id_produto);
-  if (tab === 'fornecedores' && produtoAtual) loadDrawerFornecedores(produtoAtual.id_produto);
-  if (tab === 'estoque' && produtoAtual) loadDrawerEstoque(produtoAtual.id_produto);
-  if (tab === 'pedido' && produtoAtual) loadDrawerPedido(produtoAtual);
+  if (tab === 'resumo'      && produtoAtual) { loadDrawerResumo(produtoAtual); loadDrawerGiro(produtoAtual.id_produto); }
+  if (tab === 'historico'   && produtoAtual) loadDrawerHistorico(produtoAtual.id_produto);
+  if (tab === 'fornecedores'&& produtoAtual) loadDrawerFornecedores(produtoAtual.id_produto);
+  if (tab === 'estoque'     && produtoAtual) loadDrawerEstoque(produtoAtual.id_produto);
+  if (tab === 'pedido'      && produtoAtual) loadDrawerPedido(produtoAtual);
 }
 
 async function loadDrawerResumo(prod) {
@@ -1074,18 +1122,19 @@ async function loadDrawerGiro(idProduto) {
     const hoje = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
     const inicioStr = inicio.toISOString().slice(0, 10);
+    const inicio180 = new Date(hoje); inicio180.setDate(hoje.getDate() - 180);
+    const inicio180Str = inicio180.toISOString().slice(0, 10);
 
-    // Buscar saídas (comercial + OS) e compras em paralelo
     const [rVendas, rOs, rCompras] = await Promise.all([
       sb.from('vw_comercial_itens_faturados')
         .select('data_faturamento, qtd')
         .eq('id_produto', idProduto)
-        .gte('data_faturamento', inicioStr)
+        .gte('data_faturamento', inicio180Str)
         .range(0, 9999),
       sb.from('vw_os_pecas_faturadas')
         .select('data_faturamento, qtd')
         .eq('id_produto', idProduto)
-        .gte('data_faturamento', inicioStr)
+        .gte('data_faturamento', inicio180Str)
         .range(0, 9999),
       sb.from('vw_fb_historico_compras')
         .select('data_compra, qtd')
@@ -1094,63 +1143,60 @@ async function loadDrawerGiro(idProduto) {
         .range(0, 9999),
     ]);
 
-    // Montar meses
+    // Calcular vendidos por período
+    const todasSaidas = [...(rVendas.data||[]), ...(rOs.data||[])];
+    const vendidosPeriodo = (dias) => {
+      const limite = new Date(hoje); limite.setDate(hoje.getDate() - dias);
+      const limStr = limite.toISOString().slice(0,10);
+      return todasSaidas.filter(r => r.data_faturamento >= limStr)
+        .reduce((a, r) => a + Math.abs(parseFloat(r.qtd)||0), 0);
+    };
+    const v30 = vendidosPeriodo(30), v60 = vendidosPeriodo(60);
+    const v90 = vendidosPeriodo(90), v180 = vendidosPeriodo(180);
+
+    // Preencher cards
+    const setCard = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = fmtQtd(val, 0); };
+    setCard('dr-vend-30', v30); setCard('dr-vend-60', v60);
+    setCard('dr-vend-90', v90); setCard('dr-vend-180', v180);
+
+    // Montar meses para gráfico (12 meses)
     const meses = [];
     for (let i = 11; i >= 0; i--) {
       const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
       meses.push({
         label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-        key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+        key: `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`,
         saidas: 0, compras: 0
       });
     }
 
-    // Somar vendas diretas + OS
-    [...(rVendas.data || []), ...(rOs.data || [])].forEach(r => {
-      const key = (r.data_faturamento || '').slice(0, 7);
+    todasSaidas.forEach(r => {
+      const key = (r.data_faturamento||'').slice(0,7);
       const m = meses.find(m => m.key === key);
-      if (m) m.saidas += Math.abs(parseFloat(r.qtd) || 0);
+      if (m) m.saidas += Math.abs(parseFloat(r.qtd)||0);
     });
-    (rCompras.data || []).forEach(r => {
-      const m = meses.find(m => m.key === r.data_compra?.slice(0, 7));
-      if (m) m.compras += Math.abs(r.qtd || 0);
+    (rCompras.data||[]).forEach(r => {
+      const m = meses.find(m => m.key === (r.data_compra||'').slice(0,7));
+      if (m) m.compras += Math.abs(r.qtd||0);
     });
 
-    // Médias mensais
-    const media = (n) => meses.slice(-n).reduce((a, m) => a + m.saidas, 0) / n;
-    const totalComprado12m = meses.reduce((a, m) => a + m.compras, 0);
-    const mesesComVenda    = meses.filter(m => m.saidas > 0).length;
+    const media12 = meses.reduce((a,m)=>a+m.saidas,0)/12;
+    const media6  = meses.slice(-6).reduce((a,m)=>a+m.saidas,0)/6;
+    const media3  = meses.slice(-3).reduce((a,m)=>a+m.saidas,0)/3;
+    const totalComprado = meses.reduce((a,m)=>a+m.compras,0);
+    const mesesComVenda = meses.filter(m=>m.saidas>0).length;
 
     container.innerHTML = `
-      <div class="cards-grid cards-grid-4" style="margin-bottom:14px">
-        <div class="card">
-          <div class="card-label">Média 12m</div>
-          <div class="card-value">${fmtQtd(media(12), 1)}</div>
-          <div class="card-sub">por mês</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Média 6m</div>
-          <div class="card-value">${fmtQtd(media(6), 1)}</div>
-          <div class="card-sub">por mês</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Média 3m</div>
-          <div class="card-value">${fmtQtd(media(3), 1)}</div>
-          <div class="card-sub">por mês</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Comprado 12m</div>
-          <div class="card-value blue">${fmtQtd(totalComprado12m, 0)}</div>
-          <div class="card-sub">${mesesComVenda}/12 meses c/ venda</div>
-        </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div class="card" style="padding:12px 14px"><div class="card-label">Média 12m</div><div class="card-value" style="font-size:18px">${fmtQtd(media12,1)}</div><div class="card-sub">por mês</div></div>
+        <div class="card" style="padding:12px 14px"><div class="card-label">Média 6m</div><div class="card-value" style="font-size:18px">${fmtQtd(media6,1)}</div><div class="card-sub">por mês</div></div>
+        <div class="card" style="padding:12px 14px"><div class="card-label">Média 3m</div><div class="card-value" style="font-size:18px">${fmtQtd(media3,1)}</div><div class="card-sub">por mês</div></div>
+        <div class="card" style="padding:12px 14px"><div class="card-label">Comprado 12m</div><div class="card-value blue" style="font-size:18px">${fmtQtd(totalComprado,0)}</div><div class="card-sub">${mesesComVenda}/12 meses c/ venda</div></div>
       </div>
       <div class="chart-card">
-        <div class="chart-header">
-          <span class="chart-title">Saídas vs Compras — últimos 12 meses</span>
-        </div>
-        <div class="chart-body"><canvas id="chart-giro-mensal" height="180"></canvas></div>
-      </div>
-    `;
+        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span></div>
+        <div class="chart-body"><canvas id="chart-giro-mensal" height="160"></canvas></div>
+      </div>`;
 
     if (chartGiroMensal) chartGiroMensal.destroy();
     chartGiroMensal = new Chart(document.getElementById('chart-giro-mensal').getContext('2d'), {
@@ -1158,34 +1204,22 @@ async function loadDrawerGiro(idProduto) {
       data: {
         labels: meses.map(m => m.label),
         datasets: [
-          {
-            label: 'Saídas',
-            data: meses.map(m => m.saidas),
-            backgroundColor: '#1A3A8F',
-            borderRadius: 3,
-          },
-          {
-            label: 'Compras',
-            data: meses.map(m => m.compras),
-            backgroundColor: '#0F9D6E',
-            borderRadius: 3,
-          }
+          { label: 'Saídas', data: meses.map(m => m.saidas), backgroundColor: '#1A3A8F', borderRadius: 3 },
+          { label: 'Compras', data: meses.map(m => m.compras), backgroundColor: '#0F9D6E', borderRadius: 3 },
         ]
       },
       options: {
         responsive: true, maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } }
-        },
+        plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } } },
         scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 11 } } },
-          y: { grid: { color: '#E2E8F2' }, ticks: { font: { size: 11 }, callback: v => fmtQtd(v, 0) } }
+          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+          y: { grid: { color: '#E2E8F2' }, ticks: { font: { size: 11 }, callback: v => fmtQtd(v,0) } }
         }
       }
     });
-  } catch (e) {
-    const container = document.getElementById('dtab-giro-inner');
-    if (container) container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erro ao carregar giro</div>';
+  } catch(e) {
+    const c = document.getElementById('dtab-giro-inner');
+    if (c) c.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erro ao carregar giro</div>';
   }
 }
 
