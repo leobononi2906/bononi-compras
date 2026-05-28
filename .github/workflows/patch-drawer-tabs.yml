@@ -13,17 +13,47 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Patch compras drawer functions
+      - name: Patch compras drawer functions and overlay
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p = Path('compras.js')
           txt = p.read_text(encoding='utf-8')
-          marker = '// DRAWER_GLOBAL_EXPORTS_PATCH'
-          if marker in txt:
-              print('Patch already applied')
-              raise SystemExit(0)
-          exports = r'''
+          original = txt
+
+          # 1) Keep drawer above overlay, even if other CSS overrides it later.
+          css_marker = '/* DRAWER_ZINDEX_FIX */'
+          if css_marker not in txt:
+              css_fix = r'''
+
+/* DRAWER_ZINDEX_FIX */
+#produto-drawer.drawer,
+#imp-drawer.drawer,
+#forn-drawer.drawer,
+.drawer.open {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+.drawer-overlay.open {
+  z-index: 9998 !important;
+}
+#produto-drawer .drawer-tab,
+#imp-drawer .drawer-tab,
+#forn-drawer .drawer-tab {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+}
+'''
+              needle = 'document.head.appendChild(style);'
+              if needle in txt:
+                  txt = txt.replace(needle, "style.textContent += " + repr(css_fix) + ";\n  " + needle, 1)
+              else:
+                  raise SystemExit('Could not find style injection point')
+
+          # 2) Inline onclick handlers need functions on window scope because compras.js is wrapped in an IIFE.
+          global_marker = '// DRAWER_GLOBAL_EXPORTS_PATCH'
+          if global_marker not in txt:
+              exports = r'''
 
 // DRAWER_GLOBAL_EXPORTS_PATCH
 // Inline onclick handlers need these functions on window scope.
@@ -48,12 +78,41 @@ Object.assign(window, {
   novasSessao
 });
 '''
-          needle = '\n})();'
-          idx = txt.rfind(needle)
-          if idx == -1:
-              raise SystemExit('Could not find closing IIFE')
-          txt = txt[:idx] + exports + txt[idx:]
-          p.write_text(txt, encoding='utf-8')
+              needle = '\n})();'
+              idx = txt.rfind(needle)
+              if idx == -1:
+                  raise SystemExit('Could not find closing IIFE')
+              txt = txt[:idx] + exports + txt[idx:]
+
+          # 3) Add delegated click fallback for drawer tabs. This works even if inline onclick is blocked.
+          delegate_marker = '// DRAWER_DELEGATED_CLICK_PATCH'
+          if delegate_marker not in txt:
+              delegate = r'''
+
+// DRAWER_DELEGATED_CLICK_PATCH
+document.addEventListener('click', function(ev) {
+  const tabEl = ev.target.closest('#produto-drawer .drawer-tab');
+  if (!tabEl) return;
+  const onclick = tabEl.getAttribute('onclick') || '';
+  const match = onclick.match(/switchDrawerTab\('([^']+)'/);
+  if (!match) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  switchDrawerTab(match[1], tabEl);
+}, true);
+'''
+              needle = '\n// DRAWER_GLOBAL_EXPORTS_PATCH'
+              if needle in txt:
+                  txt = txt.replace(needle, delegate + needle, 1)
+              else:
+                  idx = txt.rfind('\n})();')
+                  txt = txt[:idx] + delegate + txt[idx:]
+
+          if txt != original:
+              p.write_text(txt, encoding='utf-8')
+              print('Patch applied')
+          else:
+              print('Patch already applied')
           PY
       - name: Commit patch if needed
         run: |
@@ -64,5 +123,5 @@ Object.assign(window, {
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add compras.js
-          git commit -m "Fix drawer tab navigation globals"
+          git commit -m "Fix drawer tab click behavior"
           git push
