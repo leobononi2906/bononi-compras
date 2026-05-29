@@ -886,6 +886,15 @@ async function loadDrawerEstoque(idProduto) {
   } catch (e) { if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5" style="color:var(--red)">Erro ao carregar</td></tr>'; }
 }
 
+function toggleFornHist(fornId) {
+  const el = document.getElementById(`forn-hist-${fornId}`);
+  const chev = document.getElementById(`forn-chev-${fornId}`);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (chev) chev.textContent = open ? '▶' : '▼';
+}
+
 async function loadDrawerPedido(prod) {
   const container = document.getElementById('pedido-forn-list');
   if (!container) return;
@@ -2163,28 +2172,5 @@ document.addEventListener('click', function(ev) {
 }, true);
 
 Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
-
-// DRAWER_GLOBAL_EXPORTS_PATCH
-// Inline onclick handlers need these functions on window scope.
-Object.assign(window, {
-  abrirProduto,
-  fecharDrawer,
-  switchDrawerTab,
-  setHistFiltro,
-  toggleCarrinho,
-  adicionarAoCarrinho,
-  removerDoCarrinho,
-  exportarPedido,
-  abrirFornDrawer,
-  fecharFornDrawer,
-  switchFornTab,
-  setImpView,
-  abrirImpDrawer,
-  fecharImpDrawer,
-  switchImpTab,
-  abrirModalNovoProcesso,
-  fecharModalProcesso,
-  novasSessao
-});
 
 })();
