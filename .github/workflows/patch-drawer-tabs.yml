@@ -17,95 +17,97 @@ jobs:
         run: |
           python3 - <<'PY'
           from pathlib import Path
+
           p = Path('compras.js')
           txt = p.read_text(encoding='utf-8')
           original = txt
 
-          # 1) Keep drawer above overlay, even if other CSS overrides it later.
           css_marker = '/* DRAWER_ZINDEX_FIX */'
           if css_marker not in txt:
-              css_fix = r'''
-
-/* DRAWER_ZINDEX_FIX */
-#produto-drawer.drawer,
-#imp-drawer.drawer,
-#forn-drawer.drawer,
-.drawer.open {
-  z-index: 9999 !important;
-  pointer-events: auto !important;
-}
-.drawer-overlay.open {
-  z-index: 9998 !important;
-}
-#produto-drawer .drawer-tab,
-#imp-drawer .drawer-tab,
-#forn-drawer .drawer-tab {
-  pointer-events: auto !important;
-  cursor: pointer !important;
-}
-'''
+              css_fix = "\n".join([
+                  "",
+                  "/* DRAWER_ZINDEX_FIX */",
+                  "#produto-drawer.drawer,",
+                  "#imp-drawer.drawer,",
+                  "#forn-drawer.drawer,",
+                  ".drawer.open {",
+                  "  z-index: 9999 !important;",
+                  "  pointer-events: auto !important;",
+                  "}",
+                  ".drawer-overlay.open {",
+                  "  z-index: 9998 !important;",
+                  "}",
+                  "#produto-drawer .drawer-tab,",
+                  "#imp-drawer .drawer-tab,",
+                  "#forn-drawer .drawer-tab {",
+                  "  pointer-events: auto !important;",
+                  "  cursor: pointer !important;",
+                  "}",
+                  ""
+              ])
               needle = 'document.head.appendChild(style);'
-              if needle in txt:
-                  txt = txt.replace(needle, "style.textContent += " + repr(css_fix) + ";\n  " + needle, 1)
-              else:
+              if needle not in txt:
                   raise SystemExit('Could not find style injection point')
+              txt = txt.replace(needle, "style.textContent += " + repr(css_fix) + ";\n  " + needle, 1)
 
-          # 2) Inline onclick handlers need functions on window scope because compras.js is wrapped in an IIFE.
           global_marker = '// DRAWER_GLOBAL_EXPORTS_PATCH'
           if global_marker not in txt:
-              exports = r'''
-
-// DRAWER_GLOBAL_EXPORTS_PATCH
-// Inline onclick handlers need these functions on window scope.
-Object.assign(window, {
-  abrirProduto,
-  fecharDrawer,
-  switchDrawerTab,
-  setHistFiltro,
-  toggleCarrinho,
-  adicionarAoCarrinho,
-  removerDoCarrinho,
-  exportarPedido,
-  abrirFornDrawer,
-  fecharFornDrawer,
-  switchFornTab,
-  setImpView,
-  abrirImpDrawer,
-  fecharImpDrawer,
-  switchImpTab,
-  abrirModalNovoProcesso,
-  fecharModalProcesso,
-  novasSessao
-});
-'''
+              exports = "\n".join([
+                  "",
+                  "// DRAWER_GLOBAL_EXPORTS_PATCH",
+                  "// Inline onclick handlers need these functions on window scope.",
+                  "Object.assign(window, {",
+                  "  abrirProduto,",
+                  "  fecharDrawer,",
+                  "  switchDrawerTab,",
+                  "  setHistFiltro,",
+                  "  toggleCarrinho,",
+                  "  adicionarAoCarrinho,",
+                  "  removerDoCarrinho,",
+                  "  exportarPedido,",
+                  "  abrirFornDrawer,",
+                  "  fecharFornDrawer,",
+                  "  switchFornTab,",
+                  "  setImpView,",
+                  "  abrirImpDrawer,",
+                  "  fecharImpDrawer,",
+                  "  switchImpTab,",
+                  "  abrirModalNovoProcesso,",
+                  "  fecharModalProcesso,",
+                  "  novasSessao",
+                  "});",
+                  ""
+              ])
               needle = '\n})();'
               idx = txt.rfind(needle)
               if idx == -1:
                   raise SystemExit('Could not find closing IIFE')
               txt = txt[:idx] + exports + txt[idx:]
 
-          # 3) Add delegated click fallback for drawer tabs. This works even if inline onclick is blocked.
           delegate_marker = '// DRAWER_DELEGATED_CLICK_PATCH'
           if delegate_marker not in txt:
-              delegate = r'''
-
-// DRAWER_DELEGATED_CLICK_PATCH
-document.addEventListener('click', function(ev) {
-  const tabEl = ev.target.closest('#produto-drawer .drawer-tab');
-  if (!tabEl) return;
-  const onclick = tabEl.getAttribute('onclick') || '';
-  const match = onclick.match(/switchDrawerTab\('([^']+)'/);
-  if (!match) return;
-  ev.preventDefault();
-  ev.stopPropagation();
-  switchDrawerTab(match[1], tabEl);
-}, true);
-'''
+              delegate = "\n".join([
+                  "",
+                  "// DRAWER_DELEGATED_CLICK_PATCH",
+                  "document.addEventListener('click', function(ev) {",
+                  "  const tabEl = ev.target.closest('#produto-drawer .drawer-tab');",
+                  "  if (!tabEl) return;",
+                  "  const onclick = tabEl.getAttribute('onclick') || '';",
+                  "  const match = onclick.match(/switchDrawerTab\\('([^']+)'/);",
+                  "  if (!match) return;",
+                  "  ev.preventDefault();",
+                  "  ev.stopPropagation();",
+                  "  switchDrawerTab(match[1], tabEl);",
+                  "}, true);",
+                  ""
+              ])
               needle = '\n// DRAWER_GLOBAL_EXPORTS_PATCH'
               if needle in txt:
                   txt = txt.replace(needle, delegate + needle, 1)
               else:
                   idx = txt.rfind('\n})();')
+                  if idx == -1:
+                      raise SystemExit('Could not find closing IIFE')
                   txt = txt[:idx] + delegate + txt[idx:]
 
           if txt != original:
