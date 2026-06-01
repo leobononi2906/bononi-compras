@@ -2767,4 +2767,27 @@ document.addEventListener('click', function(ev) {
 
 Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
 
+// DRAWER_GLOBAL_EXPORTS_PATCH
+// Inline onclick handlers need these functions on window scope.
+Object.assign(window, {
+  abrirProduto,
+  fecharDrawer,
+  switchDrawerTab,
+  setHistFiltro,
+  toggleCarrinho,
+  adicionarAoCarrinho,
+  removerDoCarrinho,
+  exportarPedido,
+  abrirFornDrawer,
+  fecharFornDrawer,
+  switchFornTab,
+  setImpView,
+  abrirImpDrawer,
+  fecharImpDrawer,
+  switchImpTab,
+  abrirModalNovoProcesso,
+  fecharModalProcesso,
+  novasSessao
+});
+
 })();
