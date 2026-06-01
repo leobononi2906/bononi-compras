@@ -130,8 +130,8 @@ const PAGINAS_HTML = {
     </div></div>`,
 
   'cmp-balanco': `<div class="page-content" id="page-cmp-balanco">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><div style="font-size:15px;font-weight:600">Balanço Físico</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Contagem cega</div></div><button class="btn btn-primary" onclick="novasSessao()">+ Nova Sessão de Contagem</button></div>
-    <div class="table-card"><div class="table-card-header"><span class="table-card-title">Sessões de Contagem</span></div><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Sessão</th><th>Empresa / Centro</th><th class="right">Itens</th><th class="right">Divergências</th><th>Status</th><th class="right">Data</th><th></th></tr></thead><tbody id="balanco-body"></tbody></table></div></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><div style="font-size:15px;font-weight:600">Balanço Físico</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Contagem cega — o saldo só é revelado após encerrar</div></div><button class="btn btn-primary" onclick="novasSessao()">+ Nova Sessão de Contagem</button></div>
+    <div class="table-card"><div class="table-card-header"><span class="table-card-title">Sessões de Contagem</span></div><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Sessão</th><th>Progresso</th><th class="right">Divergências</th><th>Status</th><th class="right">Data</th><th>Criado por</th><th></th></tr></thead><tbody id="balanco-body"><tr class="loading-row"><td colspan="7">Carregando sessões...</td></tr></tbody></table></div></div>
   </div>`,
 
   'cmp-importacao': `<div class="page-content" id="page-cmp-importacao">
@@ -142,7 +142,7 @@ const PAGINAS_HTML = {
   </div>
   <div id="modal-processo-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,29,53,0.5);z-index:99999;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto"><div style="background:var(--surface);border-radius:var(--radius);width:min(700px,95vw);box-shadow:var(--shadow-lg);margin-bottom:40px"><div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between"><div style="font-size:15px;font-weight:700" id="modal-processo-title">Novo Processo</div><button onclick="fecharModalProcesso()" style="background:var(--surface2);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px">✕</button></div><div style="padding:20px 24px" id="modal-processo-body"></div></div></div>
   <div class="drawer-overlay" id="imp-drawer-overlay" onclick="fecharImpDrawer()"></div>
-  <div class="drawer" id="imp-drawer" style="width:720px"><div class="drawer-header"><div><div class="drawer-title" id="imp-drawer-titulo">—</div><div class="drawer-sub" id="imp-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharImpDrawer()">✕</button></div><div style="padding:0 24px;border-bottom:1px solid var(--border)"><div class="drawer-tabs" style="border:none;margin:0"><div class="drawer-tab active" onclick="switchImpTab('info',this)">Informações</div><div class="drawer-tab" onclick="switchImpTab('pedidos',this)">Pedidos & Produtos</div><div class="drawer-tab" onclick="switchImpTab('pagamentos',this)">Pagamentos</div></div></div><div class="drawer-body"><div class="drawer-tab-content active" id="imptab-info"></div><div class="drawer-tab-content" id="imptab-pedidos"></div><div class="drawer-tab-content" id="imptab-pagamentos"></div></div></div>`,
+  <div class="drawer" id="imp-drawer" style="width:720px"><div class="drawer-header"><div><div class="drawer-title" id="imp-drawer-titulo">—</div><div class="drawer-sub" id="imp-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharImpDrawer()">✕</button></div><div style="padding:0 24px;border-bottom:1px solid var(--border)"><div class="drawer-tabs" style="border:none;margin:0"><div class="drawer-tab active" onclick="switchImpTab('info',this)">📋 Informações & Pedidos</div><div class="drawer-tab" onclick="switchImpTab('pagamentos',this)">💰 Pagamentos</div><div class="drawer-tab" onclick="switchImpTab('docs',this)">📎 Documentos</div></div></div><div class="drawer-body"><div class="drawer-tab-content active" id="imptab-info"></div><div class="drawer-tab-content" id="imptab-pagamentos"></div><div class="drawer-tab-content" id="imptab-docs"></div></div></div>`,
 
   'cmp-fornecedores': `<div class="page-content" id="page-cmp-fornecedores">
     <div class="cards-grid cards-grid-3"><div class="card"><div class="card-label">Fornecedores Ativos</div><div class="card-value blue" id="forn-total">—</div></div><div class="card"><div class="card-label">Volume Total Comprado</div><div class="card-value" id="forn-volume">—</div></div><div class="card"><div class="card-label">Lead Time Médio</div><div class="card-value" id="forn-lead">—</div></div></div>
@@ -537,19 +537,21 @@ async function loadDrawerGiro(idProduto) {
     const hoje = new Date();
     const inicio = new Date(hoje.getFullYear(), hoje.getMonth() - 11, 1);
     const inicioStr = inicio.toISOString().slice(0, 10);
+    const inicio365 = new Date(hoje); inicio365.setDate(hoje.getDate() - 365);
+    const inicio365Str = inicio365.toISOString().slice(0, 10);
     const inicio180 = new Date(hoje); inicio180.setDate(hoje.getDate() - 180);
     const inicio180Str = inicio180.toISOString().slice(0, 10);
 
     const [rVendas, rOs, rCompras] = await Promise.all([
-      sb.from('vw_comercial_itens_faturados')
+      sb.from('vw_giro_saidas_unificado')
         .select('data_faturamento, qtd')
         .eq('id_produto', idProduto)
-        .gte('data_faturamento', inicio180Str)
+        .gte('data_faturamento', inicio365Str)
         .range(0, 9999),
       sb.from('vw_os_pecas_faturadas')
         .select('data_faturamento, qtd')
         .eq('id_produto', idProduto)
-        .gte('data_faturamento', inicio180Str)
+        .gte('data_faturamento', inicio365Str)
         .range(0, 9999),
       sb.from('vw_fb_historico_compras')
         .select('data_compra, qtd')
@@ -1268,30 +1270,395 @@ async function loadFornTabHistorico(f) {
 // ═══════════════════════════════════════════════════════════
 // BALANÇO FÍSICO
 // ═══════════════════════════════════════════════════════════
+let balSessaoAtual = null;
+
 async function loadBalanco() {
   const tbody = document.getElementById('balanco-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Carregando sessões...</td></tr>';
   try {
-    const { data } = await sb.from('comp_balanco_contagem').select('id_sessao,descricao_sessao,empresa,centro_estoque,finalizado,contado_em,id_produto').order('contado_em', { ascending: false }).range(0, 99);
-    if (!data?.length) { tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Nenhuma sessão de balanço encontrada</td></tr>'; return; }
-    const sessaoMap = {};
-    data.forEach(r => {
-      const sid = r.id_sessao;
-      if (!sessaoMap[sid]) sessaoMap[sid] = { descricao: r.descricao_sessao, empresa: r.empresa, centro: r.centro_estoque, finalizado: r.finalizado, data: r.contado_em, itens: 0, divergencias: 0 };
-      sessaoMap[sid].itens++;
+    const { data: sessoes } = await sb.from('balanco_sessoes').select('*').order('criado_em', { ascending: false }).range(0, 99);
+    if (!sessoes?.length) { tbody.innerHTML = '<tr class="loading-row"><td colspan="7">Nenhuma sessão de balanço. Clique em + Nova Sessão.</td></tr>'; return; }
+
+    // Busca contagem de itens por sessão
+    const ids = sessoes.map(s => s.id);
+    const { data: itens } = await sb.from('balanco_itens').select('sessao_id,qtd_contada,saldo_sistema').in('sessao_id', ids);
+
+    const map = {};
+    (itens||[]).forEach(i => {
+      if (!map[i.sessao_id]) map[i.sessao_id] = { total: 0, contados: 0, diverg: 0 };
+      map[i.sessao_id].total++;
+      if (i.qtd_contada !== null) {
+        map[i.sessao_id].contados++;
+        if ((i.qtd_contada||0) !== (i.saldo_sistema||0)) map[i.sessao_id].diverg++;
+      }
     });
-    tbody.innerHTML = Object.entries(sessaoMap).map(([sid, s]) => `<tr>
-      <td style="font-weight:500">${s.descricao || sid.slice(0, 8) + '...'}</td>
-      <td style="font-size:12px;color:var(--text-secondary)">${s.empresa || '—'} · ${s.centro || '—'}</td>
-      <td class="right mono">${fmtQtd(s.itens)}</td>
-      <td class="right mono" style="color:${s.divergencias > 0 ? 'var(--orange)' : 'var(--text-muted)'}">${s.divergencias || '—'}</td>
-      <td><span class="badge ${s.finalizado ? 'badge-ok' : 'badge-baixo'}">${s.finalizado ? 'Finalizado' : 'Em aberto'}</span></td>
-      <td class="right mono" style="color:var(--text-muted)">${fmtData(s.data)}</td>
-      <td><button class="btn btn-outline" style="height:26px;font-size:11px;padding:0 8px">${s.finalizado ? 'Ver' : 'Continuar'}</button></td>
-    </tr>`).join('');
-  } catch (e) { tbody.innerHTML = '<tr class="loading-row"><td colspan="7" style="color:var(--red)">Erro ao carregar</td></tr>'; }
+
+    tbody.innerHTML = sessoes.map(s => {
+      const m = map[s.id] || { total: 0, contados: 0, diverg: 0 };
+      const encerrada = s.status === 'ENCERRADA';
+      return `<tr>
+        <td style="font-weight:600">${s.titulo}</td>
+        <td style="font-size:12px;color:var(--text-secondary)">${m.contados}/${m.total} itens contados</td>
+        <td class="right mono" style="color:${m.diverg>0?'var(--orange)':'var(--text-muted)'}">${encerrada?(m.diverg||'—'):'—'}</td>
+        <td><span class="badge ${encerrada?'badge-ok':'badge-baixo'}">${encerrada?'Encerrada':'Aberta'}</span></td>
+        <td class="right mono" style="color:var(--text-muted)">${fmtData(s.criado_em?.slice(0,10))}</td>
+        <td style="font-size:12px;color:var(--text-muted)">${s.criado_por||'—'}</td>
+        <td style="display:flex;gap:6px">
+          <button class="btn btn-outline" style="height:26px;font-size:11px;padding:0 8px" onclick="abrirSessaoContagem('${s.id}')">${encerrada?'Ver Resultado':'Contar'}</button>
+          ${encerrada?`<button class="btn btn-outline" style="height:26px;font-size:11px;padding:0 8px;color:var(--green)" onclick="exportarBalancoCsv('${s.id}')">⬇ CSV</button>`:''}
+          ${!encerrada?`<button class="btn btn-outline" style="height:26px;font-size:11px;padding:0 8px;color:var(--orange)" onclick="encerrarSessao('${s.id}')">Encerrar</button>`:''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr class="loading-row"><td colspan="7" style="color:var(--red)">Erro ao carregar</td></tr>'; console.error(e); }
 }
 
-function novasSessao() { alert('Funcionalidade em desenvolvimento. Em breve você poderá iniciar uma nova sessão de contagem.'); }
+function novasSessao() {
+  // Injeta modal de nova sessão se não existir
+  if (!document.getElementById('modal-balanco-overlay')) {
+    const div = document.createElement('div');
+    div.innerHTML = `<div id="modal-balanco-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,29,53,0.5);z-index:99999;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto">
+      <div style="background:var(--surface);border-radius:var(--radius);width:min(640px,95vw);box-shadow:var(--shadow-lg);margin-bottom:40px">
+        <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:15px;font-weight:700">Nova Sessão de Balanço</div>
+          <button onclick="fecharModalBalanco()" style="background:var(--surface2);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px">✕</button>
+        </div>
+        <div style="padding:20px 24px" id="modal-balanco-body"></div>
+      </div>
+    </div>`;
+    document.body.appendChild(div.firstElementChild);
+  }
+
+  document.getElementById('modal-balanco-body').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Título da Sessão *</label>
+        <input id="bal-titulo" class="filter-select" style="width:100%;height:36px" placeholder="Ex: Contagem Fechaduras - Jun/2026" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">Filtros de Escopo (múltiplos — todos são opcionais)</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Grupo de Produto</label>
+            <select id="bal-f-grupo" class="filter-select" style="width:100%;height:34px">
+              <option value="">Todos os grupos</option>
+              ${[...new Set(alertasConsolidado.map(r=>r.grupo).filter(Boolean))].sort().map(g=>`<option value="${g}">${g}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Empresa</label>
+            <select id="bal-f-empresa" class="filter-select" style="width:100%;height:34px">
+              <option value="">Todas as empresas</option>
+              ${[...new Set(alertasConsolidado.map(r=>r.empresa).filter(Boolean))].sort().map(e=>`<option value="${e}">${e}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Produto (referência)</label>
+            <input id="bal-f-ref" class="filter-select" style="width:100%;height:34px" placeholder="Deixe em branco para todos" />
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Centro de Estoque</label>
+            <input id="bal-f-ce" class="filter-select" style="width:100%;height:34px" placeholder="Deixe em branco para todos" />
+          </div>
+        </div>
+      </div>
+      <div id="bal-preview" style="font-size:12px;color:var(--text-muted)">Configure os filtros e clique em Criar para ver os itens que serão incluídos.</div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="fecharModalBalanco()">Cancelar</button>
+      <button class="btn btn-primary" onclick="criarSessaoBalanco()">Criar Sessão</button>
+    </div>`;
+
+  document.getElementById('modal-balanco-overlay').style.display = 'flex';
+}
+
+function fecharModalBalanco() {
+  const el = document.getElementById('modal-balanco-overlay');
+  if (el) el.style.display = 'none';
+}
+
+async function criarSessaoBalanco() {
+  const titulo = document.getElementById('bal-titulo')?.value?.trim();
+  if (!titulo) { showToast('Informe o título da sessão.','error'); return; }
+
+  const grupo   = document.getElementById('bal-f-grupo')?.value || '';
+  const empresa = document.getElementById('bal-f-empresa')?.value || '';
+  const ref     = document.getElementById('bal-f-ref')?.value?.trim() || '';
+  const ce      = document.getElementById('bal-f-ce')?.value?.trim() || '';
+
+  const btn = document.querySelector('#modal-balanco-body .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
+
+  try {
+    // 1. Cria a sessão
+    const { data: sessao, error: errSessao } = await sb.from('balanco_sessoes').insert({
+      titulo,
+      status: 'ABERTA',
+      criado_por: window.getUsuario?.()?.nome || 'Usuário',
+    }).select().single();
+    if (errSessao) throw errSessao;
+
+    // 2. Busca itens da vw_fb_estoque_centro com filtros
+    let query = sb.from('vw_fb_estoque_centro')
+      .select('id_produto,nome_produto,referencia,empresa,centro_estoque,estoque')
+      .neq('estoque', 0)
+      .range(0, 9999);
+    if (empresa) query = query.eq('empresa', empresa);
+    if (ce)      query = query.ilike('centro_estoque', `%${ce}%`);
+
+    const { data: estoques } = await query;
+    let itensBase = estoques || [];
+
+    // Filtra por grupo/ref no JS (vw não tem esses campos diretamente)
+    if (grupo || ref) {
+      const prodsFiltrados = new Set(
+        alertasConsolidado
+          .filter(r => (!grupo || r.grupo === grupo) && (!ref || (r.referencia||'').toLowerCase().includes(ref.toLowerCase())))
+          .map(r => r.id_produto)
+      );
+      itensBase = itensBase.filter(i => prodsFiltrados.has(i.id_produto));
+    }
+
+    if (!itensBase.length) {
+      await sb.from('balanco_sessoes').delete().eq('id', sessao.id);
+      showToast('Nenhum item encontrado com esses filtros.','error');
+      if (btn) { btn.disabled = false; btn.textContent = 'Criar Sessão'; }
+      return;
+    }
+
+    // 3. Insere itens em lotes de 500
+    const lotes = [];
+    for (let i = 0; i < itensBase.length; i += 500) lotes.push(itensBase.slice(i, i+500));
+    for (const lote of lotes) {
+      await sb.from('balanco_itens').insert(lote.map(i => ({
+        sessao_id:     sessao.id,
+        id_produto:    i.id_produto,
+        nome_produto:  i.nome_produto || '',
+        referencia:    i.referencia || '',
+        nome_empresa:  i.empresa || '',
+        nome_centro:   i.centro_estoque || '',
+        saldo_sistema: i.estoque || 0,
+        qtd_contada:   null,
+        adicionado_manual: false,
+      })));
+    }
+
+    showToast(`✅ Sessão criada com ${itensBase.length} itens!`);
+    fecharModalBalanco();
+    await loadBalanco();
+    // Abre direto para contagem
+    abrirSessaoContagem(sessao.id);
+  } catch(e) {
+    showToast('Erro ao criar sessão: '+e.message,'error');
+    if (btn) { btn.disabled = false; btn.textContent = 'Criar Sessão'; }
+  }
+}
+
+async function abrirSessaoContagem(sessaoId) {
+  // Injeta modal de contagem se não existir
+  if (!document.getElementById('modal-contagem-overlay')) {
+    const div = document.createElement('div');
+    div.innerHTML = `<div id="modal-contagem-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,29,53,0.5);z-index:99999;align-items:flex-start;justify-content:center;padding-top:20px;overflow-y:auto">
+      <div style="background:var(--surface);border-radius:var(--radius);width:min(900px,98vw);box-shadow:var(--shadow-lg);margin-bottom:20px;display:flex;flex-direction:column;max-height:calc(100vh - 40px)">
+        <div style="padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+          <div>
+            <div style="font-size:15px;font-weight:700" id="cnt-titulo">—</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:2px" id="cnt-progresso">—</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button id="cnt-btn-add" class="btn btn-outline" style="height:30px;font-size:12px" onclick="abrirAddManual()">+ Adicionar Produto</button>
+            <button class="btn btn-outline" onclick="fecharModalContagem()" style="height:30px;font-size:12px">Fechar</button>
+          </div>
+        </div>
+        <div style="flex:1;overflow-y:auto;padding:0" id="cnt-body"></div>
+      </div>
+    </div>`;
+    document.body.appendChild(div.firstElementChild);
+  }
+
+  document.getElementById('modal-contagem-overlay').style.display = 'flex';
+  document.getElementById('cnt-body').innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando itens...</div>';
+
+  const { data: sessao } = await sb.from('balanco_sessoes').select('*').eq('id',sessaoId).single();
+  const { data: itens }  = await sb.from('balanco_itens').select('*').eq('sessao_id',sessaoId).order('nome_empresa').order('nome_produto');
+
+  balSessaoAtual = { sessao, itens: itens||[] };
+  renderContagem();
+}
+
+function renderContagem() {
+  const { sessao, itens } = balSessaoAtual;
+  const encerrada = sessao.status === 'ENCERRADA';
+  const contados  = itens.filter(i => i.qtd_contada !== null).length;
+
+  document.getElementById('cnt-titulo').textContent = sessao.titulo;
+  document.getElementById('cnt-progresso').textContent = `${contados} de ${itens.length} itens contados · ${encerrada ? 'Sessão encerrada' : 'Em andamento'}`;
+
+  // Se encerrada, mostra resultado com saldo
+  if (encerrada) {
+    document.getElementById('cnt-btn-add').style.display = 'none';
+    document.getElementById('cnt-body').innerHTML = `
+      <table class="data-table" style="width:100%">
+        <thead><tr>
+          <th>Produto</th><th>Ref.</th><th>Empresa</th><th>Centro</th>
+          <th class="right">Saldo Sistema</th><th class="right">Qtd Contada</th>
+          <th class="right">Diferença</th><th>Contado por</th>
+        </tr></thead>
+        <tbody>
+          ${itens.map(i => {
+            const diff = i.qtd_contada !== null ? (i.qtd_contada - (i.saldo_sistema||0)) : null;
+            const diffCor = diff === null ? 'var(--text-muted)' : diff === 0 ? 'var(--green)' : 'var(--orange)';
+            return `<tr style="${i.adicionado_manual?'background:var(--blue-pale)':''}">
+              <td style="font-size:12px;font-weight:500">${i.nome_produto||'—'}</td>
+              <td class="mono" style="color:var(--text-muted)">${i.referencia||'—'}</td>
+              <td style="font-size:12px">${i.nome_empresa||'—'}</td>
+              <td style="font-size:12px;color:var(--text-muted)">${i.nome_centro||'—'}</td>
+              <td class="right mono">${fmtQtd(i.saldo_sistema||0,0)}</td>
+              <td class="right mono" style="font-weight:600">${i.qtd_contada!==null?fmtQtd(i.qtd_contada,0):'<span style="color:var(--text-muted)">—</span>'}</td>
+              <td class="right mono" style="color:${diffCor};font-weight:600">${diff!==null?(diff>=0?'+':'')+fmtQtd(diff,0):'—'}</td>
+              <td style="font-size:11px;color:var(--text-muted)">${i.contado_por||'—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+    return;
+  }
+
+  // Sessão aberta: tela de contagem cega (sem mostrar saldo)
+  document.getElementById('cnt-body').innerHTML = `
+    <table class="data-table" style="width:100%">
+      <thead><tr>
+        <th>Produto</th><th>Ref.</th><th>Empresa</th><th>Centro</th>
+        <th class="right" style="width:140px">Qtd Contada</th><th style="width:32px"></th>
+      </tr></thead>
+      <tbody>
+        ${itens.map(i => {
+          const ok = i.qtd_contada !== null;
+          return `<tr id="cnt-row-${i.id}" style="${ok?'background:#f0fdf4':''}${i.adicionado_manual?'border-left:3px solid var(--blue-mid)':''}">
+            <td style="font-size:12px;font-weight:500">${i.nome_produto||'—'}</td>
+            <td class="mono" style="color:var(--text-muted)">${i.referencia||'—'}</td>
+            <td style="font-size:12px">${i.nome_empresa||'—'}</td>
+            <td style="font-size:12px;color:var(--text-muted)">${i.nome_centro||'—'}</td>
+            <td class="right">
+              <input type="number" min="0" step="1"
+                id="cnt-inp-${i.id}"
+                value="${i.qtd_contada!==null?i.qtd_contada:''}"
+                placeholder="—"
+                style="width:110px;height:30px;text-align:right;border:1px solid var(--border);border-radius:6px;padding:0 8px;font-family:'DM Mono',monospace;font-size:13px;background:var(--surface);outline:none"
+                onchange="salvarContagem('${i.id}',this.value)"
+                onfocus="this.style.borderColor='var(--blue-mid)'"
+                onblur="this.style.borderColor='var(--border)'" />
+            </td>
+            <td style="text-align:center">${ok?'<span style="color:var(--green);font-size:14px">✓</span>':'<span style="color:var(--text-muted);font-size:12px">·</span>'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+}
+
+async function salvarContagem(itemId, valor) {
+  const qtd = parseFloat(valor);
+  if (isNaN(qtd) || qtd < 0) return;
+  try {
+    await sb.from('balanco_itens').update({
+      qtd_contada: qtd,
+      contado_por: window.getUsuario?.()?.nome || 'Usuário',
+      contado_em:  new Date().toISOString(),
+    }).eq('id', itemId);
+
+    // Atualiza objeto local sem recarregar tudo
+    const item = balSessaoAtual.itens.find(i => i.id === itemId);
+    if (item) { item.qtd_contada = qtd; item.contado_por = window.getUsuario?.()?.nome || 'Usuário'; }
+
+    // Destaca a linha como contada
+    const row = document.getElementById(`cnt-row-${itemId}`);
+    if (row) row.style.background = '#f0fdf4';
+    const inp = document.getElementById(`cnt-inp-${itemId}`);
+    if (inp) inp.nextElementSibling && (inp.parentElement.nextElementSibling.innerHTML = '<span style="color:var(--green);font-size:14px">✓</span>');
+
+    const contados = balSessaoAtual.itens.filter(i => i.qtd_contada !== null).length;
+    const prog = document.getElementById('cnt-progresso');
+    if (prog) prog.textContent = `${contados} de ${balSessaoAtual.itens.length} itens contados · Em andamento`;
+  } catch(e) { showToast('Erro ao salvar: '+e.message,'error'); }
+}
+
+function fecharModalContagem() {
+  const el = document.getElementById('modal-contagem-overlay');
+  if (el) el.style.display = 'none';
+}
+
+async function abrirAddManual() {
+  if (!balSessaoAtual) return;
+  const ref = prompt('Referência ou nome do produto a adicionar:');
+  if (!ref?.trim()) return;
+  try {
+    const { data } = await sb.from('comp_produtos_consolidado')
+      .select('id_produto,nome_produto,referencia')
+      .ilike('referencia', `%${ref.trim()}%`)
+      .range(0,19);
+    if (!data?.length) { showToast('Produto não encontrado.','error'); return; }
+    const escolha = data.length === 1 ? data[0] : data.find(d => d.referencia?.toLowerCase() === ref.toLowerCase()) || data[0];
+    const empresa = prompt('Empresa (deixe em branco para sem empresa específica):') || '';
+    const centro  = prompt('Centro de Estoque (deixe em branco):') || '';
+    const { error } = await sb.from('balanco_itens').insert({
+      sessao_id:         balSessaoAtual.sessao.id,
+      id_produto:        escolha.id_produto,
+      nome_produto:      escolha.nome_produto,
+      referencia:        escolha.referencia,
+      nome_empresa:      empresa,
+      nome_centro:       centro,
+      saldo_sistema:     0,
+      qtd_contada:       null,
+      adicionado_manual: true,
+    });
+    if (error) throw error;
+    showToast('✅ Produto adicionado!');
+    // Recarrega itens da sessão
+    const { data: itens } = await sb.from('balanco_itens').select('*').eq('sessao_id', balSessaoAtual.sessao.id).order('nome_empresa').order('nome_produto');
+    balSessaoAtual.itens = itens || [];
+    renderContagem();
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+async function encerrarSessao(sessaoId) {
+  if (!confirm('Encerrar a sessão de contagem? Após encerrada, novos lançamentos não serão possíveis.')) return;
+  try {
+    await sb.from('balanco_sessoes').update({ status:'ENCERRADA', encerrado_em: new Date().toISOString() }).eq('id', sessaoId);
+    showToast('✅ Sessão encerrada!');
+    await loadBalanco();
+    if (balSessaoAtual?.sessao?.id === sessaoId) {
+      balSessaoAtual.sessao.status = 'ENCERRADA';
+      renderContagem();
+    }
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+async function exportarBalancoCsv(sessaoId) {
+  try {
+    const { data: sessao } = await sb.from('balanco_sessoes').select('titulo').eq('id',sessaoId).single();
+    const { data: itens }  = await sb.from('balanco_itens').select('*').eq('sessao_id',sessaoId).order('nome_empresa').order('nome_produto');
+    if (!itens?.length) { showToast('Sem itens para exportar.','error'); return; }
+
+    const header = ['Produto','Referência','Empresa','Centro Estoque','Saldo Sistema','Qtd Contada','Diferença','Contado Por','Adicionado Manual'];
+    const rows = itens.map(i => {
+      const diff = i.qtd_contada !== null ? (i.qtd_contada - (i.saldo_sistema||0)) : '';
+      return [
+        i.nome_produto||'', i.referencia||'', i.nome_empresa||'', i.nome_centro||'',
+        i.saldo_sistema??'', i.qtd_contada??'', diff,
+        i.contado_por||'', i.adicionado_manual?'Sim':'Não'
+      ];
+    });
+    const csv = [header,...rows].map(r => r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(';')).join('\n');
+    const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `balanco_${(sessao?.titulo||'contagem').replace(/[^a-zA-Z0-9]/g,'_')}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { showToast('Erro ao exportar: '+e.message,'error'); }
+}
 
 // ═══════════════════════════════════════════════════════════
 // IMPORTAÇÃO
@@ -1365,17 +1732,15 @@ function renderImpKanban() {
     const { label, color, bg } = IMP_STATUS[status];
     const procs = impProcessos.filter(p => p.status === status);
     const cards = procs.map(p => {
-      const aPagarForn = p.total_a_pagar_fornecedor_brl != null
-        ? parseFloat(p.total_a_pagar_fornecedor_brl)
-        : parseFloat(p.total_a_pagar_brl || 0);
-      const quitado = aPagarForn <= 0;
+      const aPagarForn = parseFloat(p.total_a_pagar_fornecedor_brl || p.total_a_pagar_brl || 0);
+      const quitado = p.quitado_fornecedor === true;
       return `<div onclick="abrirImpDrawer('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:box-shadow 0.15s;margin-bottom:8px" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='none'">
         <div style="font-size:12px;font-weight:700;margin-bottom:6px;line-height:1.3">${p.codigo}</div>
         ${p.nome_fornecedor ? `<div style="font-size:11px;color:${color};background:${bg};padding:2px 6px;border-radius:4px;display:inline-block;margin-bottom:6px">${p.nome_fornecedor}</div>` : ''}
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${p.data_prev_chegada ? '📅 '+fmtData(p.data_prev_chegada) : ''}</div>
         ${(p.pedidos||[]).length > 0 ? `<div style="font-size:11px;color:var(--text-secondary)">Ped: ${(p.pedidos||[]).join(', ')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
-          ${quitado ? `<span style="font-size:11px;color:var(--green);font-weight:600">✓ Quitado c/ forn.</span>` : `<span style="font-size:11px;color:var(--orange);font-weight:600">A pagar: ${fmt(aPagarForn)}</span>`}
+          ${quitado ? `<span style="font-size:11px;color:var(--green);font-weight:600">✓ Quitado c/ forn.</span>` : (aPagarForn > 0 ? `<span style="font-size:11px;color:var(--orange);font-weight:600">A pagar: ${fmt(aPagarForn)}</span>` : `<span style="font-size:11px;color:var(--text-muted)">Sem pagamentos</span>`)}
           ${p.total_usd > 0 ? `<span style="font-size:11px;color:var(--text-muted)">US$ ${fmtQtd(p.total_usd,0)}</span>` : ''}
         </div>
       </div>`;
@@ -1397,6 +1762,7 @@ function renderImpLista() {
   if (!impProcessos.length) { tbody.innerHTML='<tr class="loading-row"><td colspan="10">Nenhum processo cadastrado</td></tr>'; return; }
   tbody.innerHTML = impProcessos.map(p => {
     const {label,color,bg} = IMP_STATUS[p.status]||IMP_STATUS.PROGRAMADA;
+    const quitado = p.quitado_fornecedor === true;
     const aPagarForn = parseFloat(p.total_a_pagar_fornecedor_brl || p.total_a_pagar_brl || 0);
     return `<tr class="clickable" onclick="abrirImpDrawer('${p.id}')">
       <td style="font-weight:600;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.codigo}</td>
@@ -1407,7 +1773,7 @@ function renderImpLista() {
       <td class="right mono" style="color:var(--text-muted)">${p.data_prev_chegada?fmtData(p.data_prev_chegada):'—'}</td>
       <td class="right mono">${p.total_usd?'US$ '+fmtQtd(p.total_usd,0):'—'}</td>
       <td class="right mono" style="color:var(--green)">${p.total_pago_brl?fmt(p.total_pago_brl):'—'}</td>
-      <td class="right mono" style="color:${aPagarForn>0?'var(--orange)':'var(--text-muted)'}">${aPagarForn>0?fmt(aPagarForn):'✓'}</td>
+      <td class="right mono">${quitado ? '<span style="color:var(--green);font-weight:600">✓ Quitado</span>' : (aPagarForn>0?`<span style="color:var(--orange);font-weight:600">${fmt(aPagarForn)}</span>`:'<span style="color:var(--text-muted)">—</span>')}</td>
       <td><button class="btn btn-outline" style="height:26px;font-size:11px" onclick="event.stopPropagation();abrirImpDrawer('${p.id}')">Ver</button></td>
     </tr>`;
   }).join('');
@@ -1440,12 +1806,29 @@ function switchImpTab(tab, btn) {
   document.getElementById(`imptab-${tab}`).classList.add('active');
   const p = impProcessoAtual;
   if (tab === 'info') loadImpTabInfo(p);
-  if (tab === 'pedidos') loadImpTabPedidos(p);
   if (tab === 'pagamentos') loadImpTabPagamentos(p);
+  if (tab === 'docs') loadImpTabDocs(p);
 }
 
-function loadImpTabInfo(p) {
+async function loadImpTabInfo(p) {
   const {label,color,bg} = IMP_STATUS[p.status]||{label:'—',color:'',bg:''};
+  const quitado = p.quitado_fornecedor === true;
+
+  // Busca pedidos vinculados em paralelo
+  let pedidosHtml = '<div style="text-align:center;padding:16px;color:var(--text-muted)">Carregando pedidos...</div>';
+  let produtosHtml = '';
+  try {
+    const {data:pedidos} = await sb.from('import_pedidos').select('*').eq('processo_id',p.id).order('criado_em');
+    const numPedidos = (pedidos||[]).map(x => x.numero_pedido);
+    if (numPedidos.length > 0) {
+      const {data:prods} = await sb.from('vw_fb_pedidos_compra').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor').in('id_pedido', numPedidos).range(0,999);
+      if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:12px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color:var(--blue-mid)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+      pedidosHtml = pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--blue-mid);font-family:'DM Mono',monospace">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></div>`).join('');
+    } else {
+      pedidosHtml = '<div style="text-align:center;padding:16px;color:var(--text-muted)">Nenhum pedido vinculado</div>';
+    }
+  } catch(e) { pedidosHtml = '<div style="color:var(--red);padding:8px">Erro ao carregar pedidos</div>'; }
+
   document.getElementById('imptab-info').innerHTML = `
     <div class="cards-grid cards-grid-2" style="margin-bottom:16px">
       <div class="card"><div class="card-label">Status</div><div style="margin-top:8px"><span class="badge" style="color:${color};background:${bg};font-size:13px;padding:4px 12px">${label}</span></div></div>
@@ -1453,68 +1836,134 @@ function loadImpTabInfo(p) {
       <div class="card"><div class="card-label">Embarque</div><div class="card-value" style="font-size:18px">${p.data_embarque?fmtData(p.data_embarque):'—'}</div></div>
       <div class="card"><div class="card-label">Previsão Chegada</div><div class="card-value" style="font-size:18px;color:var(--blue-mid)">${p.data_prev_chegada?fmtData(p.data_prev_chegada):'—'}</div></div>
       <div class="card"><div class="card-label">Valor Total USD</div><div class="card-value" style="font-size:18px">${p.valor_total_usd?'US$ '+fmtQtd(p.valor_total_usd,2):'—'}</div></div>
-      <div class="card"><div class="card-label">Valor Total BRL</div><div class="card-value" style="font-size:18px">${p.valor_total_brl?fmt(p.valor_total_brl):'—'}</div></div>
+      <div class="card"><div class="card-label">Quitado c/ Fornecedor</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="chk-quitado" ${quitado?'checked':''} onchange="toggleQuitadoFornecedor('${p.id}',this.checked)"
+              style="width:18px;height:18px;cursor:pointer;accent-color:var(--green)" />
+            <span style="font-size:13px;font-weight:600;color:${quitado?'var(--green)':'var(--text-muted)'}" id="lbl-quitado">
+              ${quitado?'✓ Quitado':'Pendente'}
+            </span>
+          </label>
+        </div>
+      </div>
     </div>
     ${p.observacoes?`<div class="card" style="margin-bottom:16px"><div class="card-label">Observações</div><div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">${p.observacoes}</div></div>`:''}
-    <div style="display:flex;gap:8px">
+    <div style="display:flex;gap:8px;margin-bottom:20px">
       <select onchange="atualizarStatusProcesso('${p.id}',this.value)" class="filter-select" style="height:34px">
         ${IMP_STATUS_ORDER.map(s=>`<option value="${s}" ${s===p.status?'selected':''}>${IMP_STATUS[s].label}</option>`).join('')}
       </select>
       <button class="btn btn-outline" onclick="abrirModalNovoProcesso('${p.id}','editar')">✏️ Editar</button>
+    </div>
+
+    <!-- PEDIDOS VINCULADOS -->
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600">Pedidos Vinculados</div>
+        <button class="btn btn-primary" style="height:30px;font-size:12px" onclick="abrirModalAddPedido('${p.id}')">+ Vincular Pedido</button>
+      </div>
+      ${pedidosHtml}
+      ${produtosHtml}
     </div>`;
 }
 
-async function loadImpTabPedidos(p) {
-  const el = document.getElementById('imptab-pedidos');
-  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</div>';
+async function toggleQuitadoFornecedor(processoId, valor) {
   try {
-    const {data:pedidos} = await sb.from('import_pedidos').select('*').eq('processo_id',p.id).order('criado_em');
-    const numPedidos = (pedidos||[]).map(x => x.numero_pedido);
-    let produtosHtml = '';
-    if (numPedidos.length > 0) {
-      const {data:prods} = await sb.from('vw_fb_pedidos_compra').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor').in('id_pedido', numPedidos).range(0,999);
-      if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:16px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:300px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color:var(--blue-mid)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
-    }
-    el.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Pedidos Vinculados</div><button class="btn btn-primary" style="height:30px;font-size:12px" onclick="abrirModalAddPedido('${p.id}')">+ Vincular Pedido</button></div>
-    ${numPedidos.length===0?'<div style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pedido vinculado</div>':pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--blue-mid);font-family:'DM Mono',monospace">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></div>`).join('')}
-    ${produtosHtml}`;
-  } catch(e) { el.innerHTML='<div style="color:var(--red);padding:16px">Erro ao carregar</div>'; }
+    await sb.from('import_processos').update({ quitado_fornecedor: valor, atualizado_em: new Date().toISOString() }).eq('id', processoId);
+    const lbl = document.getElementById('lbl-quitado');
+    if (lbl) { lbl.textContent = valor ? '✓ Quitado' : 'Pendente'; lbl.style.color = valor ? 'var(--green)' : 'var(--text-muted)'; }
+    // Atualiza objeto local para refletir no kanban/lista sem recarregar tudo
+    const proc = impProcessos.find(x => x.id === processoId);
+    if (proc) proc.quitado_fornecedor = valor;
+    renderImportacao();
+    showToast(valor ? '✅ Marcado como quitado!' : 'Desmarcado.');
+  } catch(e) { showToast('Erro ao salvar: '+e.message,'error'); }
 }
-
 async function loadImpTabPagamentos(p) {
   const el = document.getElementById('imptab-pagamentos');
   el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</div>';
   try {
-    const {data:pags} = await sb.from('import_pagamentos').select('*').eq('processo_id',p.id).order('data_vencimento');
-    const totalPago   = (pags||[]).filter(x=>x.status==='PAGO').reduce((a,x)=>a+(parseFloat(x.valor_rateado_brl)||parseFloat(x.valor_brl)||0),0);
-    const totalAPagar = (pags||[]).filter(x=>x.status==='A_PAGAR').reduce((a,x)=>a+(parseFloat(x.valor_rateado_brl)||parseFloat(x.valor_brl)||0),0);
-    const totalAPagarForn = (pags||[]).filter(x=>x.status==='A_PAGAR'&&x.tipo==='PAGAMENTO').reduce((a,x)=>a+(parseFloat(x.valor_rateado_brl)||parseFloat(x.valor_brl)||0),0);
-    const totalUSD    = (pags||[]).reduce((a,x)=>a+(parseFloat(x.valor_usd)||0),0);
+    const {data:pags} = await sb.from('import_pagamentos').select('*').eq('processo_id',p.id).order('data_pagamento');
+
+    // Totais por tipo
+    const porTipo = {};
+    Object.keys(IMP_TIPOS_PAG).forEach(k => { porTipo[k] = 0; });
+    let totalBrl = 0, totalUsd = 0;
+    (pags||[]).forEach(pg => {
+      const v = parseFloat(pg.valor_brl)||0;
+      const u = parseFloat(pg.valor_usd)||0;
+      porTipo[pg.tipo] = (porTipo[pg.tipo]||0) + v;
+      totalBrl += v;
+      totalUsd += u;
+    });
+    const custasFinanc = totalBrl * 0.10;
+    const totalReal    = totalBrl + custasFinanc;
+    const coeficiente  = totalUsd > 0 ? totalReal / totalUsd : null;
+
+    // Linhas de tipo só se tiver valor
+    const linhasTipo = Object.entries(IMP_TIPOS_PAG)
+      .filter(([k]) => porTipo[k] > 0)
+      .map(([k,label]) => `
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text-secondary)">${label}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${fmt(porTipo[k])}</span>
+        </div>`).join('');
+
     el.innerHTML = `
-      <div class="cards-grid cards-grid-4" style="margin-bottom:16px">
-        <div class="card"><div class="card-label">Pago</div><div class="card-value green" style="font-size:18px">${fmt(totalPago)}</div></div>
-        <div class="card"><div class="card-label">A Pagar (total)</div><div class="card-value orange" style="font-size:18px">${fmt(totalAPagar)}</div></div>
-        <div class="card"><div class="card-label">A Pagar Fornecedor</div><div class="card-value" style="font-size:18px;color:${totalAPagarForn>0?'var(--orange)':'var(--green)'}">${totalAPagarForn>0?fmt(totalAPagarForn):'✓ Quitado'}</div></div>
-        <div class="card"><div class="card-label">Total USD</div><div class="card-value" style="font-size:18px">${totalUSD?'US$ '+fmtQtd(totalUSD,2):'—'}</div></div>
-      </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:13px;font-weight:600">Pagamentos</div>
         <button class="btn btn-primary" style="height:30px;font-size:12px" onclick="abrirModalAddPagamento('${p.id}')">+ Novo Pagamento</button>
       </div>
-      ${!pags?.length?'<div style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pagamento registrado</div>':
-        `<div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Tipo</th><th>Destinatário</th><th>CP</th><th>Vencimento</th><th class="right">BRL</th><th class="right">USD</th><th class="right">Câmbio</th><th class="right">Rateado</th><th>Status</th><th></th></tr></thead><tbody>
-        ${(pags||[]).map(pg=>`<tr>
-          <td style="font-size:12px">${IMP_TIPOS_PAG[pg.tipo]||pg.tipo}</td>
-          <td style="font-size:12px;font-weight:500">${pg.destinatario||'—'}</td>
-          <td class="mono" style="color:var(--text-muted)">${pg.numero_cp||'—'}</td>
-          <td class="mono" style="color:var(--text-muted)">${pg.data_vencimento?fmtData(pg.data_vencimento):'—'}</td>
-          <td class="right mono">${pg.valor_brl?fmt(pg.valor_brl):'—'}</td>
-          <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd?'US$ '+fmtQtd(pg.valor_usd,2):'—'}</td>
-          <td class="right mono" style="color:var(--text-muted)">${pg.cambio?'R$ '+fmtQtd(pg.cambio,2):'—'}</td>
-          <td class="right mono" style="font-weight:600;color:${pg.valor_rateado_brl?'var(--blue-mid)':'var(--text-muted)'}">${pg.valor_rateado_brl?fmt(pg.valor_rateado_brl):'—'}</td>
-          <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'✓ Pago':'⏳ A Pagar'}</span></td>
-          <td><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></td>
-        </tr>`).join('')}</tbody></table></div></div>`}`;
+
+      ${!pags?.length
+        ? '<div style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pagamento registrado</div>'
+        : `<div class="table-card" style="margin-bottom:20px"><div style="overflow-x:auto"><table class="data-table">
+            <thead><tr>
+              <th>Tipo</th><th>Data</th><th class="right">BRL</th><th class="right">USD</th><th>Status</th><th></th>
+            </tr></thead>
+            <tbody>${(pags||[]).map(pg=>`<tr>
+              <td style="font-size:12px">${IMP_TIPOS_PAG[pg.tipo]||pg.tipo}</td>
+              <td class="mono" style="color:var(--text-muted)">${pg.data_pagamento?fmtData(pg.data_pagamento):(pg.data_vencimento?fmtData(pg.data_vencimento):'—')}</td>
+              <td class="right mono" style="font-weight:600">${pg.valor_brl?fmt(pg.valor_brl):'—'}</td>
+              <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd?'US$ '+fmtQtd(pg.valor_usd,2):'—'}</td>
+              <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'✓ Pago':'⏳ A Pagar'}</span></td>
+              <td><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></td>
+            </tr>`).join('')}</tbody>
+          </table></div></div>`}
+
+      ${pags?.length ? `
+      <!-- SUMÁRIO FINANCEIRO -->
+      <div class="card" style="padding:16px 20px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:12px;color:var(--text-primary)">Resumo Financeiro</div>
+
+        ${linhasTipo}
+
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text-secondary)">Subtotal</span>
+          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${fmt(totalBrl)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;color:var(--text-muted)">+ 10% Custas Financeiras</span>
+          <span style="font-family:'DM Mono',monospace;font-size:13px;color:var(--orange)">${fmt(custasFinanc)}</span>
+        </div>
+
+        <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;text-align:center">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Total Real BRL</div>
+            <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-dark)">${fmt(totalReal)}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;text-align:center">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Total USD</div>
+            <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-mid)">${totalUsd>0?'US$ '+fmtQtd(totalUsd,2):'—'}</div>
+          </div>
+          <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;text-align:center">
+            <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Coeficiente R$/US$</div>
+            <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:${coeficiente?(coeficiente>6?'var(--red)':'var(--green)'):'var(--text-muted)'}">
+              ${coeficiente?'R$ '+fmtQtd(coeficiente,2):'—'}
+            </div>
+          </div>
+        </div>
+      </div>` : ''}`;
   } catch(e) { el.innerHTML='<div style="color:var(--red);padding:16px">Erro ao carregar</div>'; }
 }
 
@@ -1770,7 +2219,7 @@ async function salvarPedidoVinculado(processoId) {
     fecharModalProcesso();
     await loadImportacao();
     impProcessoAtual = impProcessos.find(x => x.id === processoId);
-    loadImpTabPedidos(impProcessoAtual);
+    if (impProcessoAtual) loadImpTabInfo(impProcessoAtual);
   } catch(e) { showToast('Erro: '+e.message,'error'); }
 }
 
@@ -1779,7 +2228,7 @@ async function removerPedidoProcesso(pedidoId) {
   await sb.from('import_pedidos').delete().eq('id',pedidoId);
   const pid=impProcessoAtual?.id;
   await loadImportacao();
-  if (pid) { impProcessoAtual=impProcessos.find(x=>x.id===pid); loadImpTabPedidos(impProcessoAtual); }
+  if (pid) { impProcessoAtual=impProcessos.find(x=>x.id===pid); if (impProcessoAtual) loadImpTabInfo(impProcessoAtual); }
   showToast('Pedido removido.');
 }
 
@@ -1787,23 +2236,35 @@ function abrirModalAddPagamento(processoId) {
   document.getElementById('modal-processo-title').textContent = 'Novo Pagamento';
   document.getElementById('modal-processo-body').innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Tipo *</label><select id="pag-f-tipo" class="filter-select" style="width:100%;height:36px">${Object.entries(IMP_TIPOS_PAG).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Destinatário</label><input id="pag-f-dest" class="filter-select" style="width:100%;height:36px" /></div>
       <div style="grid-column:1/-1">
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Nº CP (sistema)</label>
-        <div style="display:flex;gap:8px;align-items:center">
-          <input id="pag-f-cp" type="text" class="filter-select" style="width:160px;height:36px" placeholder="Ex: 12345" oninput="buscarDadosCP(this.value)" />
-          <div id="pag-cp-info" style="flex:1;font-size:12px;color:var(--text-muted);padding:6px 10px;background:var(--surface2);border-radius:6px;min-height:36px;display:flex;align-items:center">Digite o nº do CP para buscar dados</div>
-        </div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Tipo *</label>
+        <select id="pag-f-tipo" class="filter-select" style="width:100%;height:36px">
+          ${Object.entries(IMP_TIPOS_PAG).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}
+        </select>
       </div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Status</label><select id="pag-f-status" class="filter-select" style="width:100%;height:36px"><option value="A_PAGAR">⏳ A Pagar</option><option value="PAGO">✓ Pago</option></select></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Vencimento</label><input id="pag-f-venc" type="date" class="filter-select" style="width:100%;height:36px" /></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Data Pagamento</label><input id="pag-f-datapag" type="date" class="filter-select" style="width:100%;height:36px" /></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Valor BRL</label><input id="pag-f-brl" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" /></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Valor USD</label><input id="pag-f-usd" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" /></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Câmbio R$/US$</label><input id="pag-f-cambio" type="number" step="0.0001" class="filter-select" style="width:100%;height:36px" /></div>
-      <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Rateado BRL</label><input id="pag-f-rateado" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" /></div>
-      <div style="grid-column:1/-1"><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label><input id="pag-f-obs" class="filter-select" style="width:100%;height:36px" /></div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Status *</label>
+        <select id="pag-f-status" class="filter-select" style="width:100%;height:36px">
+          <option value="A_PAGAR">⏳ A Pagar</option>
+          <option value="PAGO">✓ Pago</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Data Pagamento</label>
+        <input id="pag-f-datapag" type="date" class="filter-select" style="width:100%;height:36px" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Valor BRL</label>
+        <input id="pag-f-brl" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" placeholder="0,00" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Valor USD</label>
+        <input id="pag-f-usd" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" placeholder="0,00" />
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+        <input id="pag-f-obs" class="filter-select" style="width:100%;height:36px" placeholder="Opcional" />
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
       <button class="btn btn-outline" onclick="fecharModalProcesso()">Cancelar</button>
@@ -1812,78 +2273,16 @@ function abrirModalAddPagamento(processoId) {
   document.getElementById('modal-processo-overlay').style.display = 'flex';
 }
 
-let _cpTimer = null;
-let _cpSelecionado = null;
-async function buscarDadosCP(valor) {
-  const info = document.getElementById('pag-cp-info');
-  if (!info) return;
-  _cpSelecionado = null;
-  if (!valor || valor.trim().length < 1) { info.innerHTML = 'Digite o nº do CP para buscar dados do financeiro'; info.style.color = 'var(--text-muted)'; return; }
-  clearTimeout(_cpTimer);
-  _cpTimer = setTimeout(async () => {
-    info.innerHTML = '⏳ Buscando...'; info.style.color = 'var(--text-muted)';
-    try {
-      const valorNum = parseInt(valor);
-      const isNumerico = !isNaN(valorNum) && String(valorNum) === valor.trim();
-      const query = sb.from('vw_fin_cp').select('id,num_doc,historico,valor_total,dt_vencimento,dt_baixa,fl_pago,id_contato,chdados').range(0, 19);
-      const { data } = isNumerico ? await query.eq('chdados', valorNum) : await query.ilike('num_doc', `%${valor.trim()}%`);
-      if (!data?.length) { info.innerHTML = '❌ CP não encontrado'; info.style.color = 'var(--red)'; return; }
-      if (data.length === 1) {
-        _cpSelecionado = data[0]; preencherCamposCP(data[0]); renderInfoCP(data[0], info);
-      } else {
-        info.style.color = 'var(--text-primary)';
-        info.innerHTML = `<div style="width:100%"><div style="font-size:11px;color:var(--orange);font-weight:600;margin-bottom:6px">⚠️ ${data.length} títulos encontrados:</div>${data.map((d,i) => `<div onclick="selecionarCP(${i})" data-cp-idx="${i}" style="padding:7px 10px;border:1px solid var(--border);border-radius:6px;margin-bottom:4px;cursor:pointer;background:var(--surface);font-size:12px" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='var(--surface)'"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">${d.num_doc||'—'}</span><span style="color:${d.fl_pago?'var(--green)':'var(--orange)'};font-weight:600">${d.fl_pago?'✓ Pago':'⏳ A Pagar'}</span></div><div style="color:var(--text-muted)">${d.historico||'—'} · ${d.dt_vencimento?fmtData(d.dt_vencimento):'—'} · ${fmt(d.valor_total)}</div></div>`).join('')}</div>`;
-        window._cpListaTemp = data;
-      }
-    } catch(e) { info.innerHTML = '❌ Erro ao buscar CP'; info.style.color = 'var(--red)'; }
-  }, 600);
-}
-
-function selecionarCP(idx) {
-  const d = window._cpListaTemp?.[idx];
-  if (!d) return;
-  _cpSelecionado = d; preencherCamposCP(d);
-  const info = document.getElementById('pag-cp-info');
-  if (info) renderInfoCP(d, info);
-  document.querySelectorAll('[data-cp-idx]').forEach(el => { const sel = el.dataset.cpIdx === String(idx); el.style.background = sel ? 'var(--blue-pale)' : 'var(--surface)'; el.style.border = sel ? '2px solid var(--blue-mid)' : '1px solid var(--border)'; });
-}
-
-function preencherCamposCP(d) {
-  const venc = document.getElementById('pag-f-venc'); const brl = document.getElementById('pag-f-brl');
-  const sts = document.getElementById('pag-f-status'); const dest = document.getElementById('pag-f-dest'); const dtpag = document.getElementById('pag-f-datapag');
-  if (venc && d.dt_vencimento) venc.value = d.dt_vencimento.slice(0,10);
-  if (brl && d.valor_total) brl.value = d.valor_total;
-  if (sts && d.fl_pago != null) sts.value = d.fl_pago ? 'PAGO' : 'A_PAGAR';
-  if (dest && !dest.value && d.historico) dest.value = d.historico.slice(0,60);
-  if (dtpag && d.dt_baixa) dtpag.value = d.dt_baixa.slice(0,10);
-}
-
-function renderInfoCP(d, el) {
-  el.style.color = 'var(--text-primary)';
-  el.innerHTML = `<div style="display:flex;gap:16px;align-items:center;width:100%;flex-wrap:wrap">
-    <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Doc</div><div style="font-weight:600">${d.num_doc||'—'}</div></div>
-    <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Histórico</div><div style="font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.historico||'—'}</div></div>
-    <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Valor</div><div style="font-weight:700">${fmt(d.valor_total)}</div></div>
-    <div><div style="font-size:10px;color:var(--text-muted);text-transform:uppercase">Vencimento</div><div>${d.dt_vencimento?fmtData(d.dt_vencimento):'—'}</div></div>
-    <div><span style="color:${d.fl_pago?'var(--green)':'var(--orange)'};font-weight:600">${d.fl_pago?'✓ Pago':'⏳ A Pagar'}</span></div>
-  </div>`;
-}
-
 async function salvarPagamento(processoId) {
   try {
     const {error} = await sb.from('import_pagamentos').insert({
-      processo_id: processoId,
-      tipo: document.getElementById('pag-f-tipo')?.value,
-      destinatario: document.getElementById('pag-f-dest')?.value||null,
-      numero_cp: document.getElementById('pag-f-cp')?.value?.trim()||null,
-      status: document.getElementById('pag-f-status')?.value,
-      data_vencimento: document.getElementById('pag-f-venc')?.value||null,
-      data_pagamento: document.getElementById('pag-f-datapag')?.value||null,
-      valor_brl: parseFloat(document.getElementById('pag-f-brl')?.value)||null,
-      valor_usd: parseFloat(document.getElementById('pag-f-usd')?.value)||null,
-      cambio: parseFloat(document.getElementById('pag-f-cambio')?.value)||null,
-      valor_rateado_brl: parseFloat(document.getElementById('pag-f-rateado')?.value)||null,
-      observacoes: document.getElementById('pag-f-obs')?.value||null,
+      processo_id:  processoId,
+      tipo:         document.getElementById('pag-f-tipo')?.value,
+      status:       document.getElementById('pag-f-status')?.value,
+      data_pagamento: document.getElementById('pag-f-datapag')?.value || null,
+      valor_brl:    parseFloat(document.getElementById('pag-f-brl')?.value) || null,
+      valor_usd:    parseFloat(document.getElementById('pag-f-usd')?.value) || null,
+      observacoes:  document.getElementById('pag-f-obs')?.value || null,
     });
     if (error) throw error;
     showToast('✅ Pagamento salvo!');
@@ -1902,9 +2301,88 @@ async function removerPagamento(pagId) {
   showToast('Pagamento removido.');
 }
 
-// ═══════════════════════════════════════════════════════════
-// CHAT IA
-// ═══════════════════════════════════════════════════════════
+async function loadImpTabDocs(p) {
+  const el = document.getElementById('imptab-docs');
+  el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</div>';
+  try {
+    const {data:docs} = await sb.from('import_documentos').select('*').eq('processo_id',p.id).order('criado_em', {ascending:false});
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:13px;font-weight:600">Documentos do Processo</div>
+        <label class="btn btn-primary" style="height:30px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+          📎 Anexar Arquivo
+          <input type="file" id="doc-upload-input" style="display:none" multiple onchange="uploadDocumentos('${p.id}',this)" />
+        </label>
+      </div>
+      <div id="doc-upload-progress" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--blue-pale);border-radius:var(--radius-sm);font-size:12px;color:var(--blue-dark)">⏳ Enviando...</div>
+      ${!docs?.length
+        ? '<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum documento anexado</div>'
+        : `<div style="display:flex;flex-direction:column;gap:8px">
+            ${docs.map(d=>`
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:12px">
+                <span style="font-size:20px">${getDocIcon(d.tipo_arquivo)}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nome_arquivo}</div>
+                  <div style="font-size:11px;color:var(--text-muted)">${IMP_TIPOS_DOC[d.tipo_doc]||d.tipo_doc||'Documento'} · ${fmtData(d.criado_em?.slice(0,10))}</div>
+                </div>
+                <a href="${d.url_arquivo}" target="_blank" class="btn btn-outline" style="height:28px;font-size:11px;padding:0 10px;flex-shrink:0">⬇ Baixar</a>
+                <button onclick="removerDocumento('${d.id}','${p.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0">✕</button>
+              </div>`).join('')}
+          </div>`}`;
+  } catch(e) { el.innerHTML='<div style="color:var(--red);padding:16px">Erro ao carregar documentos</div>'; }
+}
+
+function getDocIcon(tipo) {
+  if (!tipo) return '📄';
+  if (tipo.includes('pdf')) return '📕';
+  if (tipo.includes('image')) return '🖼️';
+  if (tipo.includes('excel') || tipo.includes('spreadsheet')) return '📊';
+  if (tipo.includes('word') || tipo.includes('document')) return '📝';
+  if (tipo.includes('zip') || tipo.includes('compressed')) return '🗜️';
+  return '📄';
+}
+
+const IMP_TIPOS_DOC = {
+  INVOICE: 'Invoice', BL: 'Bill of Lading', PACKING: 'Packing List',
+  DI: 'DI/Despacho', NF: 'Nota Fiscal', CONTRATO: 'Contrato', OUTRO: 'Outro',
+};
+
+async function uploadDocumentos(processoId, input) {
+  const progress = document.getElementById('doc-upload-progress');
+  if (progress) progress.style.display = 'block';
+  try {
+    for (const arquivo of Array.from(input.files)) {
+      const ext  = arquivo.name.split('.').pop();
+      const path = `${processoId}/${Date.now()}_${arquivo.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
+      const { data: up, error: upErr } = await sb.storage.from('importacao-docs').upload(path, arquivo, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: urlData } = sb.storage.from('importacao-docs').getPublicUrl(path);
+      await sb.from('import_documentos').insert({
+        processo_id:  processoId,
+        nome_arquivo: arquivo.name,
+        tipo_arquivo: arquivo.type,
+        url_arquivo:  urlData.publicUrl,
+        storage_path: path,
+        criado_por:   window.getUsuario?.()?.nome || 'Usuário',
+      });
+    }
+    showToast(`✅ ${input.files.length} arquivo(s) enviado(s)!`);
+    input.value = '';
+    await loadImpTabDocs(impProcessoAtual);
+  } catch(e) { showToast('Erro no upload: '+e.message,'error'); }
+  finally { if (progress) progress.style.display = 'none'; }
+}
+
+async function removerDocumento(docId, processoId) {
+  if (!confirm('Remover este documento?')) return;
+  try {
+    const {data:doc} = await sb.from('import_documentos').select('storage_path').eq('id',docId).single();
+    if (doc?.storage_path) await sb.storage.from('importacao-docs').remove([doc.storage_path]);
+    await sb.from('import_documentos').delete().eq('id',docId);
+    showToast('Documento removido.');
+    await loadImpTabDocs(impProcessoAtual);
+  } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
 let chatHistorico = [];
 let ultimaRespostaIA = '';
 let ultimaPergunta = '';
@@ -2086,6 +2564,18 @@ window.abrirFornDrawer        = abrirFornDrawer;
 window.fecharFornDrawer       = fecharFornDrawer;
 window.switchFornTab          = switchFornTab;
 window.novasSessao            = novasSessao;
+window.fecharModalBalanco     = fecharModalBalanco;
+window.criarSessaoBalanco     = criarSessaoBalanco;
+window.abrirSessaoContagem    = abrirSessaoContagem;
+window.fecharModalContagem    = fecharModalContagem;
+window.salvarContagem         = salvarContagem;
+window.encerrarSessao         = encerrarSessao;
+window.exportarBalancoCsv     = exportarBalancoCsv;
+window.abrirAddManual         = abrirAddManual;
+window.toggleQuitadoFornecedor = toggleQuitadoFornecedor;
+window.loadImpTabDocs         = loadImpTabDocs;
+window.uploadDocumentos       = uploadDocumentos;
+window.removerDocumento       = removerDocumento;
 window.setImpView             = setImpView;
 window.abrirImpDrawer         = abrirImpDrawer;
 window.fecharImpDrawer        = fecharImpDrawer;
@@ -2104,10 +2594,10 @@ window.removerPagamento       = removerPagamento;
 window.buscarPedidoERP        = buscarPedidoERP;
 window.selecionarEmpresaPedido = selecionarEmpresaPedido;
 window.salvarPedidoVinculado  = salvarPedidoVinculado;
-window.selecionarCP           = selecionarCP;
+window.selecionarCP           = () => {}; // removido - modal simplificado
 window.buscarFornecedorImport = buscarFornecedorImport;
 window.selecionarFornecedorImport = selecionarFornecedorImport;
-window.buscarDadosCP          = buscarDadosCP;
+window.buscarDadosCP          = () => {}; // removido - modal simplificado
 window.abrirChat              = abrirChat;
 window.fecharChat             = fecharChat;
 window.showToast              = showToast;
@@ -2172,28 +2662,5 @@ document.addEventListener('click', function(ev) {
 }, true);
 
 Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
-
-// DRAWER_GLOBAL_EXPORTS_PATCH
-// Inline onclick handlers need these functions on window scope.
-Object.assign(window, {
-  abrirProduto,
-  fecharDrawer,
-  switchDrawerTab,
-  setHistFiltro,
-  toggleCarrinho,
-  adicionarAoCarrinho,
-  removerDoCarrinho,
-  exportarPedido,
-  abrirFornDrawer,
-  fecharFornDrawer,
-  switchFornTab,
-  setImpView,
-  abrirImpDrawer,
-  fecharImpDrawer,
-  switchImpTab,
-  abrirModalNovoProcesso,
-  fecharModalProcesso,
-  novasSessao
-});
 
 })();
