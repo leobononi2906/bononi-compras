@@ -685,9 +685,12 @@ async function loadDrawerFornecedores(idProduto) {
   ];
 
   try {
-    // CORRIGIDO: filtrar empresas do grupo Bononi
-    const fornList = (fornProdMap[idProduto] || [])
+    // Filtra intergrupo e DEDUPLICA por id_fornecedor (pode ter N linhas por empresa)
+    const fornRaw = (fornProdMap[idProduto] || [])
       .filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
+    const fornMap = {};
+    fornRaw.forEach(f => { if (!fornMap[f.id_fornecedor]) fornMap[f.id_fornecedor] = f; });
+    const fornList = Object.values(fornMap);
 
     if (!fornList.length) {
       container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum fornecedor externo cadastrado</div>';
@@ -701,7 +704,7 @@ async function loadDrawerFornecedores(idProduto) {
       sb.from('vw_fb_historico_compras')
         .select('id_fornecedor,nome_fornecedor,data_compra,num_nf,qtd,vl_unit,valor_total,lead_time_dias,tipo_entrada,mov_estoque,empresa')
         .eq('id_produto', idProduto)
-        .in('tipo_entrada', TIPOS_COMPRA)
+        .eq('mov_estoque', 'S')
         .not('id_fornecedor', 'in', `(${intergrupoList})`)
         .order('data_compra', { ascending: false })
         .range(0, 499),
@@ -719,7 +722,7 @@ async function loadDrawerFornecedores(idProduto) {
       const id = h.id_fornecedor;
       if (!histMap[id]) histMap[id] = { compras: [], leads: [], ultima: null, ultimo_preco: null, qtd_12m: 0 };
       histMap[id].compras.push(h);
-      if (h.lead_time_dias > 0) histMap[id].leads.push(h.lead_time_dias);
+      if (h.lead_time_dias >= 1 && h.lead_time_dias <= 180) histMap[id].leads.push(h.lead_time_dias);
       if (!histMap[id].ultima || h.data_compra > histMap[id].ultima) {
         histMap[id].ultima = h.data_compra;
         if (h.vl_unit > 0) histMap[id].ultimo_preco = h.vl_unit;
@@ -835,14 +838,32 @@ async function loadDrawerHistorico(idProduto) {
   if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Carregando...</td></tr>';
   const alertaContainer = document.getElementById('hist-alertas');
   if (alertaContainer) alertaContainer.innerHTML = '';
+
+  // Classifica o tipo de entrada com base nos campos reais do ERP
+  function classificaEntrada(tipo_entrada, cfop) {
+    const t = (tipo_entrada||'').toUpperCase();
+    const c = (cfop||'').toString();
+    if (t.includes('DEVOLUCAO') || t.includes('DEVOLU\u00c7\u00c3O')) return { icon: '\u21a9\ufe0f', label: 'Devolu\u00e7\u00e3o' };
+    if (t.includes('INVENTARIO') || t.includes('ESTOQUE INICIAL')) return { icon: '\ud83d\udce6', label: 'Invent\u00e1rio' };
+    if (t.includes('CONSERTO') || t.includes('REPARO') || t.includes('RETORNO')) return { icon: '\ud83d\udd27', label: 'Conserto/Retorno' };
+    if (c.startsWith('2') || c.startsWith('3')) return { icon: '\ud83d\udd04', label: 'Transfer\u00eancia' };
+    return { icon: '\ud83d\uded2', label: 'Compra' };
+  }
+
   try {
     const [rVendas, rOsPecas, rCompras, rMov, rOsBase] = await Promise.all([
       sb.from('vw_comercial_itens_faturados').select('id_doc,tipo_saida,data_faturamento,empresa,qtd,vl_unit').eq('id_produto', idProduto).order('data_faturamento', { ascending: false }).range(0, 9999),
       sb.from('vw_os_pecas_faturadas').select('id_os,data_faturamento,empresa,qtd,vl_unit').eq('id_produto', idProduto).order('data_faturamento', { ascending: false }).range(0, 9999),
-      sb.from('vw_fb_historico_compras').select('data_compra,nome_fornecedor,num_nf,qtd,vl_unit,valor_total,lead_time_dias').eq('id_produto', idProduto).order('data_compra', { ascending: false }).range(0, 499),
+      sb.from('vw_fb_historico_compras')
+        .select('data_compra,nome_fornecedor,num_nf,qtd,vl_unit,valor_total,lead_time_dias,tipo_entrada,cfop,mov_estoque')
+        .eq('id_produto', idProduto)
+        .eq('mov_estoque', 'S')
+        .order('data_compra', { ascending: false })
+        .range(0, 499),
       sb.from('vw_fb_mov_estoque').select('data_mov,tipo_mov,tipo_es,empresa,qtd,id_os,cancelada').eq('id_produto', idProduto).eq('cancelada', 'N').in('tipo_mov', ['A', 'T', 'R']).order('data_mov', { ascending: false }).range(0, 499),
       sb.from('vw_os_base').select('id_os,status_os,tipo_os').range(0, 9999),
     ]);
+
     const osMap = {};
     (rOsBase.data || []).forEach(o => { osMap[o.id_os] = o; });
     const movAll = rMov.data || [];
@@ -850,30 +871,44 @@ async function loadDrawerHistorico(idProduto) {
     const qtdOsAbertas = osAbertas.reduce((a, m) => a + Math.abs(m.qtd || 0), 0);
     const qtdOsCount = new Set(osAbertas.map(m => m.id_os)).size;
     if (alertaContainer && qtdOsAbertas > 0) {
-      alertaContainer.innerHTML = `<div style="display:flex;gap:10px;margin-bottom:14px"><div style="flex:1;background:var(--orange-bg);border:1px solid var(--orange);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:18px">⚠️</span><div><div style="font-size:11px;font-weight:600;color:var(--orange);text-transform:uppercase;letter-spacing:0.5px">OS não finalizadas</div><div style="font-size:13px;font-weight:700;color:var(--text-primary)">${fmtQtd(qtdOsAbertas, 0)} peças em ${qtdOsCount} OS</div><div style="font-size:11px;color:var(--text-muted)">saíram do estoque, OS ainda abertas</div></div></div></div>`;
+      alertaContainer.innerHTML = `<div style="display:flex;gap:10px;margin-bottom:14px"><div style="flex:1;background:var(--orange-bg);border:1px solid var(--orange);border-radius:var(--radius-sm);padding:10px 14px;display:flex;align-items:center;gap:10px"><span style="font-size:18px">\u26a0\ufe0f</span><div><div style="font-size:11px;font-weight:600;color:var(--orange);text-transform:uppercase;letter-spacing:0.5px">OS n\u00e3o finalizadas</div><div style="font-size:13px;font-weight:700;color:var(--text-primary)">${fmtQtd(qtdOsAbertas, 0)} pe\u00e7as em ${qtdOsCount} OS</div><div style="font-size:11px;color:var(--text-muted)">sa\u00edram do estoque, OS ainda abertas</div></div></div></div>`;
     }
+
     const itens = [];
-    (rVendas.data || []).forEach(r => { const tipo = (r.tipo_saida || '').trim(); itens.push({ data: r.data_faturamento, tipo_es: 'S', origem: tipo ? `${tipo} #${r.id_doc}` : `Venda #${r.id_doc}`, empresa: r.empresa, qtd: Math.abs(parseFloat(r.qtd) || 0) }); });
-    (rOsPecas.data || []).forEach(r => { const osInfo = osMap[r.id_os]; itens.push({ data: r.data_faturamento, tipo_es: 'S', origem: `OS #${r.id_os}${osInfo?.tipo_os ? ' · ' + osInfo.tipo_os : ''}`, empresa: r.empresa, qtd: Math.abs(parseFloat(r.qtd) || 0) }); });
-    (rCompras.data || []).forEach(r => { itens.push({ data: r.data_compra, tipo_es: 'E', origem: `Compra${r.nome_fornecedor ? ' · ' + r.nome_fornecedor : ''}${r.num_nf ? ' NF ' + r.num_nf : ''}`, empresa: null, qtd: Math.abs(r.qtd || 0) }); });
-    movAll.filter(m => m.tipo_mov === 'A' || m.tipo_mov === 'T').forEach(r => { itens.push({ data: r.data_mov, tipo_es: r.tipo_es, origem: r.tipo_mov === 'T' ? 'Transferência' : (r.tipo_es === 'E' ? 'Ajuste entrada' : 'Ajuste saída'), empresa: r.empresa, qtd: Math.abs(r.qtd || 0) }); });
+    (rVendas.data || []).forEach(r => {
+      const tipo = (r.tipo_saida || '').trim();
+      itens.push({ data: r.data_faturamento, tipo_es: 'S', icon: '\u2b06\ufe0f', label: 'Sa\u00edda', origem: tipo ? `${tipo} #${r.id_doc}` : `Venda #${r.id_doc}`, empresa: r.empresa, qtd: Math.abs(parseFloat(r.qtd) || 0) });
+    });
+    (rOsPecas.data || []).forEach(r => {
+      const osInfo = osMap[r.id_os];
+      itens.push({ data: r.data_faturamento, tipo_es: 'S', icon: '\ud83d\udd27', label: 'OS', origem: `OS #${r.id_os}${osInfo?.tipo_os ? ' \u00b7 ' + osInfo.tipo_os : ''}`, empresa: r.empresa, qtd: Math.abs(parseFloat(r.qtd) || 0) });
+    });
+    (rCompras.data || []).forEach(r => {
+      const cls = classificaEntrada(r.tipo_entrada, r.cfop);
+      itens.push({ data: r.data_compra, tipo_es: 'E', icon: cls.icon, label: cls.label, origem: `${cls.label}${r.nome_fornecedor ? ' \u00b7 ' + r.nome_fornecedor : ''}${r.num_nf ? ' NF ' + r.num_nf : ''}`, empresa: null, qtd: Math.abs(r.qtd || 0) });
+    });
+    movAll.filter(m => m.tipo_mov === 'A' || m.tipo_mov === 'T').forEach(r => {
+      const isEntrada = r.tipo_es === 'E';
+      const icon = r.tipo_mov === 'T' ? '\ud83d\udd04' : (isEntrada ? '\u2b07\ufe0f' : '\u2b06\ufe0f');
+      const label = r.tipo_mov === 'T' ? 'Transfer\u00eancia' : (isEntrada ? 'Ajuste entrada' : 'Ajuste sa\u00edda');
+      itens.push({ data: r.data_mov, tipo_es: r.tipo_es, icon, label, origem: label, empresa: r.empresa, qtd: Math.abs(r.qtd || 0) });
+    });
+
     itens.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
     let dados = itens;
     if (histFiltro === 'entradas') dados = itens.filter(r => r.tipo_es === 'E');
     if (histFiltro === 'saidas')   dados = itens.filter(r => r.tipo_es === 'S');
-    if (!dados.length) { if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Sem movimentações</td></tr>'; return; }
+    if (!dados.length) { if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Sem movimenta\u00e7\u00f5es</td></tr>'; return; }
     if (tbody) tbody.innerHTML = dados.map(r => {
       const esColor = r.tipo_es === 'E' ? 'var(--green)' : 'var(--red)';
-      const esLabel = r.tipo_es === 'E' ? '↓ Entrada' : '↑ Saída';
       const sinal   = r.tipo_es === 'E' ? '+' : '-';
-      return `<tr><td class="mono" style="color:var(--text-muted);white-space:nowrap">${fmtData(r.data)}</td><td><span style="color:${esColor};font-weight:600;font-size:12px">${esLabel}</span></td><td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.origem}">${r.origem}</td><td style="font-size:12px;color:var(--text-secondary)">${r.empresa || '—'}</td><td class="right mono" style="color:${esColor};font-weight:600">${sinal}${fmtQtd(r.qtd, 0)}</td></tr>`;
+      return `<tr><td class="mono" style="color:var(--text-muted);white-space:nowrap">${fmtData(r.data)}</td><td><span style="color:${esColor};font-weight:600;font-size:12px">${r.icon} ${r.label}</span></td><td style="font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.origem}">${r.origem}</td><td style="font-size:12px;color:var(--text-secondary)">${r.empresa || '\u2014'}</td><td class="right mono" style="color:${esColor};font-weight:600">${sinal}${fmtQtd(r.qtd, 0)}</td></tr>`;
     }).join('');
   } catch (e) {
     console.error(e);
     if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5" style="color:var(--red)">Erro ao carregar</td></tr>';
   }
 }
-
 async function loadDrawerEstoque(idProduto) {
   const tbody = document.getElementById('dr-estoque-body');
   if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Carregando...</td></tr>';
@@ -1315,11 +1350,10 @@ async function loadBalanco() {
 }
 
 function novasSessao() {
-  // Injeta modal de nova sessão se não existir
   if (!document.getElementById('modal-balanco-overlay')) {
     const div = document.createElement('div');
-    div.innerHTML = `<div id="modal-balanco-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,29,53,0.5);z-index:99999;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto">
-      <div style="background:var(--surface);border-radius:var(--radius);width:min(640px,95vw);box-shadow:var(--shadow-lg);margin-bottom:40px">
+    div.innerHTML = `<div id="modal-balanco-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,29,53,0.5);z-index:99999;align-items:flex-start;justify-content:center;padding-top:30px;overflow-y:auto">
+      <div style="background:var(--surface);border-radius:var(--radius);width:min(680px,95vw);box-shadow:var(--shadow-lg);margin-bottom:40px">
         <div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
           <div style="font-size:15px;font-weight:700">Nova Sessão de Balanço</div>
           <button onclick="fecharModalBalanco()" style="background:var(--surface2);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px">✕</button>
@@ -1330,6 +1364,10 @@ function novasSessao() {
     document.body.appendChild(div.firstElementChild);
   }
 
+  const grupos    = [...new Set(alertasConsolidado.map(r=>r.grupo).filter(Boolean))].sort();
+  const subgrupos = [...new Set(alertasConsolidado.map(r=>r.subgrupo).filter(Boolean))].sort();
+  const empresas  = [...new Set(alertasConsolidado.map(r=>r.empresa).filter(Boolean))].sort();
+
   document.getElementById('modal-balanco-body').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:14px">
       <div>
@@ -1337,33 +1375,50 @@ function novasSessao() {
         <input id="bal-titulo" class="filter-select" style="width:100%;height:36px" placeholder="Ex: Contagem Fechaduras - Jun/2026" />
       </div>
       <div>
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:6px">Filtros de Escopo (múltiplos — todos são opcionais)</label>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:8px">Filtros de Escopo <span style="font-weight:400;color:var(--text-muted)">(todos opcionais — combináveis)</span></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div>
             <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Grupo de Produto</label>
-            <select id="bal-f-grupo" class="filter-select" style="width:100%;height:34px">
+            <select id="bal-f-grupo" class="filter-select" style="width:100%;height:34px" onchange="balAtualizaSubgrupos()">
               <option value="">Todos os grupos</option>
-              ${[...new Set(alertasConsolidado.map(r=>r.grupo).filter(Boolean))].sort().map(g=>`<option value="${g}">${g}</option>`).join('')}
+              ${grupos.map(g=>`<option value="${g}">${g}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Subgrupo</label>
+            <select id="bal-f-subgrupo" class="filter-select" style="width:100%;height:34px">
+              <option value="">Todos os subgrupos</option>
+              ${subgrupos.map(s=>`<option value="${s}">${s}</option>`).join('')}
             </select>
           </div>
           <div>
             <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Empresa</label>
             <select id="bal-f-empresa" class="filter-select" style="width:100%;height:34px">
               <option value="">Todas as empresas</option>
-              ${[...new Set(alertasConsolidado.map(r=>r.empresa).filter(Boolean))].sort().map(e=>`<option value="${e}">${e}</option>`).join('')}
+              ${empresas.map(e=>`<option value="${e}">${e}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Produto (referência)</label>
-            <input id="bal-f-ref" class="filter-select" style="width:100%;height:34px" placeholder="Deixe em branco para todos" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Centro de Estoque</label>
+            <input id="bal-f-ce" class="filter-select" style="width:100%;height:34px" placeholder="Ex: PRINCIPAL" />
           </div>
           <div>
-            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Centro de Estoque</label>
-            <input id="bal-f-ce" class="filter-select" style="width:100%;height:34px" placeholder="Deixe em branco para todos" />
+            <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Produto (referência)</label>
+            <input id="bal-f-ref" class="filter-select" style="width:100%;height:34px" placeholder="Ex: 001234" />
+          </div>
+          <div style="display:flex;gap:6px;align-items:flex-end">
+            <div style="flex:1">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Localização De</label>
+              <input id="bal-f-loc-de" class="filter-select" style="width:100%;height:34px" placeholder="Ex: 501" />
+            </div>
+            <div style="flex:1">
+              <label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:3px">Localização Até</label>
+              <input id="bal-f-loc-ate" class="filter-select" style="width:100%;height:34px" placeholder="Ex: 503" />
+            </div>
           </div>
         </div>
       </div>
-      <div id="bal-preview" style="font-size:12px;color:var(--text-muted)">Configure os filtros e clique em Criar para ver os itens que serão incluídos.</div>
+      <div id="bal-preview" style="font-size:12px;color:var(--text-muted)">Configure os filtros e clique em Criar para ver os itens incluídos.</div>
     </div>
     <div style="display:flex;gap:8px;margin-top:20px;justify-content:flex-end">
       <button class="btn btn-outline" onclick="fecharModalBalanco()">Cancelar</button>
@@ -1371,6 +1426,15 @@ function novasSessao() {
     </div>`;
 
   document.getElementById('modal-balanco-overlay').style.display = 'flex';
+}
+
+function balAtualizaSubgrupos() {
+  const grupo = document.getElementById('bal-f-grupo')?.value || '';
+  const dados = grupo ? alertasConsolidado.filter(r => r.grupo === grupo) : alertasConsolidado;
+  const subs  = [...new Set(dados.map(r=>r.subgrupo).filter(Boolean))].sort();
+  const sel   = document.getElementById('bal-f-subgrupo');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Todos os subgrupos</option>' + subs.map(s=>`<option value="${s}">${s}</option>`).join('');
 }
 
 function fecharModalBalanco() {
@@ -1382,10 +1446,13 @@ async function criarSessaoBalanco() {
   const titulo = document.getElementById('bal-titulo')?.value?.trim();
   if (!titulo) { showToast('Informe o título da sessão.','error'); return; }
 
-  const grupo   = document.getElementById('bal-f-grupo')?.value || '';
-  const empresa = document.getElementById('bal-f-empresa')?.value || '';
-  const ref     = document.getElementById('bal-f-ref')?.value?.trim() || '';
-  const ce      = document.getElementById('bal-f-ce')?.value?.trim() || '';
+  const grupo    = document.getElementById('bal-f-grupo')?.value || '';
+  const subgrupo = document.getElementById('bal-f-subgrupo')?.value || '';
+  const empresa  = document.getElementById('bal-f-empresa')?.value || '';
+  const ce       = document.getElementById('bal-f-ce')?.value?.trim() || '';
+  const ref      = document.getElementById('bal-f-ref')?.value?.trim() || '';
+  const locDe    = document.getElementById('bal-f-loc-de')?.value?.trim() || '';
+  const locAte   = document.getElementById('bal-f-loc-ate')?.value?.trim() || '';
 
   const btn = document.querySelector('#modal-balanco-body .btn-primary');
   if (btn) { btn.disabled = true; btn.textContent = 'Criando...'; }
@@ -1399,25 +1466,57 @@ async function criarSessaoBalanco() {
     }).select().single();
     if (errSessao) throw errSessao;
 
-    // 2. Busca itens da vw_fb_estoque_centro com filtros
+    // 2. Busca itens da vw_fb_estoque_centro
     let query = sb.from('vw_fb_estoque_centro')
-      .select('id_produto,nome_produto,referencia,empresa,centro_estoque,estoque')
+      .select('id_produto,nome,referencia,subgrupo,empresa,centro_estoque,estoque')
       .neq('estoque', 0)
       .range(0, 9999);
     if (empresa) query = query.eq('empresa', empresa);
-    if (ce)      query = query.ilike('centro_estoque', `%${ce}%`);
+    if (ce)      query = query.ilike('centro_estoque', '%' + ce + '%');
 
     const { data: estoques } = await query;
     let itensBase = estoques || [];
 
-    // Filtra por grupo/ref no JS (vw não tem esses campos diretamente)
-    if (grupo || ref) {
+    // 3. Filtro por grupo/subgrupo/ref no JS
+    if (grupo || subgrupo || ref) {
       const prodsFiltrados = new Set(
         alertasConsolidado
-          .filter(r => (!grupo || r.grupo === grupo) && (!ref || (r.referencia||'').toLowerCase().includes(ref.toLowerCase())))
+          .filter(r =>
+            (!grupo    || r.grupo    === grupo) &&
+            (!subgrupo || r.subgrupo === subgrupo) &&
+            (!ref      || (r.referencia||'').toLowerCase().includes(ref.toLowerCase()))
+          )
           .map(r => r.id_produto)
       );
       itensBase = itensBase.filter(i => prodsFiltrados.has(i.id_produto));
+    }
+
+    // 4. Filtro por localização de-até (busca em vw_fb_produtos_compras)
+    if (locDe || locAte) {
+      const { data: locProds } = await sb.from('vw_fb_produtos_compras')
+        .select('id_produto,localizacao')
+        .not('localizacao', 'is', null)
+        .range(0, 9999);
+      
+      // Extrai prefixo numérico da primeira localização (antes do |)
+      const extraiPrefixo = (loc) => {
+        if (!loc) return '';
+        const primeira = loc.split('|')[0].trim();
+        return primeira.replace(/[^0-9]/g, '').slice(0, 3); // pega só os 3 primeiros dígitos
+      };
+
+      const prodsPorLoc = new Set(
+        (locProds||[])
+          .filter(r => {
+            const pref = extraiPrefixo(r.localizacao);
+            if (!pref) return false;
+            const ok_de  = !locDe  || pref >= locDe.replace(/[^0-9]/g,'').slice(0,3);
+            const ok_ate = !locAte || pref <= locAte.replace(/[^0-9]/g,'').slice(0,3);
+            return ok_de && ok_ate;
+          })
+          .map(r => r.id_produto)
+      );
+      itensBase = itensBase.filter(i => prodsPorLoc.has(i.id_produto));
     }
 
     if (!itensBase.length) {
@@ -1427,14 +1526,14 @@ async function criarSessaoBalanco() {
       return;
     }
 
-    // 3. Insere itens em lotes de 500
+    // 5. Insere itens em lotes de 500
     const lotes = [];
     for (let i = 0; i < itensBase.length; i += 500) lotes.push(itensBase.slice(i, i+500));
     for (const lote of lotes) {
       await sb.from('balanco_itens').insert(lote.map(i => ({
         sessao_id:     sessao.id,
         id_produto:    i.id_produto,
-        nome_produto:  i.nome_produto || '',
+        nome_produto:  i.nome || '',
         referencia:    i.referencia || '',
         nome_empresa:  i.empresa || '',
         nome_centro:   i.centro_estoque || '',
@@ -1444,17 +1543,15 @@ async function criarSessaoBalanco() {
       })));
     }
 
-    showToast(`✅ Sessão criada com ${itensBase.length} itens!`);
+    showToast('✅ Sessão criada com ' + itensBase.length + ' itens!');
     fecharModalBalanco();
     await loadBalanco();
-    // Abre direto para contagem
     abrirSessaoContagem(sessao.id);
   } catch(e) {
     showToast('Erro ao criar sessão: '+e.message,'error');
     if (btn) { btn.disabled = false; btn.textContent = 'Criar Sessão'; }
   }
 }
-
 async function abrirSessaoContagem(sessaoId) {
   // Injeta modal de contagem se não existir
   if (!document.getElementById('modal-contagem-overlay')) {
@@ -2354,8 +2451,14 @@ async function uploadDocumentos(processoId, input) {
     for (const arquivo of Array.from(input.files)) {
       const ext  = arquivo.name.split('.').pop();
       const path = `${processoId}/${Date.now()}_${arquivo.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
-      const { data: up, error: upErr } = await sb.storage.from('importacao-docs').upload(path, arquivo, { upsert: false });
-      if (upErr) throw upErr;
+      const { data: up, error: upErr } = await sb.storage.from('importacao-docs').upload(path, arquivo, { upsert: true, cacheControl: '3600' });
+      if (upErr) {
+        // Erro comum: falta de policy de INSERT no bucket
+        if (upErr.statusCode === '400' || upErr.statusCode === 400) {
+          throw new Error('Permissão negada no Storage. Configure a policy de INSERT no bucket "importacao-docs" no painel Supabase (Storage → Policies).');
+        }
+        throw upErr;
+      }
       const { data: urlData } = sb.storage.from('importacao-docs').getPublicUrl(path);
       await sb.from('import_documentos').insert({
         processo_id:  processoId,
@@ -2564,6 +2667,7 @@ window.abrirFornDrawer        = abrirFornDrawer;
 window.fecharFornDrawer       = fecharFornDrawer;
 window.switchFornTab          = switchFornTab;
 window.novasSessao            = novasSessao;
+window.balAtualizaSubgrupos    = balAtualizaSubgrupos;
 window.fecharModalBalanco     = fecharModalBalanco;
 window.criarSessaoBalanco     = criarSessaoBalanco;
 window.abrirSessaoContagem    = abrirSessaoContagem;
@@ -2662,28 +2766,5 @@ document.addEventListener('click', function(ev) {
 }, true);
 
 Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
-
-// DRAWER_GLOBAL_EXPORTS_PATCH
-// Inline onclick handlers need these functions on window scope.
-Object.assign(window, {
-  abrirProduto,
-  fecharDrawer,
-  switchDrawerTab,
-  setHistFiltro,
-  toggleCarrinho,
-  adicionarAoCarrinho,
-  removerDoCarrinho,
-  exportarPedido,
-  abrirFornDrawer,
-  fecharFornDrawer,
-  switchFornTab,
-  setImpView,
-  abrirImpDrawer,
-  fecharImpDrawer,
-  switchImpTab,
-  abrirModalNovoProcesso,
-  fecharModalProcesso,
-  novasSessao
-});
 
 })();
