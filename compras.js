@@ -24,7 +24,12 @@ const PAGINAS_HTML = {
       <input type="text" id="busca-produto" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
       <select id="filtro-grupo" class="filter-select" onchange="onGrupoChange()"><option value="">Todos os grupos</option></select>
       <select id="filtro-subgrupo" class="filter-select" onchange="onFilterChange()"><option value="">Todos os subgrupos</option></select>
-      <select id="filtro-fornecedor" class="filter-select" onchange="onFilterChange()"><option value="">Todos os fornecedores</option></select>
+      <div style="position:relative" id="forn-filtro-wrap">
+        <input id="filtro-fornecedor-busca" class="filter-select" style="width:180px" placeholder="Filtrar fornecedor..." 
+          oninput="onFornBuscaInput(this.value)" onfocus="onFornBuscaInput(this.value)" autocomplete="off" />
+        <div id="forn-filtro-badges" style="display:none;position:absolute;top:36px;left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);width:280px;max-height:240px;overflow-y:auto"></div>
+      </div>
+      <div id="forn-selecionados-chips" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
       <select id="filtro-situacao" class="filter-select" onchange="onFilterChange()">
         <option value="">Todas as situações</option><option value="RUPTURA">🔴 Ruptura</option><option value="CRITICO">🟠 Crítico</option><option value="BAIXO">🟡 Baixo</option><option value="OK">🟢 OK</option><option value="SEM_MOVIMENTO">⚪ Sem Movimento</option>
       </select>
@@ -90,16 +95,16 @@ const PAGINAS_HTML = {
     <div style="flex:1;overflow-y:auto">
       <div class="drawer-tab-content active" id="dtab-resumo" style="padding:16px 20px">
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
-          <div class="card" style="padding:12px 14px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:20px">—</div><div class="card-sub" id="dr-estoque-sub"></div></div>
+          <div class="card" style="padding:12px 14px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:20px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color:var(--blue-mid);background:var(--blue-pale);border-radius:4px;padding:3px 7px"></div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Cobertura</div><div class="card-value" id="dr-cobertura" style="font-size:20px">—</div><div class="card-sub">dias de estoque</div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:20px">—</div><div class="card-sub">reposição sugerida</div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Lead Time</div><div class="card-value" id="dr-lead-time" style="font-size:20px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
           <div class="card" style="padding:12px 14px"><div class="card-label">Consumo/dia</div><div class="card-value" id="dr-consumo" style="font-size:18px">—</div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Pedido Aberto</div><div class="card-value" id="dr-pedido-aberto" style="font-size:18px">—</div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Última Compra</div><div class="card-value" id="dr-ultima-compra" style="font-size:14px">—</div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Última Venda</div><div class="card-value" id="dr-ultima-venda" style="font-size:14px">—</div></div>
+          <div class="card" style="padding:12px 14px"><div class="card-label">Último Preço Compra</div><div class="card-value" id="dr-ultimo-preco" style="font-size:16px">—</div><div class="card-sub" id="dr-ultimo-preco-sub"></div></div>
+          <div class="card" style="padding:12px 14px"><div class="card-label">Margem Estimada</div><div class="card-value" id="dr-margem" style="font-size:18px">—</div><div class="card-sub" id="dr-margem-sub"></div></div>
+          <div class="card" style="padding:12px 14px"><div class="card-label">Última Compra / Venda</div><div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted)">Compra:</span> <span id="dr-ultima-compra" style="font-size:12px;font-weight:600">—</span></div><div style="margin-top:2px"><span style="font-size:11px;color:var(--text-muted)">Venda:</span> <span id="dr-ultima-venda" style="font-size:12px;font-weight:600">—</span></div></div>
         </div>
         <div id="dtab-giro-inner"></div>
       </div>
@@ -323,6 +328,72 @@ function popularFiltroFornecedores() {
     sorted.map(([id, nome]) => `<option value="${id}" ${String(id) === val ? 'selected' : ''}>${nome}</option>`).join('');
 }
 
+// Seleção múltipla de fornecedores
+let fornSelecionados = new Map(); // id -> nome
+
+function onFornBuscaInput(valor) {
+  const drop = document.getElementById('forn-filtro-badges');
+  if (!drop) return;
+  const v = (valor||'').toLowerCase().trim();
+  // Busca nos fornecedores carregados
+  const prodIds = new Set(alertasConsolidado.map(r => r.id_produto));
+  const fornSet = new Map();
+  Object.entries(fornProdMap).forEach(([idProd, forns]) => {
+    if (prodIds.has(parseInt(idProd))) {
+      forns.forEach(f => { if (!IDS_INTERGRUPO_FORN.has(f.id_fornecedor)) fornSet.set(f.id_fornecedor, f.nome_fornecedor); });
+    }
+  });
+  const resultados = [...fornSet.entries()]
+    .filter(([id, nome]) => !v || nome.toLowerCase().includes(v))
+    .sort((a,b) => a[1].localeCompare(b[1]))
+    .slice(0, 30);
+  if (!resultados.length) { drop.style.display = 'none'; return; }
+  drop.style.display = 'block';
+  drop.innerHTML = resultados.map(([id, nome]) => {
+    const sel = fornSelecionados.has(id);
+    return `<div onclick="toggleFornSelecionado(${id},'${nome.replace(/'/g,"\\'")}')"
+      style="padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;${sel?'background:var(--blue-pale)':''}"
+      onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='${sel?'var(--blue-pale)':''}'">  
+      <span style="font-size:14px">${sel?'\xe2\x9c\x93':'◡'}</span>
+      <span>${nome}</span>
+    </div>`;
+  }).join('');
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    const fechar = (e) => { if (!document.getElementById('forn-filtro-wrap')?.contains(e.target)) { drop.style.display = 'none'; document.removeEventListener('click', fechar); } };
+    document.addEventListener('click', fechar);
+  }, 0);
+}
+
+function toggleFornSelecionado(id, nome) {
+  if (fornSelecionados.has(id)) { fornSelecionados.delete(id); }
+  else { fornSelecionados.set(id, nome); }
+  renderFornChips();
+  onFornBuscaInput(document.getElementById('filtro-fornecedor-busca')?.value || '');
+  paginaAtual = 1; renderAlertas();
+}
+
+function renderFornChips() {
+  const el = document.getElementById('forn-selecionados-chips');
+  if (!el) return;
+  if (!fornSelecionados.size) { el.innerHTML = ''; return; }
+  el.innerHTML = [...fornSelecionados.entries()].map(([id, nome]) =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:20px;padding:2px 8px 2px 10px;font-size:11px;font-weight:600;color:var(--blue-dark)">
+      ${nome.length > 20 ? nome.slice(0,20)+'...' : nome}
+      <button onclick="toggleFornSelecionado(${id},'${nome.replace(/'/g,"\\'")}')"
+        style="background:none;border:none;cursor:pointer;color:var(--blue-mid);font-size:13px;padding:0;line-height:1">×</button>
+    </span>`
+  ).join('') + `<button onclick="limparFornSelecionados()" style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px">limpar</button>`;
+}
+
+function limparFornSelecionados() {
+  fornSelecionados.clear();
+  renderFornChips();
+  const inp = document.getElementById('filtro-fornecedor-busca');
+  if (inp) inp.value = '';
+  paginaAtual = 1; renderAlertas();
+}
+
 function onGrupoChange() {
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const sub = document.getElementById('filtro-subgrupo');
@@ -381,13 +452,12 @@ function renderAlertas() {
   const busca = (document.getElementById('busca-produto')?.value || '').toLowerCase();
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
-  const fornId = document.getElementById('filtro-fornecedor')?.value || '';
   const sit = filtroSituacaoAtivo;
   let dados = [...alertasConsolidado];
   if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
   if (grupo) dados = dados.filter(r => r.grupo === grupo);
   if (subgrupo) dados = dados.filter(r => r.subgrupo === subgrupo);
-  if (fornId) dados = dados.filter(r => (fornProdMap[r.id_produto] || []).some(f => String(f.id_fornecedor) === fornId));
+  if (fornSelecionados.size > 0) dados = dados.filter(r => (fornProdMap[r.id_produto] || []).some(f => fornSelecionados.has(f.id_fornecedor)));
   if (sit) dados = dados.filter(r => r.situacao_estoque === sit);
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
   const abcMap  = { A: 1, B: 2, C: 3 };
@@ -505,14 +575,32 @@ function switchDrawerTab(tab, btn) {
 async function loadDrawerResumo(prod) {
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('dr-estoque-total', fmtQtd(prod.estoque_total, 0));
-  set('dr-estoque-sub', `Reserva: ${fmtQtd(prod.reserva_total, 0)}`);
+  set('dr-estoque-sub', prod.reserva_total > 0 ? `Reserva: ${fmtQtd(prod.reserva_total, 0)}` : '');
+  // Badge pedido a caminho
+  const badge = document.getElementById('dr-pedido-aberto-badge');
+  if (badge) { const emAberto = prod.pedido_aberto_total || 0; if (emAberto > 0) { badge.textContent = '📦 ' + fmtQtd(emAberto,0) + ' un. a caminho'; badge.style.display = 'inline-block'; } else { badge.style.display = 'none'; } }
   const cob = prod.cobertura_dias;
   set('dr-cobertura', cob === null ? '∞' : cob >= 9999 ? '999+d' : fmtQtd(cob, 0) + 'd');
   set('dr-consumo', fmtQtd(prod.consumo_diario_total, 2));
   set('dr-sugerida', fmtQtd(prod.qtd_sugerida, 0));
-  set('dr-pedido-aberto', fmtQtd(prod.pedido_aberto_total, 0));
   set('dr-ultima-compra', prod.dt_ultima_compra ? fmtData(prod.dt_ultima_compra) : '—');
   set('dr-ultima-venda', prod.dt_ultima_venda ? fmtData(prod.dt_ultima_venda) : '—');
+  // Margem e ultimo preco de compra
+  try {
+    const { data: pData } = await sb.from('vw_fb_produtos_compras').select('preco_venda,preco_compra').eq('id_produto', prod.id_produto).limit(1).single();
+    if (pData) {
+      const pc = pData.preco_compra || 0; const pv = pData.preco_venda || 0;
+      set('dr-ultimo-preco', pc > 0 ? fmt(pc) : '—');
+      set('dr-ultimo-preco-sub', 'preço cadastrado');
+      if (pc > 0 && pv > 0) {
+        const margem = ((pv - pc) / pv) * 100;
+        const corM = margem < 20 ? 'var(--red)' : margem < 35 ? 'var(--orange)' : 'var(--green)';
+        const elM = document.getElementById('dr-margem');
+        if (elM) { elM.textContent = margem.toFixed(1) + '%'; elM.style.color = corM; }
+        set('dr-margem-sub', 'Venda: ' + fmt(pv));
+      } else { set('dr-margem', '—'); set('dr-margem-sub', 'sem preço'); }
+    }
+  } catch(_) { set('dr-ultimo-preco', '—'); set('dr-margem', '—'); }
   set('dr-lead-time', '...'); set('dr-lead-time-sub', 'calculando...');
   try {
     const fornIds = (fornProdMap[prod.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor)).map(f => f.id_fornecedor);
@@ -554,8 +642,9 @@ async function loadDrawerGiro(idProduto) {
         .gte('data_faturamento', inicio365Str)
         .range(0, 9999),
       sb.from('vw_fb_historico_compras')
-        .select('data_compra, qtd')
+        .select('data_compra,qtd,tipo_entrada,cfop,id_fornecedor,mov_estoque')
         .eq('id_produto', idProduto)
+        .eq('mov_estoque', 'S')
         .gte('data_compra', inicioStr)
         .range(0, 9999),
     ]);
@@ -586,7 +675,16 @@ async function loadDrawerGiro(idProduto) {
       const m = meses.find(m => m.key === key);
       if (m) m.saidas += Math.abs(parseFloat(r.qtd)||0);
     });
+    // Filtra: so compras externas (nao intergrupo, nao transferencia, nao retorno/conserto)
+    const intergrupoSet = IDS_INTERGRUPO_FORN;
     (rCompras.data||[]).forEach(r => {
+      const ti = (r.tipo_entrada||'').toUpperCase();
+      const cfop = (r.cfop||'').toString();
+      // Exclui: intergrupo, transferencia, retorno/conserto
+      if (intergrupoSet.has(r.id_fornecedor)) return;
+      if (ti.includes('TRANSF')) return;
+      if (ti.includes('RETORNO') || ti.includes('CONSETO') || ti.includes('CONSERTO')) return;
+      if (cfop.startsWith('2') || cfop.startsWith('3')) return;
       const m = meses.find(m => m.key === (r.data_compra||'').slice(0,7));
       if (m) m.compras += Math.abs(r.qtd||0);
     });
@@ -624,23 +722,16 @@ async function loadDrawerGiro(idProduto) {
           </div>`).join('')}
       </div>
 
-      <div class="card" style="padding:10px 16px;margin-bottom:12px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+      <div class="card" style="padding:10px 16px;margin-bottom:12px;display:inline-flex;gap:12px;align-items:center">
+        <div style="font-size:18px">📅</div>
         <div>
-          <div class="card-label">Comprado 12m</div>
-          <div style="font-size:20px;font-weight:700;color:var(--blue-mid);font-family:'DM Mono',monospace">${fmtQtd(totalComprado,0)}</div>
-        </div>
-        <div style="width:1px;height:36px;background:var(--border)"></div>
-        <div>
-          <div class="card-label">Meses com venda</div>
-          <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace">${mesesComVenda}<span style="font-size:13px;color:var(--text-muted)">/12</span></div>
-        </div>
-        <div style="width:1px;height:36px;background:var(--border)"></div>
-        <div>
-          <div class="card-label">Cobertura estimada</div>
-          <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;color:${coberturaDias !== null ? (coberturaDias < 15 ? 'var(--red)' : coberturaDias < 30 ? 'var(--orange)' : 'var(--green)') : 'var(--text-muted)'}">
-            ${coberturaDias !== null ? coberturaDias+'d' : '∞'}
+          <div class="card-label">Cobertura Estimada</div>
+          <div style="display:flex;align-items:baseline;gap:6px">
+            <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${coberturaDias !== null ? (coberturaDias < 15 ? 'var(--red)' : coberturaDias < 30 ? 'var(--orange)' : 'var(--green)') : 'var(--text-muted)'}">
+              ${coberturaDias !== null ? coberturaDias+'d' : '∞'}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted)">base méd. 30d &nbsp;•&nbsp; ${mesesComVenda}/12 meses com venda</div>
           </div>
-          <div style="font-size:10px;color:var(--text-muted)">base méd. 30d</div>
         </div>
       </div>
 
@@ -1779,7 +1870,11 @@ const IMP_TIPOS_PAG = {
   FRETE_MARITIMO:   '🚢 Frete Marítimo',
   FRETE_RODOVIARIO: '🚛 Frete Rodoviário',
   OUTROS:           '📦 Outros',
+  RECEBIDO:         '⬇️ Recebido (outro proc.)',
+  TRANSFERIDO:      '⬆️ Transferido (saiu)',
 };
+const IMP_TIPOS_DEDUZ = new Set(['TRANSFERIDO']); // deduz do subtotal
+const IMP_TIPOS_SOMA  = new Set(['RECEBIDO']);    // soma ao subtotal (nao entra nas custas)
 
 async function loadImportacao() {
   try {
@@ -1985,26 +2080,35 @@ async function loadImpTabPagamentos(p) {
     // Totais por tipo
     const porTipo = {};
     Object.keys(IMP_TIPOS_PAG).forEach(k => { porTipo[k] = 0; });
-    let totalBrl = 0, totalUsd = 0;
+    let totalBrl = 0, totalUsd = 0, totalRecebido = 0, totalTransferido = 0;
     (pags||[]).forEach(pg => {
       const v = parseFloat(pg.valor_brl)||0;
       const u = parseFloat(pg.valor_usd)||0;
       porTipo[pg.tipo] = (porTipo[pg.tipo]||0) + v;
-      totalBrl += v;
+      if (IMP_TIPOS_SOMA.has(pg.tipo))  { totalRecebido   += v; }
+      else if (IMP_TIPOS_DEDUZ.has(pg.tipo)) { totalTransferido += v; }
+      else { totalBrl += v; } // só acumula no subtotal base os tipos normais
       totalUsd += u;
     });
-    const custasFinanc = totalBrl * 0.10;
-    const totalReal    = totalBrl + custasFinanc;
+    // Subtotal = tipos normais + recebido - transferido
+    const subtotal     = totalBrl + totalRecebido - totalTransferido;
+    const custasFinanc = subtotal * 0.10;
+    const totalReal    = subtotal + custasFinanc;
     const coeficiente  = totalUsd > 0 ? totalReal / totalUsd : null;
 
-    // Linhas de tipo só se tiver valor
+    // Linhas de tipo: normais, recebido (soma), transferido (deduz)
     const linhasTipo = Object.entries(IMP_TIPOS_PAG)
       .filter(([k]) => porTipo[k] > 0)
-      .map(([k,label]) => `
-        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+      .map(([k,label]) => {
+        const isDeduz  = IMP_TIPOS_DEDUZ.has(k);
+        const isSoma   = IMP_TIPOS_SOMA.has(k);
+        const cor      = isDeduz ? 'var(--red)' : isSoma ? 'var(--blue-mid)' : 'var(--text-primary)';
+        const sinal    = isDeduz ? '– ' : isSoma ? '+ ' : '';
+        return `<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:12px;color:var(--text-secondary)">${label}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${fmt(porTipo[k])}</span>
-        </div>`).join('');
+          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600;color:${cor}">${sinal}${fmt(porTipo[k])}</span>
+        </div>`;
+      }).join('');
 
     el.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -2037,7 +2141,7 @@ async function loadImpTabPagamentos(p) {
 
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:12px;color:var(--text-secondary)">Subtotal</span>
-          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${fmt(totalBrl)}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:600">${fmt(subtotal)}</span>
         </div>
         <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
           <span style="font-size:12px;color:var(--text-muted)">+ 10% Custas Financeiras</span>
@@ -2668,6 +2772,9 @@ window.fecharFornDrawer       = fecharFornDrawer;
 window.switchFornTab          = switchFornTab;
 window.novasSessao            = novasSessao;
 window.balAtualizaSubgrupos    = balAtualizaSubgrupos;
+window.onFornBuscaInput        = onFornBuscaInput;
+window.toggleFornSelecionado   = toggleFornSelecionado;
+window.limparFornSelecionados  = limparFornSelecionados;
 window.fecharModalBalanco     = fecharModalBalanco;
 window.criarSessaoBalanco     = criarSessaoBalanco;
 window.abrirSessaoContagem    = abrirSessaoContagem;
@@ -2766,28 +2873,5 @@ document.addEventListener('click', function(ev) {
 }, true);
 
 Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
-
-// DRAWER_GLOBAL_EXPORTS_PATCH
-// Inline onclick handlers need these functions on window scope.
-Object.assign(window, {
-  abrirProduto,
-  fecharDrawer,
-  switchDrawerTab,
-  setHistFiltro,
-  toggleCarrinho,
-  adicionarAoCarrinho,
-  removerDoCarrinho,
-  exportarPedido,
-  abrirFornDrawer,
-  fecharFornDrawer,
-  switchFornTab,
-  setImpView,
-  abrirImpDrawer,
-  fecharImpDrawer,
-  switchImpTab,
-  abrirModalNovoProcesso,
-  fecharModalProcesso,
-  novasSessao
-});
 
 })();
