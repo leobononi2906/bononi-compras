@@ -682,9 +682,9 @@ async function loadDrawerGiro(idProduto) {
       const cfop = (r.cfop||'').toString();
       // Exclui: intergrupo, transferencia, retorno/conserto
       if (intergrupoSet.has(r.id_fornecedor)) return;
-      if (ti.includes('TRANSF')) return;
+      if (ti === 'TRANSF. UNIDADE') return;
       if (ti.includes('RETORNO') || ti.includes('CONSETO') || ti.includes('CONSERTO')) return;
-      if (cfop.startsWith('2') || cfop.startsWith('3')) return;
+      if (ti.includes('INVENTARIO') || ti === 'ESTOQUE INICIAL' || ti === 'KIT FORMADO') return;
       const m = meses.find(m => m.key === (r.data_compra||'').slice(0,7));
       if (m) m.compras += Math.abs(r.qtd||0);
     });
@@ -932,12 +932,13 @@ async function loadDrawerHistorico(idProduto) {
 
   // Classifica o tipo de entrada com base nos campos reais do ERP
   function classificaEntrada(tipo_entrada, cfop) {
-    const t = (tipo_entrada||'').toUpperCase();
-    const c = (cfop||'').toString();
+    const t = (tipo_entrada||'').toUpperCase().trim();
+    // Transferencia: APENAS tipo_entrada exatamente 'TRANSF. UNIDADE'
+    if (t === 'TRANSF. UNIDADE') return { icon: '\ud83d\udd04', label: 'Transfer\u00eancia' };
     if (t.includes('DEVOLUCAO') || t.includes('DEVOLU\u00c7\u00c3O')) return { icon: '\u21a9\ufe0f', label: 'Devolu\u00e7\u00e3o' };
-    if (t.includes('INVENTARIO') || t.includes('ESTOQUE INICIAL')) return { icon: '\ud83d\udce6', label: 'Invent\u00e1rio' };
+    if (t.includes('INVENTARIO') || t === 'ESTOQUE INICIAL') return { icon: '\ud83d\udce6', label: 'Invent\u00e1rio' };
     if (t.includes('CONSERTO') || t.includes('REPARO') || t.includes('RETORNO')) return { icon: '\ud83d\udd27', label: 'Conserto/Retorno' };
-    if (c.startsWith('2') || c.startsWith('3')) return { icon: '\ud83d\udd04', label: 'Transfer\u00eancia' };
+    if (t === 'KIT FORMADO') return { icon: '\ud83d\udd27', label: 'Kit Formado' };
     return { icon: '\ud83d\uded2', label: 'Compra' };
   }
 
@@ -976,7 +977,7 @@ async function loadDrawerHistorico(idProduto) {
     });
     (rCompras.data || []).forEach(r => {
       const cls = classificaEntrada(r.tipo_entrada, r.cfop);
-      itens.push({ data: r.data_compra, tipo_es: 'E', icon: cls.icon, label: cls.label, origem: `${cls.label}${r.nome_fornecedor ? ' \u00b7 ' + r.nome_fornecedor : ''}${r.num_nf ? ' NF ' + r.num_nf : ''}`, empresa: null, qtd: Math.abs(r.qtd || 0) });
+      itens.push({ data: r.data_compra, tipo_es: 'E', icon: cls.icon, label: cls.label, origem: `${cls.label}${r.nome_fornecedor ? ' \u00b7 ' + r.nome_fornecedor : ''}${r.num_nf ? ' NF ' + r.num_nf : ''}`, empresa: r.empresa || null, qtd: Math.abs(r.qtd || 0) });
     });
     movAll.filter(m => m.tipo_mov === 'A' || m.tipo_mov === 'T').forEach(r => {
       const isEntrada = r.tipo_es === 'E';
@@ -2873,28 +2874,5 @@ document.addEventListener('click', function(ev) {
 }, true);
 
 Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
-
-// DRAWER_GLOBAL_EXPORTS_PATCH
-// Inline onclick handlers need these functions on window scope.
-Object.assign(window, {
-  abrirProduto,
-  fecharDrawer,
-  switchDrawerTab,
-  setHistFiltro,
-  toggleCarrinho,
-  adicionarAoCarrinho,
-  removerDoCarrinho,
-  exportarPedido,
-  abrirFornDrawer,
-  fecharFornDrawer,
-  switchFornTab,
-  setImpView,
-  abrirImpDrawer,
-  fecharImpDrawer,
-  switchImpTab,
-  abrirModalNovoProcesso,
-  fecharModalProcesso,
-  novasSessao
-});
 
 })();
