@@ -141,9 +141,29 @@ const PAGINAS_HTML = {
 
   'cmp-importacao': `<div class="page-content" id="page-cmp-importacao">
     <div class="cards-grid cards-grid-4"><div class="card"><div class="card-label">Em Produção</div><div class="card-value blue" id="imp-kpi-producao">—</div></div><div class="card"><div class="card-label">Em Transporte</div><div class="card-value" id="imp-kpi-transporte">—</div></div><div class="card"><div class="card-label">A Pagar Fornec.</div><div class="card-value orange" id="imp-kpi-apagar">—</div><div class="card-sub" id="imp-kpi-apagar-sub">—</div></div><div class="card"><div class="card-label">Chegada Próxima</div><div class="card-value" style="font-size:16px" id="imp-kpi-proxima">—</div><div class="card-sub" id="imp-kpi-proxima-forn">—</div></div></div>
-    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button></div><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)">📦 Produtos</button></div><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
     <div id="imp-kanban" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px"></div>
     <div id="imp-lista" style="display:none"><div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Fornecedor</th><th>Importadora</th><th>Status</th><th class="right">Pedidos</th><th class="right">Chegada Prev.</th><th class="right">Total USD</th><th class="right">Pago BRL</th><th class="right">A Pagar Forn.</th><th></th></tr></thead><tbody id="imp-lista-body"></tbody></table></div></div></div>
+    <div id="imp-produtos" style="display:none">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+        <input id="imp-prod-busca" class="filter-select" style="width:220px" placeholder="Buscar produto ou ref..." oninput="renderImpProdutos()" />
+        <select id="imp-prod-filtro-status" class="filter-select" style="height:34px" onchange="renderImpProdutos()">
+          <option value="">Todos os status</option>
+          <option value="EM_TRANSITO">Em Trânsito</option>
+          <option value="AGUARDANDO_EMBARQUE">Aguardando Embarque</option>
+          <option value="DESEMBARCADO">Desembarcado</option>
+        </select>
+        <div style="font-size:12px;color:var(--text-muted)" id="imp-prod-total"></div>
+      </div>
+      <div class="table-card"><div style="overflow-x:auto"><table class="data-table">
+        <thead><tr>
+          <th>Ref.</th><th>Produto</th><th>Fornecedor</th>
+          <th class="right">Qtd</th><th>Processo</th><th>Importadora</th>
+          <th class="right">Chegada Prev.</th><th>Status</th>
+        </tr></thead>
+        <tbody id="imp-produtos-body"><tr class="loading-row"><td colspan="8">Carregando produtos...</td></tr></tbody>
+      </table></div></div>
+    </div>
   </div>
   <div id="modal-processo-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,29,53,0.5);z-index:99999;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto"><div style="background:var(--surface);border-radius:var(--radius);width:min(700px,95vw);box-shadow:var(--shadow-lg);margin-bottom:40px"><div style="padding:18px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between"><div style="font-size:15px;font-weight:700" id="modal-processo-title">Novo Processo</div><button onclick="fecharModalProcesso()" style="background:var(--surface2);border:none;border-radius:6px;width:30px;height:30px;cursor:pointer;font-size:16px">✕</button></div><div style="padding:20px 24px" id="modal-processo-body"></div></div></div>
   <div class="drawer-overlay" id="imp-drawer-overlay" onclick="fecharImpDrawer()"></div>
@@ -1908,16 +1928,142 @@ function setImpView(view, btn) {
   impViewAtual = view;
   btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('imp-kanban').style.display = view === 'kanban' ? 'flex' : 'none';
-  document.getElementById('imp-lista').style.display  = view === 'lista'  ? 'block' : 'none';
-  if (view === 'lista') renderImpLista(); else renderImpKanban();
+  document.getElementById('imp-kanban').style.display   = view === 'kanban'   ? 'flex'  : 'none';
+  document.getElementById('imp-lista').style.display    = view === 'lista'    ? 'block' : 'none';
+  document.getElementById('imp-produtos').style.display = view === 'produtos' ? 'block' : 'none';
+  if (view === 'lista') renderImpLista();
+  else if (view === 'produtos') loadImpProdutos();
+  else renderImpKanban();
 }
 
 function renderImportacao() {
-  if (impViewAtual === 'kanban') renderImpKanban(); else renderImpLista();
+  if (impViewAtual === 'kanban') renderImpKanban();
+  else if (impViewAtual === 'lista') renderImpLista();
+  else if (impViewAtual === 'produtos') renderImpProdutos();
 }
 
 // CORRIGIDO: "Quitado c/ forn." = somente quando pagamentos ao fornecedor = 0
+// ═══════════════════════════════════════════════════════════
+// IMPORTAÇÃO — LISTA DE PRODUTOS
+// ═══════════════════════════════════════════════════════════
+let impProdutosCache = []; // cache para filtrar sem rebuscar
+
+async function loadImpProdutos() {
+  const tbody = document.getElementById('imp-produtos-body');
+  const totalEl = document.getElementById('imp-prod-total');
+  if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Carregando produtos...</td></tr>';
+
+  try {
+    // Busca todos os pedidos vinculados a processos ativos
+    const processosAtivos = (impProcessos || []).filter(p => p.status !== 'ENTREGUE' && p.status !== 'CANCELADO');
+    if (!processosAtivos.length) {
+      impProdutosCache = [];
+      if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Nenhum processo ativo com pedidos</td></tr>';
+      return;
+    }
+
+    const processoIds = processosAtivos.map(p => p.id);
+    const { data: pedidosVinc } = await sb.from('import_pedidos')
+      .select('processo_id, numero_pedido')
+      .in('processo_id', processoIds)
+      .range(0, 9999);
+
+    if (!pedidosVinc?.length) {
+      impProdutosCache = [];
+      if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Nenhum pedido vinculado nos processos ativos</td></tr>';
+      return;
+    }
+
+    // Monta mapa processo → info (para exibir código e data chegada)
+    const procMap = {};
+    processosAtivos.forEach(p => { procMap[p.id] = p; });
+
+    // Agrupa números de pedido únicos
+    const numerosUnicos = [...new Set(pedidosVinc.map(p => p.numero_pedido))];
+
+    // Mapa numero_pedido → processo
+    const pedidoParaProcesso = {};
+    pedidosVinc.forEach(pv => { pedidoParaProcesso[pv.numero_pedido] = pv.processo_id; });
+
+    // Busca produtos dos pedidos
+    const { data: prods } = await sb.from('vw_fb_pedidos_compra')
+      .select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,empresa')
+      .in('id_pedido', numerosUnicos)
+      .range(0, 9999);
+
+    if (!prods?.length) {
+      impProdutosCache = [];
+      if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Nenhum produto encontrado nos pedidos</td></tr>';
+      return;
+    }
+
+    // Monta cache com info do processo
+    impProdutosCache = prods.map(r => {
+      const procId = pedidoParaProcesso[r.id_pedido];
+      const proc   = procMap[procId] || {};
+      return {
+        id_produto:       r.id_produto,
+        referencia:       r.referencia || '',
+        nome_produto:     r.nome_produto || '',
+        nome_fornecedor:  r.nome_fornecedor || '',
+        qtd_solicitada:   r.qtd_solicitada || 0,
+        id_pedido:        r.id_pedido,
+        processo_codigo:  proc.codigo || '',
+        processo_id:      procId,
+        importadora:      proc.importadora || '',
+        data_prev_chegada: proc.data_prev_chegada || null,
+        status_processo:  proc.status || '',
+      };
+    });
+
+    renderImpProdutos();
+  } catch(e) {
+    console.error(e);
+    if (tbody) tbody.innerHTML = `<tr class="loading-row"><td colspan="8" style="color:var(--red)">Erro ao carregar: ${e.message}</td></tr>`;
+  }
+}
+
+function renderImpProdutos() {
+  const tbody  = document.getElementById('imp-produtos-body');
+  const totalEl = document.getElementById('imp-prod-total');
+  if (!tbody) return;
+
+  const busca        = (document.getElementById('imp-prod-busca')?.value || '').toLowerCase().trim();
+  const filtroStatus = document.getElementById('imp-prod-filtro-status')?.value || '';
+
+  let dados = impProdutosCache;
+  if (busca) dados = dados.filter(r =>
+    r.nome_produto.toLowerCase().includes(busca) ||
+    r.referencia.toLowerCase().includes(busca) ||
+    r.nome_fornecedor.toLowerCase().includes(busca) ||
+    r.processo_codigo.toLowerCase().includes(busca)
+  );
+  if (filtroStatus) dados = dados.filter(r => r.status_processo === filtroStatus);
+
+  if (totalEl) totalEl.textContent = `${dados.length} produto(s)`;
+
+  if (!dados.length) {
+    tbody.innerHTML = '<tr class="loading-row"><td colspan="8">Nenhum produto encontrado</td></tr>';
+    return;
+  }
+
+  const { label: stLabel, color: stColor, bg: stBg } = (status) => (IMP_STATUS[status] || { label: status, color: 'var(--text-muted)', bg: '' });
+
+  tbody.innerHTML = dados.map(r => {
+    const st = IMP_STATUS[r.status_processo] || { label: r.status_processo, color: 'var(--text-muted)', bg: '' };
+    return `<tr onclick="abrirImpDrawer('${r.processo_id}')" style="cursor:pointer">
+      <td class="mono" style="color:var(--text-muted);font-size:12px">${r.referencia || '—'}</td>
+      <td style="font-size:12px;font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.nome_produto || '—'}</td>
+      <td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor || '—'}</td>
+      <td class="right mono" style="font-weight:600">${fmtQtd(r.qtd_solicitada, 0)}</td>
+      <td style="font-size:12px;font-weight:600;color:var(--blue-mid)">${r.processo_codigo || '—'}</td>
+      <td style="font-size:12px;color:var(--text-muted)">${r.importadora || '—'}</td>
+      <td class="right mono" style="color:var(--text-muted)">${r.data_prev_chegada ? fmtData(r.data_prev_chegada) : '—'}</td>
+      <td><span class="badge" style="color:${st.color};background:${st.bg};font-size:11px">${st.label}</span></td>
+    </tr>`;
+  }).join('');
+}
+
 function renderImpKanban() {
   const kanban = document.getElementById('imp-kanban');
   if (!kanban) return;
@@ -2789,6 +2935,8 @@ window.loadImpTabDocs         = loadImpTabDocs;
 window.uploadDocumentos       = uploadDocumentos;
 window.removerDocumento       = removerDocumento;
 window.setImpView             = setImpView;
+window.loadImpProdutos        = loadImpProdutos;
+window.renderImpProdutos      = renderImpProdutos;
 window.abrirImpDrawer         = abrirImpDrawer;
 window.fecharImpDrawer        = fecharImpDrawer;
 window.switchImpTab           = switchImpTab;
