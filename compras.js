@@ -2232,10 +2232,9 @@ async function loadImpTabPagamentos(p) {
       const v = parseFloat(pg.valor_brl)||0;
       const u = parseFloat(pg.valor_usd)||0;
       porTipo[pg.tipo] = (porTipo[pg.tipo]||0) + v;
-      if (IMP_TIPOS_SOMA.has(pg.tipo))  { totalRecebido   += v; }
-      else if (IMP_TIPOS_DEDUZ.has(pg.tipo)) { totalTransferido += v; }
-      else { totalBrl += v; } // só acumula no subtotal base os tipos normais
-      totalUsd += u;
+      if (IMP_TIPOS_SOMA.has(pg.tipo))  { totalRecebido   += v; totalUsd += u; }
+      else if (IMP_TIPOS_DEDUZ.has(pg.tipo)) { totalTransferido += v; totalUsd -= u; } // deduz USD também
+      else { totalBrl += v; totalUsd += u; } // tipos normais
     });
     // Subtotal = tipos normais + recebido - transferido
     const subtotal     = totalBrl + totalRecebido - totalTransferido;
