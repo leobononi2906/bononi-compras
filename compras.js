@@ -2274,7 +2274,7 @@ async function loadImpTabPagamentos(p) {
               <td class="right mono" style="font-weight:600">${pg.valor_brl?fmt(pg.valor_brl):'—'}</td>
               <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd?'US$ '+fmtQtd(pg.valor_usd,2):'—'}</td>
               <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'✓ Pago':'⏳ A Pagar'}</span></td>
-              <td><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></td>
+              <td style="display:flex;gap:6px;align-items:center"><button onclick="editarPagamento('${pg.id}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px" title="Editar">✏️</button><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Remover">✕</button></td>
             </tr>`).join('')}</tbody>
           </table></div></div>`}
 
@@ -2637,6 +2637,71 @@ async function salvarPagamento(processoId) {
     await loadImportacao();
     if (impProcessoAtual?.id===processoId) { impProcessoAtual=impProcessos.find(x=>x.id===processoId); loadImpTabPagamentos(impProcessoAtual); }
   } catch(e) { showToast('Erro: '+e.message,'error'); }
+}
+
+
+async function editarPagamento(pagId) {
+  const { data: pags } = await sb.from('import_pagamentos').select('*').eq('id', pagId);
+  const pg = pags?.[0];
+  if (!pg) { showToast('Pagamento não encontrado.', 'error'); return; }
+
+  document.getElementById('modal-processo-title').textContent = 'Editar Pagamento';
+  document.getElementById('modal-processo-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Tipo *</label>
+        <select id="pag-f-tipo" class="filter-select" style="width:100%;height:36px">
+          ${Object.entries(IMP_TIPOS_PAG).map(([k,v])=>`<option value="${k}" ${pg.tipo===k?'selected':''}>${v}</option>`).join('')}
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Status *</label>
+        <select id="pag-f-status" class="filter-select" style="width:100%;height:36px">
+          <option value="A_PAGAR" ${pg.status==='A_PAGAR'?'selected':''}>⏳ A Pagar</option>
+          <option value="PAGO" ${pg.status==='PAGO'?'selected':''}>✓ Pago</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Data Pagamento</label>
+        <input id="pag-f-datapag" type="date" class="filter-select" style="width:100%;height:36px" value="${pg.data_pagamento||''}" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Valor BRL</label>
+        <input id="pag-f-brl" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" value="${pg.valor_brl||''}" />
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Valor USD</label>
+        <input id="pag-f-usd" type="number" step="0.01" class="filter-select" style="width:100%;height:36px" value="${pg.valor_usd||''}" />
+      </div>
+      <div style="grid-column:1/-1">
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label>
+        <input id="pag-f-obs" class="filter-select" style="width:100%;height:36px" value="${pg.observacoes||''}" placeholder="Opcional" />
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="fecharModalProcesso()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarEdicaoPagamento('${pagId}')">Salvar alterações</button>
+    </div>`;
+  document.getElementById('modal-processo-overlay').style.display = 'flex';
+}
+
+async function salvarEdicaoPagamento(pagId) {
+  try {
+    const { error } = await sb.from('import_pagamentos').update({
+      tipo:           document.getElementById('pag-f-tipo')?.value,
+      status:         document.getElementById('pag-f-status')?.value,
+      data_pagamento: document.getElementById('pag-f-datapag')?.value || null,
+      valor_brl:      parseFloat(document.getElementById('pag-f-brl')?.value) || null,
+      valor_usd:      parseFloat(document.getElementById('pag-f-usd')?.value) || null,
+      observacoes:    document.getElementById('pag-f-obs')?.value || null,
+    }).eq('id', pagId);
+    if (error) throw error;
+    showToast('✅ Pagamento atualizado!');
+    fecharModalProcesso();
+    const pid = impProcessoAtual?.id;
+    await loadImportacao();
+    if (pid) { impProcessoAtual = impProcessos.find(x => x.id === pid); loadImpTabPagamentos(impProcessoAtual); }
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
 }
 
 async function removerPagamento(pagId) {
