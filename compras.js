@@ -354,6 +354,8 @@ function badgeABC(abc) {
 // LOAD ALL — CORRIGIDO: carrega fornecedores em paralelo
 // ═══════════════════════════════════════════════════════════
 async function loadAll() {
+  // Descarrega erros que ocorreram antes do sb estar pronto
+  _flushErrosFila();
   // Carregar ignorados primeiro (se ainda não carregou)
   if (!compIgnorados.length) {
     const { data } = await sb.from('comp_ignorados').select('*');
@@ -3183,19 +3185,34 @@ async function auditLog(modulo, acao, entidade, entidadeId, descricao, antes = n
   }
 }
 
-// Captura erros JS globais e grava em app_logs
-window.addEventListener('error', async (ev) => {
-  try {
-    const usuario = window.getUsuario?.()?.nome || 'desconhecido';
-    await sb.from('app_logs').insert({
-      nivel: 'ERROR', modulo: 'compras',
-      funcao: ev.filename ? ev.filename.split('/').pop() + ':' + ev.lineno : 'global',
-      mensagem: ev.message || 'Erro desconhecido',
-      detalhe: ev.error?.stack || '',
-      usuario, url: location.href, user_agent: navigator.userAgent
-    });
-  } catch(_) {}
+// Captura erros JS globais — fila para erros que ocorrem antes do sb inicializar
+const _errosFila = [];
+window.addEventListener('error', (ev) => {
+  const entry = {
+    nivel: 'ERROR', modulo: 'compras',
+    funcao: ev.filename ? ev.filename.split('/').pop() + ':' + ev.lineno : 'global',
+    mensagem: ev.message || 'Erro desconhecido',
+    detalhe: ev.error?.stack || '',
+    usuario: window.getUsuario?.()?.nome || 'desconhecido',
+    url: location.href,
+    user_agent: navigator.userAgent
+  };
+  const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+  if (client) {
+    client.from('app_logs').insert(entry).catch(() => {});
+  } else {
+    _errosFila.push(entry); // guarda na fila até sb estar pronto
+  }
 });
+
+// Descarrega a fila assim que sb estiver disponível
+function _flushErrosFila() {
+  if (!_errosFila.length) return;
+  const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
+  if (!client) return;
+  const fila = _errosFila.splice(0);
+  fila.forEach(e => client.from('app_logs').insert(e).catch(() => {}));
+}
 
 // ═══════════════════════════════════════════════════════════
 // CONFIGURAÇÕES — PRODUTOS IGNORADOS
