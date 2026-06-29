@@ -179,7 +179,71 @@ const PAGINAS_HTML = {
   <div class="drawer-overlay" id="forn-drawer-overlay" onclick="fecharFornDrawer()"></div>
   <div class="drawer" id="forn-drawer" style="width:720px"><div class="drawer-header"><div><div class="drawer-title" id="forn-drawer-nome">—</div><div class="drawer-sub" id="forn-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharFornDrawer()">✕</button></div><div style="padding:0 24px;border-bottom:1px solid var(--border)"><div class="drawer-tabs" style="border:none;margin:0"><div class="drawer-tab active" onclick="switchFornTab('resumo',this)">Resumo</div><div class="drawer-tab" onclick="switchFornTab('produtos',this)">Produtos</div><div class="drawer-tab" onclick="switchFornTab('historico',this)">Histórico</div></div></div><div class="drawer-body"><div class="drawer-tab-content active" id="forntab-resumo"></div><div class="drawer-tab-content" id="forntab-produtos"></div><div class="drawer-tab-content" id="forntab-historico"></div></div></div>`,
 
-  'cmp-chat': `
+  'cmp-config': `<div class="page-content" id="page-cmp-config">
+  <div class="content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <div style="font-size:15px;font-weight:700">Produtos Ignorados nos Alertas</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Grupos, subgrupos ou produtos que não aparecem na lista de alertas e reposição</div>
+      </div>
+    </div>
+
+    <!-- ABAS -->
+    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)">
+      <button class="drawer-tab active" id="cfg-tab-grupo"    onclick="setCfgTab('grupo',this)">Por Grupo</button>
+      <button class="drawer-tab"        id="cfg-tab-subgrupo" onclick="setCfgTab('subgrupo',this)">Por Subgrupo</button>
+      <button class="drawer-tab"        id="cfg-tab-produto"  onclick="setCfgTab('produto',this)">Por Produto</button>
+    </div>
+
+    <!-- ABA GRUPO -->
+    <div id="cfg-panel-grupo">
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <select id="cfg-sel-grupo" class="filter-select" style="flex:1;height:36px">
+          <option value="">Selecione um grupo...</option>
+        </select>
+        <button class="btn btn-primary" style="height:36px" onclick="cfgAdicionarGrupo()">+ Ignorar Grupo</button>
+      </div>
+      <div class="table-card"><table class="data-table"><thead><tr><th>Grupo</th><th style="width:60px"></th></tr></thead>
+        <tbody id="cfg-lista-grupo"><tr class="loading-row"><td colspan="2">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <!-- ABA SUBGRUPO -->
+    <div id="cfg-panel-subgrupo" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
+        <select id="cfg-sel-subgrupo-grupo" class="filter-select" style="height:36px" onchange="cfgAtualizaSubgrupos()">
+          <option value="">Filtrar por grupo...</option>
+        </select>
+        <select id="cfg-sel-subgrupo" class="filter-select" style="flex:1;height:36px">
+          <option value="">Selecione um subgrupo...</option>
+        </select>
+        <button class="btn btn-primary" style="height:36px" onclick="cfgAdicionarSubgrupo()">+ Ignorar Subgrupo</button>
+      </div>
+      <div class="table-card"><table class="data-table"><thead><tr><th>Subgrupo</th><th style="width:60px"></th></tr></thead>
+        <tbody id="cfg-lista-subgrupo"><tr class="loading-row"><td colspan="2">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+
+    <!-- ABA PRODUTO -->
+    <div id="cfg-panel-produto" style="display:none">
+      <div style="margin-bottom:12px">
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input id="cfg-busca-produto" class="search-input" style="flex:1;width:auto" placeholder="Digite referência ou nome do produto..." oninput="cfgBuscarProdutos(this.value)">
+          <button class="btn btn-outline" style="height:34px;font-size:12px" onclick="cfgMarcarTodos()">Marcar todos</button>
+        </div>
+        <div id="cfg-resultado-produtos" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:280px;overflow-y:auto;display:none"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px">
+          <button class="btn btn-primary" style="height:34px" onclick="cfgAdicionarProdutosSelecionados()">+ Ignorar Selecionados</button>
+        </div>
+      </div>
+      <div class="table-card"><table class="data-table"><thead><tr><th>Ref.</th><th>Produto</th><th style="width:60px"></th></tr></thead>
+        <tbody id="cfg-lista-produto"><tr class="loading-row"><td colspan="3">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>`,
+
+  'cmp-chat': \`
   <div class="chat-overlay" id="chat-overlay" onclick="fecharChat()"></div>
   <div class="chat-panel" id="chat-panel">
     <div class="chat-header"><div><div class="chat-header-title">✦ Assistente de Compras</div><div class="chat-header-sub">Powered by Claude · Bononi Acessórios</div></div><button onclick="fecharChat()" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;width:28px;height:28px;color:#fff;cursor:pointer;font-size:14px">✕</button></div>
@@ -255,6 +319,11 @@ function badgeABC(abc) {
 // LOAD ALL — CORRIGIDO: carrega fornecedores em paralelo
 // ═══════════════════════════════════════════════════════════
 async function loadAll() {
+  // Carregar ignorados primeiro (se ainda não carregou)
+  if (!compIgnorados.length) {
+    const { data } = await sb.from('comp_ignorados').select('*');
+    compIgnorados = data || [];
+  }
   await Promise.all([loadAlertas(), loadFornProdCache()]);
   popularFiltroFornecedores();
   atualizarBadgeSidebar();
@@ -473,7 +542,13 @@ function renderAlertas() {
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
   const sit = filtroSituacaoAtivo;
-  let dados = [...alertasConsolidado];
+  // Filtrar produtos ignorados (grupo, subgrupo ou produto individual)
+  let dados = alertasConsolidado.filter(r => {
+    if (compIgnorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
+    if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
+    if (compIgnorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
+    return true;
+  });
   if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
   if (grupo) dados = dados.filter(r => r.grupo === grupo);
   if (subgrupo) dados = dados.filter(r => r.subgrupo === subgrupo);
@@ -1874,6 +1949,7 @@ async function exportarBalancoCsv(sessaoId) {
 // ═══════════════════════════════════════════════════════════
 let impProcessos = [];
 let impViewAtual = 'kanban';
+let compIgnorados = []; // {tipo, valor, id_produto, nome}
 let impMostrarConcluidos = false;
 let impProcessoAtual = null;
 
@@ -3033,7 +3109,169 @@ const CMP_PAGE_LOADERS = {
   'cmp-balanco':      () => loadBalanco(),
   'cmp-importacao':   () => loadImportacao(),
   'cmp-fornecedores': () => loadFornecedores(),
+  'cmp-config':       () => loadConfiguracoes(),
 };
+
+// ═══════════════════════════════════════════════════════════
+// CONFIGURAÇÕES — PRODUTOS IGNORADOS
+// ═══════════════════════════════════════════════════════════
+
+let _cfgTabAtual = 'grupo';
+let _cfgResultados = []; // produtos encontrados na busca
+let _cfgSelecionados = new Set(); // ids selecionados para ignorar
+
+async function loadConfiguracoes() {
+  // Carrega ignorados do banco
+  const { data } = await sb.from('comp_ignorados').select('*').order('criado_em', { ascending: false });
+  compIgnorados = data || [];
+
+  // Popula selects de grupo/subgrupo a partir dos dados já carregados
+  const grupos = [...new Set(alertasConsolidado.map(r => r.grupo).filter(Boolean))].sort();
+  const subgrupos = [...new Set(alertasConsolidado.map(r => r.subgrupo).filter(Boolean))].sort();
+
+  const selG = document.getElementById('cfg-sel-grupo');
+  if (selG) selG.innerHTML = '<option value="">Selecione um grupo...</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+
+  const selSG = document.getElementById('cfg-sel-subgrupo-grupo');
+  if (selSG) selSG.innerHTML = '<option value="">Filtrar por grupo...</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+
+  const selSub = document.getElementById('cfg-sel-subgrupo');
+  if (selSub) selSub.innerHTML = '<option value="">Selecione um subgrupo...</option>' + subgrupos.map(s => `<option value="${s}">${s}</option>`).join('');
+
+  renderCfgListas();
+}
+
+function setCfgTab(tab, btn) {
+  _cfgTabAtual = tab;
+  ['grupo','subgrupo','produto'].forEach(t => {
+    document.getElementById(`cfg-panel-${t}`).style.display = t === tab ? 'block' : 'none';
+    document.getElementById(`cfg-tab-${t}`).classList.toggle('active', t === tab);
+  });
+}
+
+function cfgAtualizaSubgrupos() {
+  const grupo = document.getElementById('cfg-sel-subgrupo-grupo')?.value;
+  const dados = grupo ? alertasConsolidado.filter(r => r.grupo === grupo) : alertasConsolidado;
+  const subs = [...new Set(dados.map(r => r.subgrupo).filter(Boolean))].sort();
+  const sel = document.getElementById('cfg-sel-subgrupo');
+  if (sel) sel.innerHTML = '<option value="">Selecione um subgrupo...</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function renderCfgListas() {
+  // Lista grupos ignorados
+  const tbG = document.getElementById('cfg-lista-grupo');
+  const grupos = compIgnorados.filter(x => x.tipo === 'grupo');
+  if (tbG) tbG.innerHTML = grupos.length
+    ? grupos.map(x => `<tr><td>${x.valor}</td><td><button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">✕</button></td></tr>`).join('')
+    : '<tr class="loading-row"><td colspan="2">Nenhum grupo ignorado</td></tr>';
+
+  // Lista subgrupos ignorados
+  const tbS = document.getElementById('cfg-lista-subgrupo');
+  const subs = compIgnorados.filter(x => x.tipo === 'subgrupo');
+  if (tbS) tbS.innerHTML = subs.length
+    ? subs.map(x => `<tr><td>${x.valor}</td><td><button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">✕</button></td></tr>`).join('')
+    : '<tr class="loading-row"><td colspan="2">Nenhum subgrupo ignorado</td></tr>';
+
+  // Lista produtos ignorados
+  const tbP = document.getElementById('cfg-lista-produto');
+  const prods = compIgnorados.filter(x => x.tipo === 'produto');
+  if (tbP) tbP.innerHTML = prods.length
+    ? prods.map(x => `<tr><td class="mono" style="font-size:12px">${x.valor}</td><td>${x.nome||''}</td><td><button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">✕</button></td></tr>`).join('')
+    : '<tr class="loading-row"><td colspan="3">Nenhum produto ignorado</td></tr>';
+}
+
+async function cfgAdicionarGrupo() {
+  const val = document.getElementById('cfg-sel-grupo')?.value;
+  if (!val) return showToast('Selecione um grupo', 'error');
+  if (compIgnorados.find(x => x.tipo === 'grupo' && x.valor === val)) return showToast('Já ignorado', 'error');
+  const { error } = await sb.from('comp_ignorados').insert({ tipo: 'grupo', valor: val, nome: val, criado_por: window.getUsuario?.()?.nome || '' });
+  if (error) return showToast('Erro ao salvar', 'error');
+  await loadConfiguracoes();
+  showToast('Grupo ignorado com sucesso', 'success');
+}
+
+async function cfgAdicionarSubgrupo() {
+  const val = document.getElementById('cfg-sel-subgrupo')?.value;
+  if (!val) return showToast('Selecione um subgrupo', 'error');
+  if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === val)) return showToast('Já ignorado', 'error');
+  const { error } = await sb.from('comp_ignorados').insert({ tipo: 'subgrupo', valor: val, nome: val, criado_por: window.getUsuario?.()?.nome || '' });
+  if (error) return showToast('Erro ao salvar', 'error');
+  await loadConfiguracoes();
+  showToast('Subgrupo ignorado com sucesso', 'success');
+}
+
+function cfgBuscarProdutos(busca) {
+  _cfgSelecionados.clear();
+  const div = document.getElementById('cfg-resultado-produtos');
+  if (!div) return;
+  if (!busca || busca.length < 2) { div.style.display = 'none'; div.innerHTML = ''; _cfgResultados = []; return; }
+  const q = busca.toLowerCase();
+  _cfgResultados = alertasConsolidado.filter(r =>
+    !compIgnorados.find(x => x.tipo === 'produto' && x.id_produto === r.id_produto) &&
+    ((r.referencia||'').toLowerCase().includes(q) || (r.nome||'').toLowerCase().includes(q))
+  ).slice(0, 80);
+  if (!_cfgResultados.length) {
+    div.style.display = 'block';
+    div.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text-muted)">Nenhum produto encontrado</div>';
+    return;
+  }
+  div.style.display = 'block';
+  div.innerHTML = `
+    <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface)">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600">
+        <input type="checkbox" id="cfg-check-todos" onchange="cfgMarcarTodos(this.checked)" />
+        Marcar todos (${_cfgResultados.length})
+      </label>
+    </div>` +
+    _cfgResultados.map(r => `
+    <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
+      <input type="checkbox" data-id="${r.id_produto}" onchange="cfgToggleProduto(${r.id_produto})" ${_cfgSelecionados.has(r.id_produto)?'checked':''} />
+      <span class="mono" style="font-size:11px;color:var(--text-muted);min-width:60px">${r.referencia||''}</span>
+      <span style="flex:1">${r.nome||''}</span>
+      <span style="font-size:11px;color:var(--text-muted)">${r.grupo||''}</span>
+    </label>`).join('');
+}
+
+function cfgMarcarTodos(checked) {
+  const chk = document.getElementById('cfg-check-todos');
+  const estado = checked !== undefined ? checked : (chk ? !chk.checked : true);
+  if (chk) chk.checked = estado;
+  _cfgResultados.forEach(r => {
+    const el = document.querySelector(`input[data-id="${r.id_produto}"]`);
+    if (el) el.checked = estado;
+    if (estado) _cfgSelecionados.add(r.id_produto);
+    else _cfgSelecionados.delete(r.id_produto);
+  });
+}
+
+function cfgToggleProduto(id) {
+  if (_cfgSelecionados.has(id)) _cfgSelecionados.delete(id);
+  else _cfgSelecionados.add(id);
+}
+
+async function cfgAdicionarProdutosSelecionados() {
+  if (!_cfgSelecionados.size) return showToast('Selecione ao menos um produto', 'error');
+  const inserir = [];
+  _cfgSelecionados.forEach(id => {
+    const prod = _cfgResultados.find(r => r.id_produto === id);
+    if (prod) inserir.push({ tipo: 'produto', valor: prod.referencia || String(id), id_produto: id, nome: prod.nome || '', criado_por: window.getUsuario?.()?.nome || '' });
+  });
+  const { error } = await sb.from('comp_ignorados').upsert(inserir, { onConflict: 'tipo,valor' });
+  if (error) return showToast('Erro ao salvar', 'error');
+  _cfgSelecionados.clear();
+  document.getElementById('cfg-busca-produto').value = '';
+  document.getElementById('cfg-resultado-produtos').style.display = 'none';
+  await loadConfiguracoes();
+  showToast(`${inserir.length} produto(s) ignorado(s)`, 'success');
+}
+
+async function cfgRemover(id) {
+  const { error } = await sb.from('comp_ignorados').delete().eq('id', id);
+  if (error) return showToast('Erro ao remover', 'error');
+  compIgnorados = compIgnorados.filter(x => x.id !== id);
+  renderCfgListas();
+  showToast('Removido', 'success');
+}
 
 // ═══════════════════════════════════════════════════════════
 // EXPORTS GLOBAIS
