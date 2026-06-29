@@ -3514,6 +3514,19 @@ window.abrirHistoricoSugestoes = abrirHistoricoSugestoes;
 window.fecharHistoricoSugestoes = fecharHistoricoSugestoes;
 window.renderPreviewProdutos  = renderPreviewProdutos;
 
+// Configurações
+window.setCfgTab                    = setCfgTab;
+window.cfgAtualizaSubgrupos         = cfgAtualizaSubgrupos;
+window.cfgAdicionarGrupo            = cfgAdicionarGrupo;
+window.cfgAdicionarSubgrupo         = cfgAdicionarSubgrupo;
+window.cfgBuscarProdutos            = cfgBuscarProdutos;
+window.cfgMarcarTodos               = cfgMarcarTodos;
+window.cfgToggleProduto             = cfgToggleProduto;
+window.cfgAdicionarProdutosSelecionados = cfgAdicionarProdutosSelecionados;
+window.cfgRemover                   = cfgRemover;
+window.loadCfgLogs                  = loadCfgLogs;
+window.cfgToggleResolvido           = cfgToggleResolvido;
+
 window.ModuloCompras = {
   showPage(paginaId, container, usuario, filtros) {
     _container = container;
