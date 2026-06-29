@@ -141,7 +141,7 @@ const PAGINAS_HTML = {
 
   'cmp-importacao': `<div class="page-content" id="page-cmp-importacao">
     <div class="cards-grid cards-grid-4"><div class="card"><div class="card-label">Em Produção</div><div class="card-value blue" id="imp-kpi-producao">—</div></div><div class="card"><div class="card-label">Em Transporte</div><div class="card-value" id="imp-kpi-transporte">—</div></div><div class="card"><div class="card-label">A Pagar Fornec.</div><div class="card-value orange" id="imp-kpi-apagar">—</div><div class="card-sub" id="imp-kpi-apagar-sub">—</div></div><div class="card"><div class="card-label">Chegada Próxima</div><div class="card-value" style="font-size:16px" id="imp-kpi-proxima">—</div><div class="card-sub" id="imp-kpi-proxima-forn">—</div></div></div>
-    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)">📦 Produtos</button></div><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)">📦 Produtos</button></div><button id="btn-concluidos" class="btn btn-outline" style="height:32px;font-size:12px" onclick="impMostrarConcluidos=!impMostrarConcluidos;this.style.background=impMostrarConcluidos?'var(--green)':''  ;this.style.color=impMostrarConcluidos?'#fff':''  ;this.textContent=impMostrarConcluidos?'✓ Concluídos':'Concluídos';renderImportacao()">Concluídos</button><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
     <div id="imp-kanban" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px"></div>
     <div id="imp-lista" style="display:none"><div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Fornecedor</th><th>Importadora</th><th>Status</th><th class="right">Pedidos</th><th class="right">Chegada Prev.</th><th class="right">Total USD</th><th class="right">Pago BRL</th><th class="right">A Pagar Forn.</th><th></th></tr></thead><tbody id="imp-lista-body"></tbody></table></div></div></div>
     <div id="imp-produtos" style="display:none">
@@ -1874,6 +1874,7 @@ async function exportarBalancoCsv(sessaoId) {
 // ═══════════════════════════════════════════════════════════
 let impProcessos = [];
 let impViewAtual = 'kanban';
+let impMostrarConcluidos = false;
 let impProcessoAtual = null;
 
 const IMP_STATUS = {
@@ -2067,9 +2068,20 @@ function renderImpProdutos() {
 function renderImpKanban() {
   const kanban = document.getElementById('imp-kanban');
   if (!kanban) return;
-  kanban.innerHTML = IMP_STATUS_ORDER.map(status => {
+  const statusKanban = impMostrarConcluidos ? IMP_STATUS_ORDER : IMP_STATUS_ORDER.filter(s => s !== 'CONCLUIDA');
+  kanban.innerHTML = statusKanban.map(status => {
     const { label, color, bg } = IMP_STATUS[status];
-    const procs = impProcessos.filter(p => p.status === status);
+    const procsRaw = impProcessos.filter(p => p.status === status);
+    // Ordenação: data_prev_chegada ASC, sem data vai por criado_em ASC
+    const procs = procsRaw.slice().sort((a, b) => {
+      const da = a.data_prev_chegada || null;
+      const db = b.data_prev_chegada || null;
+      if (da && db) return da.localeCompare(db);
+      if (da) return -1; // com data primeiro
+      if (db) return 1;
+      // ambos sem data: criado_em
+      return (a.criado_em||'').localeCompare(b.criado_em||'');
+    });
     const cards = procs.map(p => {
       const aPagarForn = parseFloat(p.total_a_pagar_fornecedor_brl || p.total_a_pagar_brl || 0);
       const quitado = p.quitado_fornecedor === true;
