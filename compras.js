@@ -189,7 +189,7 @@ const PAGINAS_HTML = {
     <!-- ABAS -->
     <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border)">
       <button class="drawer-tab active" id="cfg-tab-ignorar" onclick="setCfgTab('ignorar',this)">➕ Ignorar Produtos</button>
-      <button class="drawer-tab" id="cfg-tab-lista" onclick="setCfgTab('lista',this);renderCfgTabela()">📋 Ignorados (${compIgnorados.length})</button>
+      <button class="drawer-tab" id="cfg-tab-lista" onclick="setCfgTab('lista',this);renderCfgTabela()">📋 Ignorados</button>
       <button class="drawer-tab" id="cfg-tab-logs" onclick="setCfgTab('logs',this);loadCfgLogs()">🔍 Logs</button>
     </div>
 
