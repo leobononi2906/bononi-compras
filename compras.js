@@ -193,6 +193,7 @@ const PAGINAS_HTML = {
       <button class="drawer-tab active" id="cfg-tab-grupo"    onclick="setCfgTab('grupo',this)">Por Grupo</button>
       <button class="drawer-tab"        id="cfg-tab-subgrupo" onclick="setCfgTab('subgrupo',this)">Por Subgrupo</button>
       <button class="drawer-tab"        id="cfg-tab-produto"  onclick="setCfgTab('produto',this)">Por Produto</button>
+      <button class="drawer-tab"        id="cfg-tab-logs"     onclick="setCfgTab('logs',this);loadCfgLogs()">📋 Logs</button>
     </div>
 
     <!-- ABA GRUPO -->
@@ -240,10 +241,39 @@ const PAGINAS_HTML = {
         <tbody id="cfg-lista-produto"><tr class="loading-row"><td colspan="3">Carregando...</td></tr></tbody>
       </table></div>
     </div>
+
+    <!-- ABA LOGS -->
+    <div id="cfg-panel-logs" style="display:none">
+      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <select id="cfg-log-tipo" class="filter-select" style="height:34px" onchange="loadCfgLogs()">
+          <option value="audit">Auditoria (alterações)</option>
+          <option value="erros">Erros do sistema</option>
+        </select>
+        <select id="cfg-log-modulo" class="filter-select" style="height:34px" onchange="loadCfgLogs()">
+          <option value="">Todos os módulos</option>
+          <option value="importacao">Importação</option>
+          <option value="balanco">Balanço</option>
+          <option value="compras">Compras</option>
+          <option value="pagamentos">Pagamentos</option>
+          <option value="configuracoes">Configurações</option>
+        </select>
+        <input id="cfg-log-usuario" class="search-input" style="height:34px;width:160px" placeholder="Filtrar usuário..." oninput="loadCfgLogs()">
+        <button class="btn btn-outline" style="height:34px;font-size:12px" onclick="loadCfgLogs()">↺ Atualizar</button>
+        <span id="cfg-log-count" style="font-size:12px;color:var(--text-muted);margin-left:auto"></span>
+      </div>
+      <div class="table-card">
+        <div style="overflow-x:auto;max-height:520px;overflow-y:auto">
+          <table class="data-table">
+            <thead id="cfg-log-thead"></thead>
+            <tbody id="cfg-log-body"><tr class="loading-row"><td colspan="6">Selecione um tipo de log</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 </div>`,
 
-  'cmp-chat': \`
+  'cmp-chat': `
   <div class="chat-overlay" id="chat-overlay" onclick="fecharChat()"></div>
   <div class="chat-panel" id="chat-panel">
     <div class="chat-header"><div><div class="chat-header-title">✦ Assistente de Compras</div><div class="chat-header-sub">Powered by Claude · Bononi Acessórios</div></div><button onclick="fecharChat()" style="background:rgba(255,255,255,0.15);border:none;border-radius:6px;width:28px;height:28px;color:#fff;cursor:pointer;font-size:14px">✕</button></div>
@@ -2236,6 +2266,9 @@ async function salvarPrevChegada(processoId, novaData, elSpan, elInput) {
       elSpan.style.display = '';
     }
     if (elInput) elInput.style.display = 'none';
+    auditLog('importacao','UPDATE','import_processos', processoId,
+      `Alterou previsão de chegada para ${novaData ? fmtData(novaData) : 'sem data'}`,
+      { data_prev_chegada: p?.data_prev_chegada }, { data_prev_chegada: novaData });
     renderImportacao();
     showToast('Previsão de chegada atualizada', 'success');
   } catch(e) {
@@ -2264,6 +2297,8 @@ async function salvarObservacoes(processoId, texto) {
         : '';
       cardObs.style.display = linhas.length ? 'block' : 'none';
     }
+    auditLog('importacao','UPDATE','import_processos', processoId,
+      `Atualizou observações do processo`);
     showToast('Observações salvas', 'success');
   } catch(e) {
     showToast('Erro ao salvar observações', 'error');
@@ -3126,6 +3161,38 @@ const CMP_PAGE_LOADERS = {
 };
 
 // ═══════════════════════════════════════════════════════════
+// AUDITORIA — registra toda ação do sistema
+// ═══════════════════════════════════════════════════════════
+async function auditLog(modulo, acao, entidade, entidadeId, descricao, antes = null, depois = null) {
+  try {
+    const usuario = window.getUsuario?.()?.nome || 'desconhecido';
+    await sb.from('comp_audit_log').insert({
+      usuario, modulo, acao, entidade,
+      entidade_id: String(entidadeId || ''),
+      descricao,
+      antes: antes ? antes : null,
+      depois: depois ? depois : null
+    });
+  } catch(e) {
+    console.warn('auditLog falhou:', e);
+  }
+}
+
+// Captura erros JS globais e grava em app_logs
+window.addEventListener('error', async (ev) => {
+  try {
+    const usuario = window.getUsuario?.()?.nome || 'desconhecido';
+    await sb.from('app_logs').insert({
+      nivel: 'ERROR', modulo: 'compras',
+      funcao: ev.filename ? ev.filename.split('/').pop() + ':' + ev.lineno : 'global',
+      mensagem: ev.message || 'Erro desconhecido',
+      detalhe: ev.error?.stack || '',
+      usuario, url: location.href, user_agent: navigator.userAgent
+    });
+  } catch(_) {}
+});
+
+// ═══════════════════════════════════════════════════════════
 // CONFIGURAÇÕES — PRODUTOS IGNORADOS
 // ═══════════════════════════════════════════════════════════
 
@@ -3156,9 +3223,11 @@ async function loadConfiguracoes() {
 
 function setCfgTab(tab, btn) {
   _cfgTabAtual = tab;
-  ['grupo','subgrupo','produto'].forEach(t => {
-    document.getElementById(`cfg-panel-${t}`).style.display = t === tab ? 'block' : 'none';
-    document.getElementById(`cfg-tab-${t}`).classList.toggle('active', t === tab);
+  ['grupo','subgrupo','produto','logs'].forEach(t => {
+    const panel = document.getElementById(`cfg-panel-${t}`);
+    const tabEl = document.getElementById(`cfg-tab-${t}`);
+    if (panel) panel.style.display = t === tab ? 'block' : 'none';
+    if (tabEl) tabEl.classList.toggle('active', t === tab);
   });
 }
 
@@ -3200,6 +3269,7 @@ async function cfgAdicionarGrupo() {
   const { error } = await sb.from('comp_ignorados').insert({ tipo: 'grupo', valor: val, nome: val, criado_por: window.getUsuario?.()?.nome || '' });
   if (error) return showToast('Erro ao salvar', 'error');
   await loadConfiguracoes();
+  auditLog('configuracoes','INSERT','comp_ignorados','',`Adicionou grupo ignorado: ${val}`);
   showToast('Grupo ignorado com sucesso', 'success');
 }
 
@@ -3278,11 +3348,83 @@ async function cfgAdicionarProdutosSelecionados() {
   showToast(`${inserir.length} produto(s) ignorado(s)`, 'success');
 }
 
+async function loadCfgLogs() {
+  const tipo    = document.getElementById('cfg-log-tipo')?.value || 'audit';
+  const modulo  = document.getElementById('cfg-log-modulo')?.value || '';
+  const usuario = (document.getElementById('cfg-log-usuario')?.value || '').trim().toLowerCase();
+  const thead   = document.getElementById('cfg-log-thead');
+  const tbody   = document.getElementById('cfg-log-body');
+  const count   = document.getElementById('cfg-log-count');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Carregando...</td></tr>';
+
+  try {
+    if (tipo === 'audit') {
+      if (thead) thead.innerHTML = '<tr><th>Data/Hora</th><th>Usuário</th><th>Módulo</th><th>Ação</th><th style="min-width:260px">Descrição</th><th></th></tr>';
+      let q = sb.from('comp_audit_log').select('*').order('criado_em', { ascending: false }).range(0, 199);
+      if (modulo) q = q.eq('modulo', modulo);
+      const { data } = await q;
+      let rows = data || [];
+      if (usuario) rows = rows.filter(r => (r.usuario||'').toLowerCase().includes(usuario));
+      if (count) count.textContent = `${rows.length} registros`;
+      tbody.innerHTML = rows.length
+        ? rows.map(r => `<tr>
+            <td class="mono" style="font-size:11px;white-space:nowrap">${new Date(r.criado_em).toLocaleString('pt-BR')}</td>
+            <td style="font-size:12px;font-weight:600">${r.usuario||'—'}</td>
+            <td><span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:2px 6px;border-radius:4px">${r.modulo||'—'}</span></td>
+            <td><span style="font-size:10px;background:${r.acao==='DELETE'?'#fee2e2':r.acao==='INSERT'?'#dcfce7':'#fef9c3'};color:${r.acao==='DELETE'?'var(--red)':r.acao==='INSERT'?'var(--green)':'#92400e'};padding:2px 6px;border-radius:4px;font-weight:600">${r.acao||'—'}</span></td>
+            <td style="font-size:12px">${r.descricao||'—'}</td>
+            <td style="font-size:11px;color:var(--text-muted)">${r.entidade_id||''}</td>
+          </tr>`).join('')
+        : '<tr class="loading-row"><td colspan="6">Nenhum registro encontrado</td></tr>';
+
+    } else {
+      // Erros — app_logs
+      if (thead) thead.innerHTML = '<tr><th>Data/Hora</th><th>Usuário</th><th>Módulo</th><th>Função</th><th style="min-width:260px">Mensagem</th><th>Status</th></tr>';
+      let q = sb.from('app_logs').select('*').eq('nivel','ERROR').order('criado_em', { ascending: false }).range(0, 199);
+      if (modulo) q = q.eq('modulo', modulo);
+      const { data } = await q;
+      let rows = data || [];
+      if (usuario) rows = rows.filter(r => (r.usuario||'').toLowerCase().includes(usuario));
+      if (count) count.textContent = `${rows.length} erros`;
+      tbody.innerHTML = rows.length
+        ? rows.map(r => `<tr>
+            <td class="mono" style="font-size:11px;white-space:nowrap">${new Date(r.criado_em).toLocaleString('pt-BR')}</td>
+            <td style="font-size:12px">${r.usuario||'—'}</td>
+            <td><span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:2px 6px;border-radius:4px">${r.modulo||'—'}</span></td>
+            <td style="font-size:11px;color:var(--text-muted)">${r.funcao||'—'}</td>
+            <td style="font-size:12px;color:var(--red)">${r.mensagem||'—'}</td>
+            <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${r.resolvido?'#dcfce7':'#fee2e2'};color:${r.resolvido?'var(--green)':'var(--red)'};cursor:pointer" onclick="cfgToggleResolvido(${r.id},${!!r.resolvido},this)">${r.resolvido?'✓ Resolvido':'Aberto'}</span></td>
+          </tr>`).join('')
+        : '<tr class="loading-row"><td colspan="6">Nenhum erro registrado 🎉</td></tr>';
+    }
+  } catch(e) {
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="6" style="color:var(--red)">Erro ao carregar: ${e.message}</td></tr>`;
+  }
+}
+
+async function cfgToggleResolvido(id, atual, el) {
+  const novo = !atual;
+  const { error } = await sb.from('app_logs').update({
+    resolvido: novo,
+    resolvido_em: novo ? new Date().toISOString() : null,
+    resolvido_por: window.getUsuario?.()?.nome || ''
+  }).eq('id', id);
+  if (error) return showToast('Erro ao atualizar', 'error');
+  el.textContent = novo ? '✓ Resolvido' : 'Aberto';
+  el.style.background = novo ? '#dcfce7' : '#fee2e2';
+  el.style.color = novo ? 'var(--green)' : 'var(--red)';
+  // Atualiza closure
+  el.onclick = () => cfgToggleResolvido(id, novo, el);
+}
+
 async function cfgRemover(id) {
   const { error } = await sb.from('comp_ignorados').delete().eq('id', id);
   if (error) return showToast('Erro ao remover', 'error');
+  const removido = compIgnorados.find(x => x.id === id);
   compIgnorados = compIgnorados.filter(x => x.id !== id);
   renderCfgListas();
+  auditLog('configuracoes','DELETE','comp_ignorados',id,`Removeu ignorado: ${removido?.nome||removido?.valor||id}`);
   showToast('Removido', 'success');
 }
 
