@@ -189,57 +189,32 @@ const PAGINAS_HTML = {
     </div>
 
     <!-- ABAS -->
-    <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border)">
-      <button class="drawer-tab active" id="cfg-tab-grupo"    onclick="setCfgTab('grupo',this)">Por Grupo</button>
-      <button class="drawer-tab"        id="cfg-tab-subgrupo" onclick="setCfgTab('subgrupo',this)">Por Subgrupo</button>
-      <button class="drawer-tab"        id="cfg-tab-produto"  onclick="setCfgTab('produto',this)">Por Produto</button>
-      <button class="drawer-tab"        id="cfg-tab-logs"     onclick="setCfgTab('logs',this);loadCfgLogs()">📋 Logs</button>
+    <div style="display:flex;gap:0;margin-bottom:20px;border-bottom:2px solid var(--border)">
+      <button class="drawer-tab active" id="cfg-tab-arvore" onclick="setCfgTab('arvore',this)">🌳 Árvore de Produtos</button>
+      <button class="drawer-tab" id="cfg-tab-logs" onclick="setCfgTab('logs',this);loadCfgLogs()">📋 Logs</button>
     </div>
 
-    <!-- ABA GRUPO -->
-    <div id="cfg-panel-grupo">
-      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-        <select id="cfg-sel-grupo" class="filter-select" style="flex:1;height:36px">
-          <option value="">Selecione um grupo...</option>
-        </select>
-        <button class="btn btn-primary" style="height:36px" onclick="cfgAdicionarGrupo()">+ Ignorar Grupo</button>
+    <!-- ABA ÁRVORE -->
+    <div id="cfg-panel-arvore">
+      <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+        <input id="cfg-busca-arvore" class="search-input" style="flex:1;width:auto;height:34px" placeholder="Buscar grupo, subgrupo ou produto..." oninput="cfgFiltrarArvore(this.value)">
+        <button class="btn btn-outline" style="height:34px;font-size:12px" onclick="cfgExpandirTodos()">Expandir tudo</button>
+        <button class="btn btn-outline" style="height:34px;font-size:12px" onclick="cfgRecolherTodos()">Recolher tudo</button>
       </div>
-      <div class="table-card"><table class="data-table"><thead><tr><th>Grupo</th><th style="width:60px"></th></tr></thead>
-        <tbody id="cfg-lista-grupo"><tr class="loading-row"><td colspan="2">Carregando...</td></tr></tbody>
-      </table></div>
-    </div>
-
-    <!-- ABA SUBGRUPO -->
-    <div id="cfg-panel-subgrupo" style="display:none">
-      <div style="display:flex;gap:8px;margin-bottom:12px;align-items:center">
-        <select id="cfg-sel-subgrupo-grupo" class="filter-select" style="height:36px" onchange="cfgAtualizaSubgrupos()">
-          <option value="">Filtrar por grupo...</option>
-        </select>
-        <select id="cfg-sel-subgrupo" class="filter-select" style="flex:1;height:36px">
-          <option value="">Selecione um subgrupo...</option>
-        </select>
-        <button class="btn btn-primary" style="height:36px" onclick="cfgAdicionarSubgrupo()">+ Ignorar Subgrupo</button>
+      <div id="cfg-arvore-container" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+        <div style="text-align:center;padding:32px;color:var(--text-muted)">Carregando...</div>
       </div>
-      <div class="table-card"><table class="data-table"><thead><tr><th>Subgrupo</th><th style="width:60px"></th></tr></thead>
-        <tbody id="cfg-lista-subgrupo"><tr class="loading-row"><td colspan="2">Carregando...</td></tr></tbody>
-      </table></div>
-    </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn btn-primary" style="height:34px" onclick="cfgIgnorarSelecionados()">+ Ignorar Selecionados</button>
+      </div>
 
-    <!-- ABA PRODUTO -->
-    <div id="cfg-panel-produto" style="display:none">
-      <div style="margin-bottom:12px">
-        <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input id="cfg-busca-produto" class="search-input" style="flex:1;width:auto" placeholder="Digite referência ou nome do produto..." oninput="cfgBuscarProdutos(this.value)">
-          <button class="btn btn-outline" style="height:34px;font-size:12px" onclick="cfgMarcarTodos()">Marcar todos</button>
-        </div>
-        <div id="cfg-resultado-produtos" style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);max-height:280px;overflow-y:auto;display:none"></div>
-        <div style="display:flex;justify-content:flex-end;margin-top:8px">
-          <button class="btn btn-primary" style="height:34px" onclick="cfgAdicionarProdutosSelecionados()">+ Ignorar Selecionados</button>
+      <!-- Lista do que já está ignorado -->
+      <div style="margin-top:24px;border-top:1px solid var(--border);padding-top:16px">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px">Atualmente ignorados <span id="cfg-ignorados-count" style="font-size:11px;color:var(--text-muted);font-weight:400"></span></div>
+        <div id="cfg-ignorados-lista" style="display:flex;flex-wrap:wrap;gap:8px">
+          <span style="color:var(--text-muted);font-size:13px">Carregando...</span>
         </div>
       </div>
-      <div class="table-card"><table class="data-table"><thead><tr><th>Ref.</th><th>Produto</th><th style="width:60px"></th></tr></thead>
-        <tbody id="cfg-lista-produto"><tr class="loading-row"><td colspan="3">Carregando...</td></tr></tbody>
-      </table></div>
     </div>
 
     <!-- ABA LOGS -->
@@ -272,7 +247,6 @@ const PAGINAS_HTML = {
     </div>
   </div>
 </div>`,
-
   'cmp-chat': `
   <div class="chat-overlay" id="chat-overlay" onclick="fecharChat()"></div>
   <div class="chat-panel" id="chat-panel">
@@ -3196,156 +3170,250 @@ window.addEventListener('error', async (ev) => {
 // CONFIGURAÇÕES — PRODUTOS IGNORADOS
 // ═══════════════════════════════════════════════════════════
 
-let _cfgTabAtual = 'grupo';
-let _cfgResultados = []; // produtos encontrados na busca
-let _cfgSelecionados = new Set(); // ids selecionados para ignorar
+let _cfgTabAtual = 'arvore';
+let _cfgSelecionados = new Set(); // "grupo:FERRAGENS" | "subgrupo:PARAFUSOS" | "produto:123"
+let _cfgArvoreData = [];  // [{grupo, subgrupos:[{subgrupo, produtos:[...]}]}]
+let _cfgBuscaAtiva = '';
 
 async function loadConfiguracoes() {
-  // Carrega ignorados do banco
   const { data } = await sb.from('comp_ignorados').select('*').order('criado_em', { ascending: false });
   compIgnorados = data || [];
+  _cfgSelecionados.clear();
+  _cfgBuscaAtiva = '';
+  const inp = document.getElementById('cfg-busca-arvore');
+  if (inp) inp.value = '';
+  cfgConstruirArvore();
+  renderCfgIgnoradosLista();
+}
 
-  // Popula selects de grupo/subgrupo a partir dos dados já carregados
-  const grupos = [...new Set(alertasConsolidado.map(r => r.grupo).filter(Boolean))].sort();
-  const subgrupos = [...new Set(alertasConsolidado.map(r => r.subgrupo).filter(Boolean))].sort();
+function cfgConstruirArvore() {
+  // Agrupa alertasConsolidado em grupo > subgrupo > produtos
+  // Exclui o que já está ignorado completamente (grupo ou subgrupo inteiro)
+  const gruposIgn    = new Set(compIgnorados.filter(x=>x.tipo==='grupo').map(x=>x.valor));
+  const subgruposIgn = new Set(compIgnorados.filter(x=>x.tipo==='subgrupo').map(x=>x.valor));
+  const prodIgn      = new Set(compIgnorados.filter(x=>x.tipo==='produto').map(x=>x.id_produto));
 
-  const selG = document.getElementById('cfg-sel-grupo');
-  if (selG) selG.innerHTML = '<option value="">Selecione um grupo...</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+  const mapa = {};
+  alertasConsolidado.forEach(r => {
+    const g = r.grupo || '(sem grupo)';
+    const s = r.subgrupo || '(sem subgrupo)';
+    if (!mapa[g]) mapa[g] = {};
+    if (!mapa[g][s]) mapa[g][s] = [];
+    mapa[g][s].push(r);
+  });
 
-  const selSG = document.getElementById('cfg-sel-subgrupo-grupo');
-  if (selSG) selSG.innerHTML = '<option value="">Filtrar por grupo...</option>' + grupos.map(g => `<option value="${g}">${g}</option>`).join('');
+  _cfgArvoreData = Object.keys(mapa).sort().map(g => ({
+    grupo: g,
+    ignorado: gruposIgn.has(g),
+    subgrupos: Object.keys(mapa[g]).sort().map(s => ({
+      subgrupo: s,
+      ignorado: subgruposIgn.has(s),
+      produtos: mapa[g][s]
+        .filter(p => !prodIgn.has(p.id_produto))  // remove já ignorados individualmente
+        .sort((a,b) => (a.nome||'').localeCompare(b.nome||''))
+    }))
+  }));
 
-  const selSub = document.getElementById('cfg-sel-subgrupo');
-  if (selSub) selSub.innerHTML = '<option value="">Selecione um subgrupo...</option>' + subgrupos.map(s => `<option value="${s}">${s}</option>`).join('');
+  renderCfgArvore(_cfgBuscaAtiva);
+}
 
-  renderCfgListas();
+function renderCfgArvore(busca) {
+  const container = document.getElementById('cfg-arvore-container');
+  if (!container) return;
+  const q = (busca||'').toLowerCase().trim();
+
+  let html = '';
+  _cfgArvoreData.forEach((g, gi) => {
+    // Filtra por busca
+    if (q) {
+      const temGrupo   = g.grupo.toLowerCase().includes(q);
+      const temSub     = g.subgrupos.some(s => s.subgrupo.toLowerCase().includes(q) || s.produtos.some(p => (p.nome||'').toLowerCase().includes(q) || (p.referencia||'').toLowerCase().includes(q)));
+      if (!temGrupo && !temSub) return;
+    }
+
+    const gKey = 'grupo:' + g.grupo;
+    const gSel = _cfgSelecionados.has(gKey);
+    const totalProd = g.subgrupos.reduce((acc,s)=>acc+s.produtos.length,0);
+    const expanded = q ? 'block' : 'none'; // expandido automaticamente na busca
+
+    html += `
+    <div style="border-bottom:1px solid var(--border)">
+      <!-- LINHA GRUPO -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface2);cursor:pointer"
+           onclick="cfgToggleGrupoExpand(${gi})">
+        <span id="cfg-chevron-g${gi}" style="font-size:11px;color:var(--text-muted);transition:transform 0.15s;display:inline-block;transform:${q?'rotate(90deg)':'rotate(0deg)'}"">▶</span>
+        <input type="checkbox" onclick="event.stopPropagation()" onchange="cfgToggleSel('${gKey}',this.checked)"
+               ${gSel?'checked':''} ${g.ignorado?'disabled':''} style="width:15px;height:15px;cursor:pointer;accent-color:var(--blue-mid)">
+        <span style="font-size:13px;font-weight:700;flex:1;color:${g.ignorado?'var(--text-muted)':'var(--text-primary)'}">${g.grupo}</span>
+        ${g.ignorado ? '<span style="font-size:10px;background:#fee2e2;color:var(--red);padding:2px 8px;border-radius:10px;font-weight:600">✓ Ignorado</span>' : ''}
+        <span style="font-size:11px;color:var(--text-muted)">${totalProd} produtos · ${g.subgrupos.length} subgrupos</span>
+      </div>
+
+      <!-- SUBGRUPOS -->
+      <div id="cfg-g${gi}" style="display:${expanded}">
+      ${g.subgrupos.map((s, si) => {
+        // filtro busca no subgrupo
+        if (q) {
+          const temSub  = s.subgrupo.toLowerCase().includes(q);
+          const temProd = s.produtos.some(p => (p.nome||'').toLowerCase().includes(q) || (p.referencia||'').toLowerCase().includes(q));
+          if (!temSub && !temProd && !g.grupo.toLowerCase().includes(q)) return '';
+        }
+        const sKey = 'subgrupo:' + s.subgrupo;
+        const sSel = _cfgSelecionados.has(sKey);
+        return `
+        <div style="border-top:1px solid var(--border)">
+          <!-- LINHA SUBGRUPO -->
+          <div style="display:flex;align-items:center;gap:10px;padding:8px 16px 8px 36px;background:var(--surface);cursor:pointer"
+               onclick="cfgToggleSubExpand(${gi},${si})">
+            <span id="cfg-chevron-g${gi}s${si}" style="font-size:10px;color:var(--text-muted);transition:transform 0.15s;display:inline-block;transform:${q?'rotate(90deg)':'rotate(0deg)'}">▶</span>
+            <input type="checkbox" onclick="event.stopPropagation()" onchange="cfgToggleSel('${sKey}',this.checked)"
+                   ${sSel?'checked':''} ${s.ignorado||g.ignorado?'disabled':''} style="width:14px;height:14px;cursor:pointer;accent-color:var(--blue-mid)">
+            <span style="font-size:12px;font-weight:600;flex:1;color:${s.ignorado||g.ignorado?'var(--text-muted)':'var(--text-primary)'}">${s.subgrupo}</span>
+            ${s.ignorado ? '<span style="font-size:10px;background:#fee2e2;color:var(--red);padding:2px 8px;border-radius:10px;font-weight:600">✓ Ignorado</span>' : ''}
+            <span style="font-size:11px;color:var(--text-muted)">${s.produtos.length} produtos</span>
+          </div>
+          <!-- PRODUTOS -->
+          <div id="cfg-g${gi}s${si}" style="display:${q?'block':'none'}">
+          ${s.produtos.filter(p => !q || (p.nome||'').toLowerCase().includes(q) || (p.referencia||'').toLowerCase().includes(q) || s.subgrupo.toLowerCase().includes(q) || g.grupo.toLowerCase().includes(q)).map(p => {
+            const pKey = 'produto:' + p.id_produto;
+            const pSel = _cfgSelecionados.has(pKey);
+            return `<div style="display:flex;align-items:center;gap:10px;padding:6px 16px 6px 68px;border-top:1px solid var(--border)">
+              <input type="checkbox" onchange="cfgToggleSel('${pKey}',this.checked)"
+                     ${pSel?'checked':''} ${s.ignorado||g.ignorado?'disabled':''} style="width:13px;height:13px;cursor:pointer;accent-color:var(--blue-mid)">
+              <span class="mono" style="font-size:11px;color:var(--text-muted);min-width:56px">${p.referencia||''}</span>
+              <span style="font-size:12px;flex:1">${p.nome||''}</span>
+              <span style="font-size:11px;color:var(--text-muted)">${p.situacao_estoque||''}</span>
+            </div>`;
+          }).join('')}
+          </div>
+        </div>`;
+      }).join('')}
+      </div>
+    </div>`;
+  });
+
+  container.innerHTML = html || '<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum resultado</div>';
+}
+
+function cfgToggleGrupoExpand(gi) {
+  const el = document.getElementById('cfg-g' + gi);
+  const ch = document.getElementById('cfg-chevron-g' + gi);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (ch) ch.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+}
+
+function cfgToggleSubExpand(gi, si) {
+  const el = document.getElementById(`cfg-g${gi}s${si}`);
+  const ch = document.getElementById(`cfg-chevron-g${gi}s${si}`);
+  if (!el) return;
+  const open = el.style.display !== 'none';
+  el.style.display = open ? 'none' : 'block';
+  if (ch) ch.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+}
+
+function cfgExpandirTodos() {
+  document.querySelectorAll('[id^="cfg-g"]').forEach(el => { el.style.display = 'block'; });
+  document.querySelectorAll('[id^="cfg-chevron"]').forEach(el => { el.style.transform = 'rotate(90deg)'; });
+}
+
+function cfgRecolherTodos() {
+  _cfgArvoreData.forEach((g, gi) => {
+    const gel = document.getElementById('cfg-g' + gi);
+    const gch = document.getElementById('cfg-chevron-g' + gi);
+    if (gel) gel.style.display = 'none';
+    if (gch) gch.style.transform = 'rotate(0deg)';
+    g.subgrupos.forEach((s, si) => {
+      const sel = document.getElementById(`cfg-g${gi}s${si}`);
+      const sch = document.getElementById(`cfg-chevron-g${gi}s${si}`);
+      if (sel) sel.style.display = 'none';
+      if (sch) sch.style.transform = 'rotate(0deg)';
+    });
+  });
+}
+
+function cfgToggleSel(key, checked) {
+  if (checked) _cfgSelecionados.add(key);
+  else _cfgSelecionados.delete(key);
+  // Se marcou grupo, desmarca subgrupos e produtos do mesmo grupo
+  if (key.startsWith('grupo:') && checked) {
+    const g = key.slice(6);
+    [..._cfgSelecionados].forEach(k => {
+      if (k.startsWith('subgrupo:') || k.startsWith('produto:')) _cfgSelecionados.delete(k);
+    });
+  }
+}
+
+function cfgFiltrarArvore(busca) {
+  _cfgBuscaAtiva = busca;
+  renderCfgArvore(busca);
+}
+
+async function cfgIgnorarSelecionados() {
+  if (!_cfgSelecionados.size) return showToast('Selecione ao menos um item', 'error');
+  const inserir = [];
+  _cfgSelecionados.forEach(key => {
+    const [tipo, ...rest] = key.split(':');
+    const valor = rest.join(':');
+    if (tipo === 'grupo') {
+      inserir.push({ tipo: 'grupo', valor, nome: valor, criado_por: window.getUsuario?.()?.nome || '' });
+    } else if (tipo === 'subgrupo') {
+      inserir.push({ tipo: 'subgrupo', valor, nome: valor, criado_por: window.getUsuario?.()?.nome || '' });
+    } else if (tipo === 'produto') {
+      const id = parseInt(valor);
+      const prod = alertasConsolidado.find(r => r.id_produto === id);
+      if (prod) inserir.push({ tipo: 'produto', valor: prod.referencia || String(id), id_produto: id, nome: prod.nome || '', criado_por: window.getUsuario?.()?.nome || '' });
+    }
+  });
+  const { error } = await sb.from('comp_ignorados').upsert(inserir, { onConflict: 'tipo,valor' });
+  if (error) return showToast('Erro ao salvar: ' + error.message, 'error');
+  auditLog('configuracoes', 'INSERT', 'comp_ignorados', '', `Ignorou ${inserir.length} item(s): ${inserir.map(x=>x.nome||x.valor).slice(0,3).join(', ')}${inserir.length>3?'...':''}`);
+  _cfgSelecionados.clear();
+  await loadConfiguracoes();
+  showToast(`${inserir.length} item(s) ignorado(s)`, 'success');
+}
+
+async function cfgRemover(id) {
+  const removido = compIgnorados.find(x => x.id === id);
+  const { error } = await sb.from('comp_ignorados').delete().eq('id', id);
+  if (error) return showToast('Erro ao remover', 'error');
+  compIgnorados = compIgnorados.filter(x => x.id !== id);
+  auditLog('configuracoes', 'DELETE', 'comp_ignorados', id, `Removeu ignorado: ${removido?.nome||removido?.valor||id}`);
+  cfgConstruirArvore();
+  renderCfgIgnoradosLista();
+  showToast('Removido', 'success');
+}
+
+function renderCfgIgnoradosLista() {
+  const el = document.getElementById('cfg-ignorados-lista');
+  const ct = document.getElementById('cfg-ignorados-count');
+  if (!el) return;
+  if (!compIgnorados.length) {
+    el.innerHTML = '<span style="color:var(--text-muted);font-size:13px">Nenhum item ignorado ainda</span>';
+    if (ct) ct.textContent = '';
+    return;
+  }
+  if (ct) ct.textContent = `(${compIgnorados.length})`;
+  el.innerHTML = compIgnorados.map(x => {
+    const cor = x.tipo==='grupo' ? 'var(--red)' : x.tipo==='subgrupo' ? 'var(--orange)' : 'var(--text-secondary)';
+    const bg  = x.tipo==='grupo' ? '#fee2e2' : x.tipo==='subgrupo' ? '#fff7ed' : 'var(--surface2)';
+    return `<span style="display:inline-flex;align-items:center;gap:6px;background:${bg};border:1px solid var(--border);border-radius:20px;padding:4px 10px 4px 12px;font-size:12px">
+      <span style="color:${cor};font-weight:600;font-size:10px;text-transform:uppercase">${x.tipo}</span>
+      <span>${x.nome||x.valor}</span>
+      <button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:13px;padding:0;line-height:1;margin-left:2px">×</button>
+    </span>`;
+  }).join('');
 }
 
 function setCfgTab(tab, btn) {
   _cfgTabAtual = tab;
-  ['grupo','subgrupo','produto','logs'].forEach(t => {
+  ['arvore','logs'].forEach(t => {
     const panel = document.getElementById(`cfg-panel-${t}`);
     const tabEl = document.getElementById(`cfg-tab-${t}`);
     if (panel) panel.style.display = t === tab ? 'block' : 'none';
     if (tabEl) tabEl.classList.toggle('active', t === tab);
   });
-}
-
-function cfgAtualizaSubgrupos() {
-  const grupo = document.getElementById('cfg-sel-subgrupo-grupo')?.value;
-  const dados = grupo ? alertasConsolidado.filter(r => r.grupo === grupo) : alertasConsolidado;
-  const subs = [...new Set(dados.map(r => r.subgrupo).filter(Boolean))].sort();
-  const sel = document.getElementById('cfg-sel-subgrupo');
-  if (sel) sel.innerHTML = '<option value="">Selecione um subgrupo...</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
-}
-
-function renderCfgListas() {
-  // Lista grupos ignorados
-  const tbG = document.getElementById('cfg-lista-grupo');
-  const grupos = compIgnorados.filter(x => x.tipo === 'grupo');
-  if (tbG) tbG.innerHTML = grupos.length
-    ? grupos.map(x => `<tr><td>${x.valor}</td><td><button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">✕</button></td></tr>`).join('')
-    : '<tr class="loading-row"><td colspan="2">Nenhum grupo ignorado</td></tr>';
-
-  // Lista subgrupos ignorados
-  const tbS = document.getElementById('cfg-lista-subgrupo');
-  const subs = compIgnorados.filter(x => x.tipo === 'subgrupo');
-  if (tbS) tbS.innerHTML = subs.length
-    ? subs.map(x => `<tr><td>${x.valor}</td><td><button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">✕</button></td></tr>`).join('')
-    : '<tr class="loading-row"><td colspan="2">Nenhum subgrupo ignorado</td></tr>';
-
-  // Lista produtos ignorados
-  const tbP = document.getElementById('cfg-lista-produto');
-  const prods = compIgnorados.filter(x => x.tipo === 'produto');
-  if (tbP) tbP.innerHTML = prods.length
-    ? prods.map(x => `<tr><td class="mono" style="font-size:12px">${x.valor}</td><td>${x.nome||''}</td><td><button onclick="cfgRemover('${x.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px">✕</button></td></tr>`).join('')
-    : '<tr class="loading-row"><td colspan="3">Nenhum produto ignorado</td></tr>';
-}
-
-async function cfgAdicionarGrupo() {
-  const val = document.getElementById('cfg-sel-grupo')?.value;
-  if (!val) return showToast('Selecione um grupo', 'error');
-  if (compIgnorados.find(x => x.tipo === 'grupo' && x.valor === val)) return showToast('Já ignorado', 'error');
-  const { error } = await sb.from('comp_ignorados').insert({ tipo: 'grupo', valor: val, nome: val, criado_por: window.getUsuario?.()?.nome || '' });
-  if (error) return showToast('Erro ao salvar', 'error');
-  await loadConfiguracoes();
-  auditLog('configuracoes','INSERT','comp_ignorados','',`Adicionou grupo ignorado: ${val}`);
-  showToast('Grupo ignorado com sucesso', 'success');
-}
-
-async function cfgAdicionarSubgrupo() {
-  const val = document.getElementById('cfg-sel-subgrupo')?.value;
-  if (!val) return showToast('Selecione um subgrupo', 'error');
-  if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === val)) return showToast('Já ignorado', 'error');
-  const { error } = await sb.from('comp_ignorados').insert({ tipo: 'subgrupo', valor: val, nome: val, criado_por: window.getUsuario?.()?.nome || '' });
-  if (error) return showToast('Erro ao salvar', 'error');
-  await loadConfiguracoes();
-  showToast('Subgrupo ignorado com sucesso', 'success');
-}
-
-function cfgBuscarProdutos(busca) {
-  _cfgSelecionados.clear();
-  const div = document.getElementById('cfg-resultado-produtos');
-  if (!div) return;
-  if (!busca || busca.length < 2) { div.style.display = 'none'; div.innerHTML = ''; _cfgResultados = []; return; }
-  const q = busca.toLowerCase();
-  _cfgResultados = alertasConsolidado.filter(r =>
-    !compIgnorados.find(x => x.tipo === 'produto' && x.id_produto === r.id_produto) &&
-    ((r.referencia||'').toLowerCase().includes(q) || (r.nome||'').toLowerCase().includes(q))
-  ).slice(0, 80);
-  if (!_cfgResultados.length) {
-    div.style.display = 'block';
-    div.innerHTML = '<div style="padding:12px;font-size:13px;color:var(--text-muted)">Nenhum produto encontrado</div>';
-    return;
-  }
-  div.style.display = 'block';
-  div.innerHTML = `
-    <div style="padding:8px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;background:var(--surface)">
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600">
-        <input type="checkbox" id="cfg-check-todos" onchange="cfgMarcarTodos(this.checked)" />
-        Marcar todos (${_cfgResultados.length})
-      </label>
-    </div>` +
-    _cfgResultados.map(r => `
-    <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;font-size:13px" onmouseover="this.style.background='var(--surface)'" onmouseout="this.style.background=''">
-      <input type="checkbox" data-id="${r.id_produto}" onchange="cfgToggleProduto(${r.id_produto})" ${_cfgSelecionados.has(r.id_produto)?'checked':''} />
-      <span class="mono" style="font-size:11px;color:var(--text-muted);min-width:60px">${r.referencia||''}</span>
-      <span style="flex:1">${r.nome||''}</span>
-      <span style="font-size:11px;color:var(--text-muted)">${r.grupo||''}</span>
-    </label>`).join('');
-}
-
-function cfgMarcarTodos(checked) {
-  const chk = document.getElementById('cfg-check-todos');
-  const estado = checked !== undefined ? checked : (chk ? !chk.checked : true);
-  if (chk) chk.checked = estado;
-  _cfgResultados.forEach(r => {
-    const el = document.querySelector(`input[data-id="${r.id_produto}"]`);
-    if (el) el.checked = estado;
-    if (estado) _cfgSelecionados.add(r.id_produto);
-    else _cfgSelecionados.delete(r.id_produto);
-  });
-}
-
-function cfgToggleProduto(id) {
-  if (_cfgSelecionados.has(id)) _cfgSelecionados.delete(id);
-  else _cfgSelecionados.add(id);
-}
-
-async function cfgAdicionarProdutosSelecionados() {
-  if (!_cfgSelecionados.size) return showToast('Selecione ao menos um produto', 'error');
-  const inserir = [];
-  _cfgSelecionados.forEach(id => {
-    const prod = _cfgResultados.find(r => r.id_produto === id);
-    if (prod) inserir.push({ tipo: 'produto', valor: prod.referencia || String(id), id_produto: id, nome: prod.nome || '', criado_por: window.getUsuario?.()?.nome || '' });
-  });
-  const { error } = await sb.from('comp_ignorados').upsert(inserir, { onConflict: 'tipo,valor' });
-  if (error) return showToast('Erro ao salvar', 'error');
-  _cfgSelecionados.clear();
-  document.getElementById('cfg-busca-produto').value = '';
-  document.getElementById('cfg-resultado-produtos').style.display = 'none';
-  await loadConfiguracoes();
-  showToast(`${inserir.length} produto(s) ignorado(s)`, 'success');
 }
 
 async function loadCfgLogs() {
@@ -3357,7 +3425,6 @@ async function loadCfgLogs() {
   const count   = document.getElementById('cfg-log-count');
   if (!tbody) return;
   tbody.innerHTML = '<tr class="loading-row"><td colspan="6">Carregando...</td></tr>';
-
   try {
     if (tipo === 'audit') {
       if (thead) thead.innerHTML = '<tr><th>Data/Hora</th><th>Usuário</th><th>Módulo</th><th>Ação</th><th style="min-width:260px">Descrição</th><th></th></tr>';
@@ -3377,9 +3444,7 @@ async function loadCfgLogs() {
             <td style="font-size:11px;color:var(--text-muted)">${r.entidade_id||''}</td>
           </tr>`).join('')
         : '<tr class="loading-row"><td colspan="6">Nenhum registro encontrado</td></tr>';
-
     } else {
-      // Erros — app_logs
       if (thead) thead.innerHTML = '<tr><th>Data/Hora</th><th>Usuário</th><th>Módulo</th><th>Função</th><th style="min-width:260px">Mensagem</th><th>Status</th></tr>';
       let q = sb.from('app_logs').select('*').eq('nivel','ERROR').order('criado_em', { ascending: false }).range(0, 199);
       if (modulo) q = q.eq('modulo', modulo);
@@ -3394,38 +3459,26 @@ async function loadCfgLogs() {
             <td><span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:2px 6px;border-radius:4px">${r.modulo||'—'}</span></td>
             <td style="font-size:11px;color:var(--text-muted)">${r.funcao||'—'}</td>
             <td style="font-size:12px;color:var(--red)">${r.mensagem||'—'}</td>
-            <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;background:${r.resolvido?'#dcfce7':'#fee2e2'};color:${r.resolvido?'var(--green)':'var(--red)'};cursor:pointer" onclick="cfgToggleResolvido(${r.id},${!!r.resolvido},this)">${r.resolvido?'✓ Resolvido':'Aberto'}</span></td>
+            <td><span style="font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600;background:${r.resolvido?'#dcfce7':'#fee2e2'};color:${r.resolvido?'var(--green)':'var(--red)'};cursor:pointer" onclick="cfgToggleResolvido(${r.id},${!!r.resolvido},this)">${r.resolvido?'✓ Resolvido':'Aberto'}</span></td>
           </tr>`).join('')
         : '<tr class="loading-row"><td colspan="6">Nenhum erro registrado 🎉</td></tr>';
     }
   } catch(e) {
-    tbody.innerHTML = `<tr class="loading-row"><td colspan="6" style="color:var(--red)">Erro ao carregar: ${e.message}</td></tr>`;
+    tbody.innerHTML = `<tr class="loading-row"><td colspan="6" style="color:var(--red)">Erro: ${e.message}</td></tr>`;
   }
 }
 
 async function cfgToggleResolvido(id, atual, el) {
   const novo = !atual;
   const { error } = await sb.from('app_logs').update({
-    resolvido: novo,
-    resolvido_em: novo ? new Date().toISOString() : null,
+    resolvido: novo, resolvido_em: novo ? new Date().toISOString() : null,
     resolvido_por: window.getUsuario?.()?.nome || ''
   }).eq('id', id);
-  if (error) return showToast('Erro ao atualizar', 'error');
+  if (error) return showToast('Erro', 'error');
   el.textContent = novo ? '✓ Resolvido' : 'Aberto';
   el.style.background = novo ? '#dcfce7' : '#fee2e2';
   el.style.color = novo ? 'var(--green)' : 'var(--red)';
-  // Atualiza closure
   el.onclick = () => cfgToggleResolvido(id, novo, el);
-}
-
-async function cfgRemover(id) {
-  const { error } = await sb.from('comp_ignorados').delete().eq('id', id);
-  if (error) return showToast('Erro ao remover', 'error');
-  const removido = compIgnorados.find(x => x.id === id);
-  compIgnorados = compIgnorados.filter(x => x.id !== id);
-  renderCfgListas();
-  auditLog('configuracoes','DELETE','comp_ignorados',id,`Removeu ignorado: ${removido?.nome||removido?.valor||id}`);
-  showToast('Removido', 'success');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -3515,17 +3568,17 @@ window.fecharHistoricoSugestoes = fecharHistoricoSugestoes;
 window.renderPreviewProdutos  = renderPreviewProdutos;
 
 // Configurações
-window.setCfgTab                    = setCfgTab;
-window.cfgAtualizaSubgrupos         = cfgAtualizaSubgrupos;
-window.cfgAdicionarGrupo            = cfgAdicionarGrupo;
-window.cfgAdicionarSubgrupo         = cfgAdicionarSubgrupo;
-window.cfgBuscarProdutos            = cfgBuscarProdutos;
-window.cfgMarcarTodos               = cfgMarcarTodos;
-window.cfgToggleProduto             = cfgToggleProduto;
-window.cfgAdicionarProdutosSelecionados = cfgAdicionarProdutosSelecionados;
-window.cfgRemover                   = cfgRemover;
-window.loadCfgLogs                  = loadCfgLogs;
-window.cfgToggleResolvido           = cfgToggleResolvido;
+window.setCfgTab                = setCfgTab;
+window.cfgToggleSel             = cfgToggleSel;
+window.cfgToggleGrupoExpand     = cfgToggleGrupoExpand;
+window.cfgToggleSubExpand       = cfgToggleSubExpand;
+window.cfgExpandirTodos         = cfgExpandirTodos;
+window.cfgRecolherTodos         = cfgRecolherTodos;
+window.cfgFiltrarArvore         = cfgFiltrarArvore;
+window.cfgIgnorarSelecionados   = cfgIgnorarSelecionados;
+window.cfgRemover               = cfgRemover;
+window.loadCfgLogs              = loadCfgLogs;
+window.cfgToggleResolvido       = cfgToggleResolvido;
 
 window.ModuloCompras = {
   showPage(paginaId, container, usuario, filtros) {
