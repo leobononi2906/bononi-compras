@@ -2266,13 +2266,14 @@ async function loadImpTabPagamentos(p) {
         ? '<div style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum pagamento registrado</div>'
         : `<div class="table-card" style="margin-bottom:20px"><div style="overflow-x:auto"><table class="data-table">
             <thead><tr>
-              <th>Tipo</th><th>Data</th><th class="right">BRL</th><th class="right">USD</th><th>Status</th><th></th>
+              <th>Tipo</th><th>Data</th><th class="right">BRL</th><th class="right">USD</th><th class="right">Câmbio</th><th>Status</th><th></th>
             </tr></thead>
             <tbody>${(pags||[]).map(pg=>`<tr>
               <td style="font-size:12px">${IMP_TIPOS_PAG[pg.tipo]||pg.tipo}</td>
               <td class="mono" style="color:var(--text-muted)">${pg.data_pagamento?fmtData(pg.data_pagamento):(pg.data_vencimento?fmtData(pg.data_vencimento):'—')}</td>
               <td class="right mono" style="font-weight:600">${pg.valor_brl?fmt(pg.valor_brl):'—'}</td>
               <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd?'US$ '+fmtQtd(pg.valor_usd,2):'—'}</td>
+              <td class="right mono" style="color:var(--text-muted);font-size:11px">${pg.valor_brl&&pg.valor_usd?'R$ '+fmtQtd(parseFloat(pg.valor_brl)/parseFloat(pg.valor_usd),4):'—'}</td>
               <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'✓ Pago':'⏳ A Pagar'}</span></td>
               <td style="display:flex;gap:6px;align-items:center"><button onclick="editarPagamento('${pg.id}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px" title="Editar">✏️</button><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Remover">✕</button></td>
             </tr>`).join('')}</tbody>
