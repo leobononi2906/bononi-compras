@@ -2073,15 +2073,21 @@ function renderImpKanban() {
     const cards = procs.map(p => {
       const aPagarForn = parseFloat(p.total_a_pagar_fornecedor_brl || p.total_a_pagar_brl || 0);
       const quitado = p.quitado_fornecedor === true;
-      return `<div onclick="abrirImpDrawer('${p.id}')" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:box-shadow 0.15s;margin-bottom:8px" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='none'">
+      const obsLinhas = (p.observacoes||'').split('\n').filter(l=>l.trim());
+      const obsCard = obsLinhas.length ? `<div style="margin-top:6px;font-size:10px;color:var(--text-muted);line-height:1.5;border-top:1px solid var(--border);padding-top:6px">${obsLinhas.slice(0,3).map(l=>`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l}</div>`).join('')}${obsLinhas.length>3?'<div style="color:var(--text-muted);opacity:0.6">...</div>':''}</div>` : '';
+      return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;cursor:pointer;transition:box-shadow 0.15s;margin-bottom:8px" onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow='none'" onclick="abrirImpDrawer('${p.id}')">
         <div style="font-size:12px;font-weight:700;margin-bottom:6px;line-height:1.3">${p.codigo}</div>
         ${p.nome_fornecedor ? `<div style="font-size:11px;color:${color};background:${bg};padding:2px 6px;border-radius:4px;display:inline-block;margin-bottom:6px">${p.nome_fornecedor}</div>` : ''}
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">${p.data_prev_chegada ? '📅 '+fmtData(p.data_prev_chegada) : ''}</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;display:flex;align-items:center;gap:4px">
+          <span id="kdt-${p.id}" onclick="event.stopPropagation();document.getElementById('kdt-${p.id}').style.display='none';document.getElementById('kdi-${p.id}').style.display='inline-block'" style="cursor:pointer;text-decoration:underline dotted" title="Clique para alterar">${p.data_prev_chegada ? '📅 '+fmtData(p.data_prev_chegada) : '📅 —'}</span>
+          <input id="kdi-${p.id}" type="date" style="display:none;height:22px;font-size:11px;border:1px solid var(--border);border-radius:4px;padding:0 4px;background:var(--surface);color:var(--text-primary)" value="${p.data_prev_chegada?p.data_prev_chegada.slice(0,10):''}" onclick="event.stopPropagation()" onblur="if(this.value||'')salvarPrevChegada('${p.id}',this.value,document.getElementById('kdt-${p.id}'),this);else{this.style.display='none';document.getElementById('kdt-${p.id}').style.display=''}" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.style.display='none';document.getElementById('kdt-${p.id}').style.display=''}" />
+        </div>
         ${(p.pedidos||[]).length > 0 ? `<div style="font-size:11px;color:var(--text-secondary)">Ped: ${(p.pedidos||[]).join(', ')}</div>` : ''}
         <div style="display:flex;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">
           ${quitado ? `<span style="font-size:11px;color:var(--green);font-weight:600">✓ Quitado c/ forn.</span>` : (aPagarForn > 0 ? `<span style="font-size:11px;color:var(--orange);font-weight:600">A pagar: ${fmt(aPagarForn)}</span>` : `<span style="font-size:11px;color:var(--text-muted)">Sem pagamentos</span>`)}
           ${p.total_usd > 0 ? `<span style="font-size:11px;color:var(--text-muted)">US$ ${fmtQtd(p.total_usd,0)}</span>` : ''}
         </div>
+        ${obsCard}
       </div>`;
     }).join('');
     return `<div style="min-width:240px;flex:1;background:var(--surface2);border-radius:var(--radius);padding:12px;border:1px solid var(--border)">
@@ -2173,7 +2179,13 @@ async function loadImpTabInfo(p) {
       <div class="card"><div class="card-label">Status</div><div style="margin-top:8px"><span class="badge" style="color:${color};background:${bg};font-size:13px;padding:4px 12px">${label}</span></div></div>
       <div class="card"><div class="card-label">Importadora</div><div class="card-value" style="font-size:18px">${p.importadora||'—'}</div></div>
       <div class="card"><div class="card-label">Embarque</div><div class="card-value" style="font-size:18px">${p.data_embarque?fmtData(p.data_embarque):'—'}</div></div>
-      <div class="card"><div class="card-label">Previsão Chegada</div><div class="card-value" style="font-size:18px;color:var(--blue-mid)">${p.data_prev_chegada?fmtData(p.data_prev_chegada):'—'}</div></div>
+      <div class="card"><div class="card-label">Previsão Chegada</div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <span id="ddt-${p.id}" onclick="this.style.display='none';document.getElementById('ddi-${p.id}').style.display='block'" style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-mid);cursor:pointer;text-decoration:underline dotted" title="Clique para alterar">${p.data_prev_chegada?fmtData(p.data_prev_chegada):'—'}</span>
+          <input id="ddi-${p.id}" type="date" style="display:none;height:32px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-sm);padding:0 8px;background:var(--surface);color:var(--text-primary);width:160px" value="${p.data_prev_chegada?p.data_prev_chegada.slice(0,10):''}" onblur="salvarPrevChegada('${p.id}',this.value,document.getElementById('ddt-${p.id}'),this)" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.style.display='none';document.getElementById('ddt-${p.id}').style.display=''}" />
+          <span style="font-size:10px;color:var(--text-muted);opacity:0.7">✏️</span>
+        </div>
+      </div>
       <div class="card"><div class="card-label">Valor Total USD</div><div class="card-value" style="font-size:18px">${p.valor_total_usd?'US$ '+fmtQtd(p.valor_total_usd,2):'—'}</div></div>
       <div class="card"><div class="card-label">Quitado c/ Fornecedor</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:10px">
@@ -2187,7 +2199,13 @@ async function loadImpTabInfo(p) {
         </div>
       </div>
     </div>
-    ${p.observacoes?`<div class="card" style="margin-bottom:16px"><div class="card-label">Observações</div><div style="margin-top:8px;font-size:13px;color:var(--text-secondary)">${p.observacoes}</div></div>`:''}
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="card-label" style="margin:0">Observações</div>
+        <span id="obs-saved-${p.id}" style="font-size:11px;color:var(--green);opacity:0;transition:opacity 0.5s">✓ salvo</span>
+      </div>
+      <textarea id="obs-${p.id}" style="width:100%;min-height:80px;max-height:200px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;color:var(--text-primary);font-family:inherit;line-height:1.5;box-sizing:border-box" placeholder="Anotações sobre este processo..." onblur="(async()=>{await salvarObservacoes('${p.id}',this.value);const s=document.getElementById('obs-saved-${p.id}');if(s){s.style.opacity=1;setTimeout(()=>s.style.opacity=0,2000)}})()">${p.observacoes||''}</textarea>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:20px">
       <select onchange="atualizarStatusProcesso('${p.id}',this.value)" class="filter-select" style="height:34px">
         ${IMP_STATUS_ORDER.map(s=>`<option value="${s}" ${s===p.status?'selected':''}>${IMP_STATUS[s].label}</option>`).join('')}
