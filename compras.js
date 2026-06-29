@@ -2175,7 +2175,7 @@ function renderImpKanban() {
           ${quitado ? `<span style="font-size:11px;color:var(--green);font-weight:600">✓ Quitado c/ forn.</span>` : (aPagarForn > 0 ? `<span style="font-size:11px;color:var(--orange);font-weight:600">A pagar: ${fmt(aPagarForn)}</span>` : `<span style="font-size:11px;color:var(--text-muted)">Sem pagamentos</span>`)}
           ${p.total_usd > 0 ? `<span style="font-size:11px;color:var(--text-muted)">US$ ${fmtQtd(p.total_usd,0)}</span>` : ''}
         </div>
-        ${obsCard}
+        <div id="card-obs-${p.id}" style="margin-top:6px;font-size:10px;color:var(--text-muted);line-height:1.5;border-top:1px solid var(--border);padding-top:6px;display:${obsLinhas.length?'block':'none'}">${obsLinhas.slice(0,3).map(l=>`<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l}</div>`).join('')}${obsLinhas.length>3?'<div style="opacity:0.6">...</div>':''}</div>
       </div>`;
     }).join('');
     return `<div style="min-width:240px;flex:1;background:var(--surface2);border-radius:var(--radius);padding:12px;border:1px solid var(--border)">
@@ -2250,10 +2250,20 @@ async function salvarObservacoes(processoId, texto) {
       .update({ observacoes: texto || null, atualizado_em: new Date().toISOString() })
       .eq('id', processoId);
     if (error) throw error;
+    // Atualiza só memória — não reconstrói o kanban (causaria loop de blur)
     const p = impProcessos.find(x => x.id === processoId);
     if (p) p.observacoes = texto || null;
     if (impProcessoAtual && impProcessoAtual.id === processoId) impProcessoAtual.observacoes = texto || null;
-    renderImportacao();
+    // Atualiza preview do obs no card do kanban sem reconstruir tudo
+    const cardObs = document.getElementById('card-obs-' + processoId);
+    if (cardObs) {
+      const linhas = (texto||'').split('\n').filter(l => l.trim());
+      cardObs.innerHTML = linhas.length
+        ? linhas.slice(0,3).map(l => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l}</div>`).join('')
+          + (linhas.length > 3 ? '<div style="opacity:0.6">...</div>' : '')
+        : '';
+      cardObs.style.display = linhas.length ? 'block' : 'none';
+    }
     showToast('Observações salvas', 'success');
   } catch(e) {
     showToast('Erro ao salvar observações', 'error');
@@ -2341,7 +2351,10 @@ async function loadImpTabInfo(p) {
         <div class="card-label" style="margin:0">Observações</div>
         <span id="obs-saved-${p.id}" style="font-size:11px;color:var(--green);opacity:0;transition:opacity 0.5s">✓ salvo</span>
       </div>
-      <textarea id="obs-${p.id}" style="width:100%;min-height:80px;max-height:200px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;color:var(--text-primary);font-family:inherit;line-height:1.5;box-sizing:border-box" placeholder="Anotações sobre este processo..." onblur="salvarObservacoes('${p.id}',this.value).then(()=>{const s=document.getElementById('obs-saved-${p.id}');if(s){s.style.opacity=1;setTimeout(()=>s.style.opacity=0,2000)}})">${p.observacoes||''}</textarea>
+      <textarea id="obs-${p.id}" style="width:100%;min-height:80px;max-height:200px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;color:var(--text-primary);font-family:inherit;line-height:1.5;box-sizing:border-box" placeholder="Anotações sobre este processo...">${p.observacoes||''}</textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:6px">
+        <button onclick="salvarObservacoes('${p.id}',document.getElementById('obs-${p.id}').value).then(()=>{const s=document.getElementById('obs-saved-${p.id}');if(s){s.style.opacity=1;setTimeout(()=>s.style.opacity=0,2000)}})" class="btn btn-primary" style="height:28px;font-size:12px">Salvar obs.</button>
+      </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:20px">
       <select onchange="atualizarStatusProcesso('${p.id}',this.value)" class="filter-select" style="height:34px">
