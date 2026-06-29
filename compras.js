@@ -3187,7 +3187,7 @@ window.addEventListener('error', (ev) => {
   };
   const client = window.sb || (typeof sb !== 'undefined' ? sb : null);
   if (client) {
-    client.from('app_logs').insert(entry).catch(() => {});
+    Promise.resolve(client.from('app_logs').insert(entry)).catch(() => {});
   } else {
     _errosFila.push(entry); // guarda na fila até sb estar pronto
   }
@@ -3506,6 +3506,7 @@ window.fecharHistoricoSugestoes = fecharHistoricoSugestoes;
 window.renderPreviewProdutos  = renderPreviewProdutos;
 
 // Configurações
+window.toggleConcluidos          = toggleConcluidos;
 window.setCfgTab                 = setCfgTab;
 window.cfgBuscarProdutos         = cfgBuscarProdutos;
 window.cfgMarcarTodos            = cfgMarcarTodos;
