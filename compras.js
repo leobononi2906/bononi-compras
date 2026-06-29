@@ -141,7 +141,7 @@ const PAGINAS_HTML = {
 
   'cmp-importacao': `<div class="page-content" id="page-cmp-importacao">
     <div class="cards-grid cards-grid-4"><div class="card"><div class="card-label">Em Produção</div><div class="card-value blue" id="imp-kpi-producao">—</div></div><div class="card"><div class="card-label">Em Transporte</div><div class="card-value" id="imp-kpi-transporte">—</div></div><div class="card"><div class="card-label">A Pagar Fornec.</div><div class="card-value orange" id="imp-kpi-apagar">—</div><div class="card-sub" id="imp-kpi-apagar-sub">—</div></div><div class="card"><div class="card-label">Chegada Próxima</div><div class="card-value" style="font-size:16px" id="imp-kpi-proxima">—</div><div class="card-sub" id="imp-kpi-proxima-forn">—</div></div></div>
-    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)">📦 Produtos</button></div><button id="btn-concluidos" class="btn btn-outline" style="height:32px;font-size:12px" onclick="impMostrarConcluidos=!impMostrarConcluidos;this.style.background=impMostrarConcluidos?'var(--green)':''  ;this.style.color=impMostrarConcluidos?'#fff':''  ;this.textContent=impMostrarConcluidos?'✓ Concluídos':'Concluídos';renderImportacao()">Concluídos</button><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)">📦 Produtos</button></div><button id="btn-concluidos" class="btn btn-outline" style="height:32px;font-size:12px" onclick="toggleConcluidos(this)">Concluídos</button><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
     <div id="imp-kanban" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px"></div>
     <div id="imp-lista" style="display:none"><div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Fornecedor</th><th>Importadora</th><th>Status</th><th class="right">Pedidos</th><th class="right">Chegada Prev.</th><th class="right">Total USD</th><th class="right">Pago BRL</th><th class="right">A Pagar Forn.</th><th></th></tr></thead><tbody id="imp-lista-body"></tbody></table></div></div></div>
     <div id="imp-produtos" style="display:none">
@@ -2136,6 +2136,55 @@ function renderImpLista() {
   }).join('');
 }
 
+function toggleConcluidos(btn) {
+  impMostrarConcluidos = !impMostrarConcluidos;
+  btn.style.background = impMostrarConcluidos ? 'var(--green)' : '';
+  btn.style.color = impMostrarConcluidos ? '#fff' : '';
+  btn.textContent = impMostrarConcluidos ? '✓ Concluídos' : 'Concluídos';
+  renderImportacao();
+}
+
+async function salvarPrevChegada(processoId, novaData, elSpan, elInput) {
+  try {
+    const { error } = await sb.from('import_processos')
+      .update({ data_prev_chegada: novaData || null, atualizado_em: new Date().toISOString() })
+      .eq('id', processoId);
+    if (error) throw error;
+    // Atualiza memória local
+    const p = impProcessos.find(x => x.id === processoId);
+    if (p) p.data_prev_chegada = novaData || null;
+    if (impProcessoAtual && impProcessoAtual.id === processoId) impProcessoAtual.data_prev_chegada = novaData || null;
+    // Restaura o span com novo valor
+    if (elSpan) {
+      elSpan.textContent = novaData ? '📅 ' + fmtData(novaData) : '📅 —';
+      elSpan.style.display = '';
+    }
+    if (elInput) elInput.style.display = 'none';
+    renderImportacao();
+    showToast('Previsão de chegada atualizada', 'success');
+  } catch(e) {
+    showToast('Erro ao salvar data', 'error');
+    console.error(e);
+  }
+}
+
+async function salvarObservacoes(processoId, texto) {
+  try {
+    const { error } = await sb.from('import_processos')
+      .update({ observacoes: texto || null, atualizado_em: new Date().toISOString() })
+      .eq('id', processoId);
+    if (error) throw error;
+    const p = impProcessos.find(x => x.id === processoId);
+    if (p) p.observacoes = texto || null;
+    if (impProcessoAtual && impProcessoAtual.id === processoId) impProcessoAtual.observacoes = texto || null;
+    renderImportacao();
+    showToast('Observações salvas', 'success');
+  } catch(e) {
+    showToast('Erro ao salvar observações', 'error');
+    console.error(e);
+  }
+}
+
 function abrirImpDrawer(id) {
   const p = impProcessos.find(x => x.id === id);
   if (!p) return;
@@ -2216,7 +2265,7 @@ async function loadImpTabInfo(p) {
         <div class="card-label" style="margin:0">Observações</div>
         <span id="obs-saved-${p.id}" style="font-size:11px;color:var(--green);opacity:0;transition:opacity 0.5s">✓ salvo</span>
       </div>
-      <textarea id="obs-${p.id}" style="width:100%;min-height:80px;max-height:200px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;color:var(--text-primary);font-family:inherit;line-height:1.5;box-sizing:border-box" placeholder="Anotações sobre este processo..." onblur="(async()=>{await salvarObservacoes('${p.id}',this.value);const s=document.getElementById('obs-saved-${p.id}');if(s){s.style.opacity=1;setTimeout(()=>s.style.opacity=0,2000)}})()">${p.observacoes||''}</textarea>
+      <textarea id="obs-${p.id}" style="width:100%;min-height:80px;max-height:200px;resize:vertical;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;font-size:13px;color:var(--text-primary);font-family:inherit;line-height:1.5;box-sizing:border-box" placeholder="Anotações sobre este processo..." onblur="salvarObservacoes('${p.id}',this.value).then(()=>{const s=document.getElementById('obs-saved-${p.id}');if(s){s.style.opacity=1;setTimeout(()=>s.style.opacity=0,2000)}})">${p.observacoes||''}</textarea>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:20px">
       <select onchange="atualizarStatusProcesso('${p.id}',this.value)" class="filter-select" style="height:34px">
