@@ -3507,6 +3507,10 @@ window.renderPreviewProdutos  = renderPreviewProdutos;
 
 // Configurações
 window.toggleConcluidos          = toggleConcluidos;
+window.salvarObservacoes         = salvarObservacoes;
+window.salvarPrevChegada         = salvarPrevChegada;
+window.auditLog                  = auditLog;
+window._flushErrosFila           = _flushErrosFila;
 window.setCfgTab                 = setCfgTab;
 window.cfgBuscarProdutos         = cfgBuscarProdutos;
 window.cfgMarcarTodos            = cfgMarcarTodos;
