@@ -2429,10 +2429,12 @@ async function loadImpTabPagamentos(p) {
     (pags||[]).forEach(pg => {
       const v = parseFloat(pg.valor_brl)||0;
       const u = parseFloat(pg.valor_usd)||0;
-      porTipo[pg.tipo] = (porTipo[pg.tipo]||0) + v;
-      if (IMP_TIPOS_SOMA.has(pg.tipo))  { totalRecebido   += v; totalUsd += u; }
-      else if (IMP_TIPOS_DEDUZ.has(pg.tipo)) { totalTransferido += v; totalUsd -= u; } // deduz USD também
-      else { totalBrl += v; totalUsd += u; } // tipos normais
+      const vAbs = Math.abs(v); // sempre positivo — o sinal é controlado pelo tipo
+      const uAbs = Math.abs(u);
+      porTipo[pg.tipo] = (porTipo[pg.tipo]||0) + vAbs;
+      if (IMP_TIPOS_SOMA.has(pg.tipo))  { totalRecebido    += vAbs; totalUsd += uAbs; }
+      else if (IMP_TIPOS_DEDUZ.has(pg.tipo)) { totalTransferido += vAbs; totalUsd -= uAbs; } // deduz USD também
+      else { totalBrl += vAbs; totalUsd += uAbs; } // tipos normais
     });
     // Subtotal = tipos normais + recebido - transferido
     const subtotal     = totalBrl + totalRecebido - totalTransferido;
@@ -2471,7 +2473,7 @@ async function loadImpTabPagamentos(p) {
               <td class="mono" style="color:var(--text-muted)">${pg.data_pagamento?fmtData(pg.data_pagamento):(pg.data_vencimento?fmtData(pg.data_vencimento):'—')}</td>
               <td class="right mono" style="font-weight:600">${pg.valor_brl?fmt(pg.valor_brl):'—'}</td>
               <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd?'US$ '+fmtQtd(pg.valor_usd,2):'—'}</td>
-              <td class="right mono" style="color:var(--text-muted);font-size:11px">${pg.valor_brl&&pg.valor_usd?'R$ '+fmtQtd(parseFloat(pg.valor_brl)/parseFloat(pg.valor_usd),4):'—'}</td>
+              <td class="right mono" style="color:var(--text-muted);font-size:11px">${pg.valor_brl&&pg.valor_usd?'R$ '+fmtQtd(Math.abs(parseFloat(pg.valor_brl))/Math.abs(parseFloat(pg.valor_usd)),4):'—'}</td>
               <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'✓ Pago':'⏳ A Pagar'}</span></td>
               <td style="display:flex;gap:6px;align-items:center"><button onclick="editarPagamento('${pg.id}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px" title="Editar">✏️</button><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Remover">✕</button></td>
             </tr>`).join('')}</tbody>
