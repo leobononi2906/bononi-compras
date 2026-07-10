@@ -2345,8 +2345,19 @@ async function loadImpTabInfo(p) {
     const numPedidos = (pedidos||[]).map(x => x.numero_pedido);
     if (numPedidos.length > 0) {
       const {data:prods} = await sb.from('vw_fb_pedidos_compra').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,id_fornecedor').in('id_pedido', numPedidos).range(0,999);
-      // Extrai fornecedor único do pedido
-      const fornPedido = prods?.length ? { nome: prods[0].nome_fornecedor||'—', id: prods[0].id_fornecedor||'—' } : null;
+      // Extrai fornecedor único — tenta dos prods, senão usa o do processo
+      if (prods?.length) {
+        fornPedido = { nome: prods[0].nome_fornecedor||'—', id: prods[0].id_fornecedor||'—' };
+      } else if (numPedidos.length > 0) {
+        // prods veio vazio mas tem pedido — busca direto sem filtro de produto
+        const {data:pedForn} = await sb.from('vw_fb_pedidos_compra')
+          .select('id_pedido,nome_fornecedor,id_fornecedor')
+          .in('id_pedido', numPedidos).limit(1);
+        if (pedForn?.length) fornPedido = { nome: pedForn[0].nome_fornecedor||'—', id: pedForn[0].id_fornecedor||'—' };
+        else if (p.nome_fornecedor) fornPedido = { nome: p.nome_fornecedor, id: '—' };
+      } else if (p.nome_fornecedor) {
+        fornPedido = { nome: p.nome_fornecedor, id: '—' };
+      }
       if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:12px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color:var(--blue-mid)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
       pedidosHtml = pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--blue-mid);font-family:'DM Mono',monospace">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></div>`).join('');
     } else {
