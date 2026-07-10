@@ -312,7 +312,7 @@ let alertasConsolidado = [];
 // ═══════════════════════════════════════════════════════════
 function fmt(v) {
   if (v === null || v === undefined || isNaN(v)) return '—';
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v);
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
 }
 
 function fmtQtd(v, dec = 0) {
@@ -2339,11 +2339,14 @@ async function loadImpTabInfo(p) {
   // Busca pedidos vinculados em paralelo
   let pedidosHtml = '<div style="text-align:center;padding:16px;color:var(--text-muted)">Carregando pedidos...</div>';
   let produtosHtml = '';
+  let fornPedido = null;
   try {
     const {data:pedidos} = await sb.from('import_pedidos').select('*').eq('processo_id',p.id).order('criado_em');
     const numPedidos = (pedidos||[]).map(x => x.numero_pedido);
     if (numPedidos.length > 0) {
-      const {data:prods} = await sb.from('vw_fb_pedidos_compra').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor').in('id_pedido', numPedidos).range(0,999);
+      const {data:prods} = await sb.from('vw_fb_pedidos_compra').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,id_fornecedor').in('id_pedido', numPedidos).range(0,999);
+      // Extrai fornecedor único do pedido
+      const fornPedido = prods?.length ? { nome: prods[0].nome_fornecedor||'—', id: prods[0].id_fornecedor||'—' } : null;
       if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:12px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color:var(--blue-mid)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
       pedidosHtml = pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--blue-mid);font-family:'DM Mono',monospace">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></div>`).join('');
     } else {
@@ -2355,6 +2358,7 @@ async function loadImpTabInfo(p) {
     <div class="cards-grid cards-grid-2" style="margin-bottom:16px">
       <div class="card"><div class="card-label">Status</div><div style="margin-top:8px"><span class="badge" style="color:${color};background:${bg};font-size:13px;padding:4px 12px">${label}</span></div></div>
       <div class="card"><div class="card-label">Importadora</div><div class="card-value" style="font-size:18px">${p.importadora||'—'}</div></div>
+      <div class="card" style="grid-column:1/-1"><div class="card-label">Fornecedor</div><div style="margin-top:6px;display:flex;align-items:center;gap:10px">${fornPedido ? `<span style="font-size:15px;font-weight:700">${fornPedido.nome}</span><span style="font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace">Cód. ${fornPedido.id}</span>` : '<span style="color:var(--text-muted);font-size:13px">Nenhum pedido vinculado</span>'}</div></div>
       <div class="card"><div class="card-label">Embarque</div><div class="card-value" style="font-size:18px">${p.data_embarque?fmtData(p.data_embarque):'—'}</div></div>
       <div class="card"><div class="card-label">Previsão Chegada</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
