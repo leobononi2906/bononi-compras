@@ -386,7 +386,7 @@ async function loadAlertas() {
   if (el) el.innerHTML = '<tr class="loading-row"><td colspan="11">Carregando dados...</td></tr>';
   try {
     const pages = await Promise.all(
-      [0,1,2,3,4,5,6,7].map(i =>
+      [0,1,2,3,4,5,6,7,8,9,10,11].map(i =>
         sb.from('comp_produtos_consolidado').select('*').range(i * 1000, i * 1000 + 999)
       )
     );
