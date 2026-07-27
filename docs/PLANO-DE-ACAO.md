@@ -70,7 +70,7 @@ Detalhe conceitual completo em [PESQUISA-DEMANDA-E-REPOSICAO §0](PESQUISA-DEMAN
 |---|---|---|
 | P1.1 | **Comprar Agora** — refinar com "pedir até (data)" e agrupamento por fornecedor com ações | lead time (P2.1) |
 | P1.2 | **Simplificar o Drawer** — decisão no topo, 3-4 números essenciais, resto recolhido | — |
-| P1.3 | **Hambúrguer some em 768–900px** (tablet) — corrigir breakpoint do CSS injetado | — |
+| P1.3 | ✅ **FEITO 27/07** — hambúrguer visível até 900px (override `.menu-toggle` no CSS injetado). | — |
 | P1.4 | Definir se **"Comprar Agora" vira a tela inicial** (landing) da equipe | decisão do Leo |
 
 ### P2 — Qualidade do cálculo (precisa de dados novos)

@@ -17,6 +17,9 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 - Nova helper `itemCoberto(r)`. Só afeta a exibição do Alertas — o semáforo/contagem continua refletindo a situação real do estoque. Impacto medido: **76** dos 520 itens vermelhos viram "a caminho".
 - *(compras.js — 1 helper + 1 condição na célula de situação; `node --check` ok)*
 
+### Corrigido — hambúrguer do tablet (P1.3)
+- O botão de menu (☰) sumia entre **768 e 900px** (tablet): o CSS antigo injetado pelo `compras.js` só mostrava o botão até 768px, mas a sidebar do shell já vira off-canvas em 900px — ficava sem como abrir o menu. Adicionado override `@media (max-width:900px){ .menu-toggle{ display:block !important } }` (mesmo padrão dos outros overrides do arquivo, sem mexer no bloco de CSS legado). Validado ao vivo: o `!important` vence o `display:none` do CSS antigo.
+
 ## 26/07/2026
 
 ### Adicionado — tela "🎯 Comprar Agora" (worklist priorizada)

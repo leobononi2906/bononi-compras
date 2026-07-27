@@ -129,7 +129,7 @@ Provavelmente ele está OK (sem necessidade de compra) ou foi marcado como **ign
 Era um bug de layout — corrigido. Se acontecer de novo, avise.
 
 **"Não consigo abrir o menu no tablet/celular."**
-Há um ajuste de layout previsto para telas médias. Está no backlog.
+Corrigido em 27/07 — o botão de menu (☰) agora aparece em qualquer tamanho de tela (antes sumia numa faixa de largura de tablet). Se ainda não aparecer, dê um **Ctrl+Shift+R**.
 
 ---
 
