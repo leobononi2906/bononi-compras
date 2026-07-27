@@ -12,7 +12,7 @@ O sistema de Compras serve para responder **uma pergunta central**:
 
 Tudo gira em torno disso. As outras telas são apoio.
 
-- **Entrou pra trabalhar?** Comece por **Alertas e Reposição**. É lá que o dia acontece.
+- **Entrou pra trabalhar?** Comece por **🎯 Comprar Agora** — a lista pronta do que precisa comprar hoje, já agrupada por fornecedor. Quer investigar um item específico ou ver tudo? → **Alertas e Reposição**.
 - **Quer ver o quadro geral do estoque?** → Totais de Estoque.
 - **Contagem no depósito?** → Balanço Físico.
 - **Acompanhar mercadoria vindo de fora?** → Importação.
@@ -21,9 +21,22 @@ Tudo gira em torno disso. As outras telas são apoio.
 
 ---
 
-## 1. Alertas e Reposição — *a tela do dia a dia*
+## 1. 🎯 Comprar Agora — *comece por aqui*
 
-É aqui que você descobre o que está faltando ou prestes a faltar.
+A lista de trabalho do dia: **só o que precisa de decisão agora**. O sistema já tira do caminho o que está tranquilo e o que já foi pedido — o que sobra é o que você precisa resolver.
+
+- **Agrupado por fornecedor**, com o valor estimado de cada bloco, ordenado pela urgência. A ideia é você bater o olho e já saber pra quem ligar.
+- **Não aparece o que já está resolvido:** item cuja reposição já foi pedida (e o pedido cobre a necessidade) **não entra** — some o alarme falso.
+- **Itens esporádicos** (baixo giro, vende pouco no ano) ficam ocultos por padrão. Tem um marcador **"incluir itens esporádicos"** se você quiser vê-los.
+- Clique na linha para abrir o produto (mesmo painel do Alertas).
+
+> Os três números no topo: quantos itens comprar, valor estimado e quantos fornecedores acionar.
+
+---
+
+## 2. Alertas e Reposição — *investigar e ver tudo*
+
+É aqui que você vê **todos** os produtos (não só os urgentes) e investiga item por item.
 
 ### O semáforo (os cartões coloridos no topo)
 Cada cor é uma situação. Clique no cartão para filtrar só aquela cor:
@@ -35,6 +48,11 @@ Cada cor é uma situação. Clique no cartão para filtrar só aquela cor:
 | 🟡 **Baixo** | Cobertura curta (menos de ~30 dias) | Programar compra |
 | 🟢 **OK** | Estoque saudável | Nada por enquanto |
 | ⚪ **Sem movimento** | Não vendeu no último ano | Avaliar (parado) |
+
+### Marcadores ao lado do produto
+- **🚚 a caminho** (no lugar do vermelho): o item estava em ruptura/crítico, **mas a reposição já foi pedida e cobre a falta** — não precisa de ação, é só esperar chegar. Some o susto à toa.
+- **etiqueta "esporádico"**: item de baixo giro (vende, mas pouco no ano). Sinaliza que a "ruptura" dele nem sempre é urgente.
+- **A, B ou C** (curva ABC): agora calculada **por valor de venda**, não por quantidade — o "A" passou a ser de fato o item que mais pesa em dinheiro (antes um item de 2-3 vendas no ano aparecia como A sem ser).
 
 ### Como achar um produto
 - **Digitou algo na busca?** O sistema mostra **todos** os produtos que batem com o texto, mesmo os que estão OK. Serve pra consultar qualquer item.
@@ -55,13 +73,13 @@ Dentro do produto dá pra adicionar ao **carrinho**. O carrinho fica numa barra 
 
 ---
 
-## 2. Totais de Estoque
+## 3. Totais de Estoque
 
-Visão de cima do estoque inteiro: quanto vale, dividido por grupo, por situação e pela **curva ABC** (A = os itens mais importantes, C = os menos). Boa para reunião e para enxergar concentração.
+Visão de cima do estoque inteiro: quanto vale, dividido por grupo, por situação e pela **curva ABC** (A = os itens mais importantes, C = os menos). A curva ABC agora é **por valor de venda** — o gráfico reflete de fato onde está o dinheiro. Boa para reunião e para enxergar concentração.
 
 ---
 
-## 3. Balanço Físico — *contagem no depósito*
+## 4. Balanço Físico — *contagem no depósito*
 
 Serve para conferir se o que o sistema diz bate com a prateleira. É **contagem cega**: você conta sem ver o saldo do sistema, para não "viciar" o número.
 
@@ -72,7 +90,7 @@ Fluxo:
 
 ---
 
-## 4. Importação — *mercadoria vindo de fora*
+## 5. Importação — *mercadoria vindo de fora*
 
 Acompanha cada processo de importação como um quadro (kanban). Cada cartão é um processo e caminha pelas etapas:
 
@@ -88,13 +106,13 @@ O resumo financeiro soma os pagamentos normais, ajusta com o que foi **recebido*
 
 ---
 
-## 5. Fornecedores
+## 6. Fornecedores
 
 Ranking de com quem a gente mais compra. Abre um painel com o detalhe e o histórico de cada fornecedor. Bom para negociar e para enxergar dependência.
 
 ---
 
-## 6. Configurações
+## 7. Configurações
 
 - **Ignorar Produtos:** tem item que nunca vai ser reposto por aqui e só polui os alertas? Marque para **ignorar**. Ele some da tela de Alertas. Pode ignorar um produto, um subgrupo inteiro ou um grupo inteiro.
 - **Ignorados:** a lista do que está escondido — dá pra remover e trazer de volta.

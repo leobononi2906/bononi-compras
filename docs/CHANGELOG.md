@@ -12,6 +12,11 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 - **Etiqueta "esporádico" no Alertas** (ao lado do nome), usando a flag real da view. A helper `comprarAgoraEsporadico` virou `itemEsporadico` (agora compartilhada entre Comprar Agora e Alertas); usa a flag `esporadico` da view com fallback pro proxy de 90 dias.
 - Efeito: worklist do Comprar Agora fica mais limpa (~340 → 214 itens por decisão) e o ABC deixa de enganar. *(compras.js — trocas de campo + 1 etiqueta; `node --check` ok)*
 
+### Alterado — Alertas não grita vermelho em item já pedido (P0.3)
+- Quando um item está em **ruptura/crítico mas a reposição já foi pedida e cobre a falta** (`pedido_aberto > 0` e `qtd_sugerida = 0`), o Alertas mostra **"🚚 a caminho"** (azul) no lugar do badge vermelho de ação. Mata o alarme falso que afogava a equipe ("grita vermelho em item já resolvido").
+- Nova helper `itemCoberto(r)`. Só afeta a exibição do Alertas — o semáforo/contagem continua refletindo a situação real do estoque. Impacto medido: **76** dos 520 itens vermelhos viram "a caminho".
+- *(compras.js — 1 helper + 1 condição na célula de situação; `node --check` ok)*
+
 ## 26/07/2026
 
 ### Adicionado — tela "🎯 Comprar Agora" (worklist priorizada)

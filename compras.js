@@ -618,7 +618,7 @@ function renderAlertas() {
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
-      <td>${badgeSituacao(r.situacao_estoque)}</td>
+      <td>${(itemCoberto(r) && (r.situacao_estoque === 'RUPTURA' || r.situacao_estoque === 'CRITICO')) ? '<span class="badge badge-blue" title="Sem ação: reposição já pedida e a caminho">🚚 a caminho</span>' : badgeSituacao(r.situacao_estoque)}</td>
       <td style="font-size:12px;color:var(--text-secondary);max-width:160px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome_fornecedor}">${f.nome_fornecedor}</div>`).join('') || '—'}</td>
       <td onclick="event.stopPropagation()"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="${noCarrinho ? `removerDoCarrinho(${r.id_produto})` : `adicionarAoCarrinho(${r.id_produto})`}" title="${noCarrinho ? 'Remover do pedido' : 'Adicionar ao pedido'}">${noCarrinho ? '✓' : '+'}</button></td>
     </tr>`;
@@ -669,6 +669,12 @@ function itemEsporadico(r) {
   // senão, cai num proxy por baixo giro (<= 2 saídas em 90 dias)
   if (r.esporadico !== undefined && r.esporadico !== null) return !!r.esporadico;
   return (Number(r.saida_90d_total) || 0) <= 2;
+}
+
+// "a caminho": a reposição já pedida cobre a necessidade (qtd_sugerida zerada e há
+// pedido em aberto). Usado no Alertas p/ não gritar vermelho de ação em item já resolvido.
+function itemCoberto(r) {
+  return (Number(r.pedido_aberto_total) || 0) > 0 && (Number(r.qtd_sugerida) || 0) <= 0;
 }
 
 function renderComprarAgora() {

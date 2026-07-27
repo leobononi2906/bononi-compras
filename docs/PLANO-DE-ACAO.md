@@ -30,6 +30,7 @@ Meta: tornar o app **mais fácil e confiável** que o ERP, pra equipe migrar —
 | Diagnóstico do produto ref 000086 | ✅ ver §3 |
 | SQL aditivo da view (365d + flag esporádico) | ✅ **aplicado em produção 27/07** |
 | ABC por valor + etiqueta esporádico na exibição (P0.2) | ✅ **em produção 27/07** |
+| "🚚 a caminho" no Alertas p/ item já pedido (P0.3) | ✅ **em produção 27/07** |
 
 > Tudo em **branch local**, **sem push** (produção intacta). Publicar = push da branch → preview Vercel → merge na `main` após OK.
 
@@ -62,7 +63,7 @@ Detalhe conceitual completo em [PESQUISA-DEMANDA-E-REPOSICAO §0](PESQUISA-DEMAN
 |---|---|---|---|
 | P0.1 | ✅ **FEITO 27/07** — SQL aditivo aplicado em produção: expõe `saida_365d_total`, `consumo_diario_365d_total`, flag `esporadico`. Não quebrou nada (aditivo). | — | Frontend usa a flag real automaticamente (fallback já existia). |
 | P0.2 | ✅ **FEITO 27/07** — exibição por `curva_abc_valor` (Alertas + gráfico Totais + payload IA) e etiqueta esporádico no Alertas. | P0.1 | Corrigiu o "2 vendas = A" (ABC virou Pareto real 127/282/2458). |
-| P0.3 | **Não alarmar item já coberto por pedido** — Alertas mostra "🚚 a caminho" em vez de vermelho de ação quando `pedido_aberto` cobre | — | Mata o ruído que afoga a equipe |
+| P0.3 | ✅ **FEITO 27/07** — Alertas mostra "🚚 a caminho" (azul) em vez de vermelho quando `pedido_aberto > 0` e `qtd_sugerida = 0`. Helper `itemCoberto`. | — | Matou o ruído (76 dos 520 vermelhos viram "a caminho"). Semáforo/contagem inalterados. |
 
 ### P1 — Ação e usabilidade
 | # | Item | Depende de |
