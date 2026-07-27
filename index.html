@@ -333,6 +333,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
           <span class="nav-module-chevron">▼</span>
         </div>
         <div class="nav-module-items">
+          <a class="nav-item" data-pagina="cmp-comprar"      onclick="navegarPara('cmp-comprar')">      <span class="nav-dot"></span>🎯 Comprar Agora</a>
           <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Alertas e Reposição</a>
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
           <a class="nav-item" data-pagina="cmp-balanco"      onclick="navegarPara('cmp-balanco')">      <span class="nav-dot"></span>Balanço Físico</a>
@@ -415,6 +416,7 @@ window.fmtDate = (d) => { if(!d) return '—'; return new Date(d).toLocaleDateSt
 window.setLastUpdate = () => { document.getElementById('last-update').textContent = `Atualizado ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`; };
 
 const PAGINAS = {
+  'cmp-comprar':      { label: 'Comprar Agora',          breadcrumb: 'Compras · Comprar Agora' },
   'cmp-alertas':      { label: 'Alertas e Reposição',    breadcrumb: 'Compras · Alertas' },
   'cmp-totais':       { label: 'Totais de Estoque',      breadcrumb: 'Compras · Totais' },
   'cmp-balanco':      { label: 'Balanço Físico',         breadcrumb: 'Compras · Balanço' },

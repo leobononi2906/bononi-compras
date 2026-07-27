@@ -5,7 +5,7 @@
   if (document.getElementById('css-compras')) return;
   const style = document.createElement('style');
   style.id = 'css-compras';
-  style.textContent = "* { box-sizing: border-box; margin: 0; padding: 0; }\n.sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }\n.nav-badge { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }\n.nav-badge.orange { background: var(--orange); }\n.nav-badge.blue { background: var(--blue-mid); }\n.last-update { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; }\n.main { position: fixed; left: 240px; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; overflow-y: auto; }\n.search-input { height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text-primary); font-family: 'DM Sans', sans-serif; font-size: 13px; width: 220px; outline: none; transition: border-color 0.15s; }\n.search-input:focus { border-color: var(--blue-mid); }\n.content { padding: 16px 20px 24px 20px; flex: 1; }\n.semaforo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-sm); border-left: 4px solid transparent; cursor: pointer; transition: all 0.15s; }\n.semaforo-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }\n.semaforo-card.ruptura { border-left-color: var(--red); }\n.semaforo-card.critico { border-left-color: var(--orange); }\n.semaforo-card.baixo { border-left-color: var(--yellow); }\n.semaforo-card.ok { border-left-color: var(--green); }\n.semaforo-card.active { background: var(--blue-pale); border-color: var(--blue-mid); }\n.table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }\n.table-card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }\n.table-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }\n.toggle-group { display: flex; gap: 4px; }\n.toggle-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; white-space: nowrap; }\n.toggle-btn.active { background: var(--blue-dark); border-color: var(--blue-dark); color: #fff; }\n.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }\n.chart-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }\n.chart-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }\n.drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(15,29,53,0.4); z-index: 200; }\n.drawer-overlay.open { display: block; }\n.drawer { position: fixed; top: 0; right: -680px; width: 680px; height: 100vh; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 201; display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.4,0,0.2,1); overflow: hidden; }\n.drawer.open { right: 0; }\n.drawer-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }\n.drawer-title { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }\n.drawer-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }\n.drawer-close { width: 32px; height: 32px; border: none; background: var(--surface2); border-radius: 6px; cursor: pointer; font-size: 16px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 12px; }\n.drawer-close:hover { background: var(--border); color: var(--text-primary); }\n.drawer-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }\n.drawer-tab { padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }\n.drawer-tab:hover { color: var(--text-primary); }\n.drawer-tab.active { color: var(--blue-mid); border-bottom-color: var(--blue-mid); }\n.drawer-tab-content { display: none; }\n.drawer-tab-content.active { display: block; }\n.cart-panel { position: fixed; bottom: 0; left: 240px; right: 0; background: var(--surface); border-top: 2px solid var(--blue-mid); z-index: 150; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); max-height: 420px; display: flex; flex-direction: column; }\n.cart-panel.open { transform: translateY(0); }\n.cart-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); cursor: pointer; flex-shrink: 0; }\n.cart-title { font-size: 14px; font-weight: 700; color: var(--blue-dark); display: flex; align-items: center; gap: 8px; }\n.cart-count { background: var(--blue-mid); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }\n.cart-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }\n.loading-row td { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; }\n.chat-panel { position: fixed; top: 0; right: -440px; bottom: 0; width: 440px; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 300; display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.4,0,0.2,1); border-left: 1px solid var(--border); }\n.chat-panel.open { right: 0; }\n.chat-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #1A3A8F, #0077CC); flex-shrink: 0; }\n.chat-header-title { color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }\n.chat-header-sub { color: rgba(255,255,255,0.6); font-size: 11px; margin-top: 2px; }\n.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }\n.chat-msg { max-width: 90%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }\n.chat-msg.user { background: var(--blue-dark); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }\n.chat-msg.ai { background: var(--surface2); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border); }\n.chat-msg.ai strong { color: var(--blue-dark); }\n.chat-msg.loading { background: var(--surface2); color: var(--text-muted); align-self: flex-start; border: 1px solid var(--border); font-style: italic; }\n.chat-suggestions { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--border); flex-shrink: 0; }\n.chat-suggestion { padding: 5px 10px; background: var(--blue-pale); color: var(--blue-mid); border: 1px solid var(--blue-light); border-radius: 16px; font-size: 11.5px; font-weight: 500; cursor: pointer; transition: background 0.15s; font-family: 'DM Sans', sans-serif; }\n.chat-suggestion:hover { background: #d0eaf8; }\n.chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; }\n.chat-input { flex: 1; padding: 9px 14px; border: 1px solid var(--border); border-radius: 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; background: var(--surface2); resize: none; max-height: 80px; min-height: 38px; }\n.chat-input:focus { border-color: var(--blue-mid); }\n.chat-send { width: 38px; height: 38px; border: none; border-radius: 50%; background: var(--blue-dark); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }\n.chat-send:hover { background: var(--blue-mid); }\n.chat-send:disabled { background: var(--border); cursor: not-allowed; }\n.chat-overlay { display: none; position: fixed; inset: 0; background: rgba(15,29,53,0.3); z-index: 299; }\n.chat-overlay.open { display: block; }\n.menu-toggle { display: none; background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px; color: var(--text-primary); }\n@media (max-width: 768px) { .chat-panel { width: 100%; right: -100%; } .sidebar.open { left: 0; } .main { left: 0; } .cart-panel { left: 0; } .drawer { width: 100%; right: -100%; } .menu-toggle { display: block; } }\n";
+  style.textContent = "* { box-sizing: border-box; margin: 0; padding: 0; }\n.sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }\n.nav-badge { margin-left: auto; background: var(--red); color: #fff; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; min-width: 18px; text-align: center; }\n.nav-badge.orange { background: var(--orange); }\n.nav-badge.blue { background: var(--blue-mid); }\n.last-update { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; }\n.main { position: fixed; left: 240px; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; overflow-y: auto; }\n.search-input { height: 34px; padding: 0 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface2); color: var(--text-primary); font-family: 'DM Sans', sans-serif; font-size: 13px; width: 220px; outline: none; transition: border-color 0.15s; }\n.search-input:focus { border-color: var(--blue-mid); }\n.content { padding: 16px 20px 24px 20px; flex: 1; }\n.semaforo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 20px; box-shadow: var(--shadow-sm); border-left: 4px solid transparent; cursor: pointer; transition: all 0.15s; }\n.semaforo-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }\n.semaforo-card.ruptura { border-left-color: var(--red); }\n.semaforo-card.critico { border-left-color: var(--orange); }\n.semaforo-card.baixo { border-left-color: var(--yellow); }\n.semaforo-card.ok { border-left-color: var(--green); }\n.semaforo-card.active { background: var(--blue-pale); border-color: var(--blue-mid); }\n.table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }\n.table-card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }\n.table-card-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }\n.toggle-group { display: flex; gap: 4px; }\n.toggle-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid var(--border); background: transparent; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: all 0.15s; white-space: nowrap; }\n.toggle-btn.active { background: var(--blue-dark); border-color: var(--blue-dark); color: #fff; }\n.chart-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }\n.chart-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }\n.chart-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }\n.drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(15,29,53,0.4); z-index: 200; }\n.drawer-overlay.open { display: block; }\n.drawer { position: fixed; top: 0; right: 0; width: 680px; max-width: 95vw; height: 100vh; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 201; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); overflow: hidden; }\n.drawer.open { transform: translateX(0); }\n.drawer-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }\n.drawer-title { font-size: 16px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }\n.drawer-sub { font-size: 12px; color: var(--text-muted); margin-top: 3px; }\n.drawer-close { width: 32px; height: 32px; border: none; background: var(--surface2); border-radius: 6px; cursor: pointer; font-size: 16px; color: var(--text-muted); display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 12px; }\n.drawer-close:hover { background: var(--border); color: var(--text-primary); }\n.drawer-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; }\n.drawer-tab { padding: 10px 16px; font-size: 13px; font-weight: 500; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }\n.drawer-tab:hover { color: var(--text-primary); }\n.drawer-tab.active { color: var(--blue-mid); border-bottom-color: var(--blue-mid); }\n.drawer-tab-content { display: none; }\n.drawer-tab-content.active { display: block; }\n.cart-panel { position: fixed; bottom: 0; left: 240px; right: 0; background: var(--surface); border-top: 2px solid var(--blue-mid); z-index: 150; transform: translateY(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); max-height: 420px; display: flex; flex-direction: column; }\n.cart-panel.open { transform: translateY(0); }\n.cart-header { padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); cursor: pointer; flex-shrink: 0; }\n.cart-title { font-size: 14px; font-weight: 700; color: var(--blue-dark); display: flex; align-items: center; gap: 8px; }\n.cart-count { background: var(--blue-mid); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }\n.cart-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }\n.loading-row td { text-align: center; padding: 32px; color: var(--text-muted); font-size: 13px; }\n.chat-panel { position: fixed; top: 0; right: -440px; bottom: 0; width: 440px; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 300; display: flex; flex-direction: column; transition: right 0.3s cubic-bezier(0.4,0,0.2,1); border-left: 1px solid var(--border); }\n.chat-panel.open { right: 0; }\n.chat-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #1A3A8F, #0077CC); flex-shrink: 0; }\n.chat-header-title { color: #fff; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }\n.chat-header-sub { color: rgba(255,255,255,0.6); font-size: 11px; margin-top: 2px; }\n.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }\n.chat-msg { max-width: 90%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; }\n.chat-msg.user { background: var(--blue-dark); color: #fff; align-self: flex-end; border-bottom-right-radius: 4px; }\n.chat-msg.ai { background: var(--surface2); color: var(--text-primary); align-self: flex-start; border-bottom-left-radius: 4px; border: 1px solid var(--border); }\n.chat-msg.ai strong { color: var(--blue-dark); }\n.chat-msg.loading { background: var(--surface2); color: var(--text-muted); align-self: flex-start; border: 1px solid var(--border); font-style: italic; }\n.chat-suggestions { padding: 8px 16px; display: flex; flex-wrap: wrap; gap: 6px; border-top: 1px solid var(--border); flex-shrink: 0; }\n.chat-suggestion { padding: 5px 10px; background: var(--blue-pale); color: var(--blue-mid); border: 1px solid var(--blue-light); border-radius: 16px; font-size: 11.5px; font-weight: 500; cursor: pointer; transition: background 0.15s; font-family: 'DM Sans', sans-serif; }\n.chat-suggestion:hover { background: #d0eaf8; }\n.chat-input-area { padding: 12px 16px; border-top: 1px solid var(--border); display: flex; gap: 8px; flex-shrink: 0; }\n.chat-input { flex: 1; padding: 9px 14px; border: 1px solid var(--border); border-radius: 20px; font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; background: var(--surface2); resize: none; max-height: 80px; min-height: 38px; }\n.chat-input:focus { border-color: var(--blue-mid); }\n.chat-send { width: 38px; height: 38px; border: none; border-radius: 50%; background: var(--blue-dark); color: #fff; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; }\n.chat-send:hover { background: var(--blue-mid); }\n.chat-send:disabled { background: var(--border); cursor: not-allowed; }\n.chat-overlay { display: none; position: fixed; inset: 0; background: rgba(15,29,53,0.3); z-index: 299; }\n.chat-overlay.open { display: block; }\n.menu-toggle { display: none; background: none; border: none; font-size: 20px; cursor: pointer; padding: 4px 8px; color: var(--text-primary); }\n@media (max-width: 768px) { .chat-panel { width: 100%; right: -100%; } .sidebar.open { left: 0; } .main { left: 0; } .cart-panel { left: 0; } .drawer { width: 100%; right: -100%; } .menu-toggle { display: block; } }\n";
   style.textContent += '\n/* DRAWER_ZINDEX_FIX */\n#produto-drawer.drawer,\n#imp-drawer.drawer,\n#forn-drawer.drawer,\n.drawer.open { z-index: 9999 !important; pointer-events: auto !important; }\n.drawer-overlay.open { z-index: 9998 !important; }\n#produto-drawer .drawer-tab,\n#imp-drawer .drawer-tab,\n#forn-drawer .drawer-tab { pointer-events: auto !important; cursor: pointer !important; }\n';
   style.textContent += '\n/* MODAIS ACIMA DOS DRAWERS */\n#modal-processo-overlay,\n#modal-historico-overlay { z-index: 99999 !important; }\n';
   document.head.appendChild(style);
@@ -13,12 +13,27 @@
 
 
 const PAGINAS_HTML = {
+  'cmp-comprar': `<div class="page-content" id="page-cmp-comprar">
+    <div class="cards-grid cards-grid-3">
+      <div class="card"><div class="card-label">Itens a comprar</div><div class="card-value blue" id="ca-kpi-itens">—</div><div class="card-sub">precisam de decisão agora</div></div>
+      <div class="card"><div class="card-label">Valor estimado</div><div class="card-value" id="ca-kpi-valor">—</div><div class="card-sub">base último preço de compra</div></div>
+      <div class="card"><div class="card-label">Fornecedores a acionar</div><div class="card-value" id="ca-kpi-forn">—</div><div class="card-sub">lista agrupada abaixo</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
+      <input type="text" id="ca-busca" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="renderComprarAgora()" style="width:240px" />
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;user-select:none"><input type="checkbox" id="ca-inclui-esporadicos" onchange="renderComprarAgora()" /> incluir itens esporádicos</label>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="ca-resumo"></span>
+    </div>
+    <div class="section-title" style="margin-top:18px">Comprar agora — por fornecedor</div>
+    <div id="ca-lista"><div style="text-align:center;padding:40px;color:var(--text-muted)">Carregando...</div></div>
+  </div>`,
   'cmp-alertas': `<div class="page-content" id="page-cmp-alertas">
-    <div class="cards-grid cards-grid-4">
+    <div class="cards-grid cards-grid-5">
       <div class="semaforo-card ruptura" onclick="filtrarSituacao('RUPTURA', this)"><div class="card-label">🔴 Ruptura</div><div class="card-value red" id="kpi-ruptura">—</div><div class="card-sub">Estoque zerado com giro</div></div>
       <div class="semaforo-card critico" onclick="filtrarSituacao('CRITICO', this)"><div class="card-label">🟠 Crítico</div><div class="card-value orange" id="kpi-critico">—</div><div class="card-sub">Cobertura &lt; lead time</div></div>
       <div class="semaforo-card baixo" onclick="filtrarSituacao('BAIXO', this)"><div class="card-label">🟡 Baixo</div><div class="card-value" style="color:var(--yellow)" id="kpi-baixo">—</div><div class="card-sub">Cobertura &lt; 30 dias</div></div>
       <div class="semaforo-card ok" onclick="filtrarSituacao('OK', this)"><div class="card-label">🟢 OK</div><div class="card-value green" id="kpi-ok">—</div><div class="card-sub">Estoque adequado</div></div>
+      <div class="semaforo-card sem_mov" onclick="filtrarSituacao('SEM_MOVIMENTO', this)"><div class="card-label">⚪ Sem Movimento</div><div class="card-value" style="color:var(--text-muted)" id="kpi-sem_mov">—</div><div class="card-sub">Sem saída em 365 dias</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap">
       <input type="text" id="busca-produto" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
@@ -30,18 +45,7 @@ const PAGINAS_HTML = {
         <div id="forn-filtro-badges" style="display:none;position:absolute;top:36px;left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);width:280px;max-height:240px;overflow-y:auto"></div>
       </div>
       <div id="forn-selecionados-chips" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
-      <select id="filtro-situacao" class="filter-select" onchange="onFilterChange()">
-        <option value="">Todas as situações</option><option value="RUPTURA">🔴 Ruptura</option><option value="CRITICO">🟠 Crítico</option><option value="BAIXO">🟡 Baixo</option><option value="OK">🟢 OK</option><option value="SEM_MOVIMENTO">⚪ Sem Movimento</option>
-      </select>
       <button class="btn" onclick="abrirChat()" style="margin-left:auto;background:linear-gradient(135deg,#1A3A8F,#0077CC);color:#fff;height:34px;padding:0 14px;gap:6px">✦ Assistente IA</button>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-top:14px">
-      <div class="card"><div class="card-label">Itens no Pedido Atual</div><div class="card-value blue" id="kpi-pedido-itens">0</div><div class="card-sub" id="kpi-pedido-forn">0 fornecedores</div></div>
-      <div class="card"><div class="card-label">Valor Estimado</div><div class="card-value" id="kpi-pedido-valor">R$ 0</div><div class="card-sub">base último preço compra</div></div>
-      <div class="card" style="display:flex;align-items:center;justify-content:center;gap:12px;flex-direction:column">
-        <button class="btn btn-primary" style="width:100%;justify-content:center" onclick="abrirCarrinho()">🛒 Ver Pedido em Andamento</button>
-        <button class="btn btn-success" style="width:100%;justify-content:center" onclick="exportarPedido()">↓ Exportar para Excel</button>
-      </div>
     </div>
     <div class="section-title" style="margin-top:20px">Produtos — <span id="alertas-count">carregando...</span></div>
     <div class="table-card">
@@ -61,18 +65,16 @@ const PAGINAS_HTML = {
         <table class="data-table">
           <thead><tr>
             <th style="width:32px"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" /></th>
-            <th onclick="setOrdemAlertas('nome',this)" style="cursor:pointer;user-select:none">Produto <span class="sort-icon">↕</span></th>
-            <th>Grupo</th>
-            <th class="right" onclick="setOrdemAlertas('estoque',this)" style="cursor:pointer;user-select:none">Estoque <span class="sort-icon">↕</span></th>
-            <th class="right" onclick="setOrdemAlertas('cobertura',this)" style="cursor:pointer;user-select:none">Cobertura <span class="sort-icon">↕</span></th>
-            <th class="right" onclick="setOrdemAlertas('qtd_sugerida',this)" style="cursor:pointer;user-select:none">Qtd Sugerida <span class="sort-icon">↕</span></th>
-            <th class="right" onclick="setOrdemAlertas('pedido_aberto',this)" style="cursor:pointer;user-select:none">Ped. Aberto <span class="sort-icon">↕</span></th>
-            <th onclick="setOrdemAlertas('prioridade',this)" style="cursor:pointer;user-select:none">Situação <span class="sort-icon">↕</span></th>
-            <th onclick="setOrdemAlertas('abc',this)" style="cursor:pointer;user-select:none">ABC <span class="sort-icon">↕</span></th>
+            <th>Produto</th>
+            <th class="right">Estoque</th>
+            <th class="right">Cobertura</th>
+            <th class="right">Qtd Sugerida</th>
+            <th class="right">Ped. Aberto</th>
+            <th>Situação</th>
             <th>Fornecedor</th>
             <th style="width:48px"></th>
           </tr></thead>
-          <tbody id="alertas-body"><tr class="loading-row"><td colspan="11">Carregando dados...</td></tr></tbody>
+          <tbody id="alertas-body"><tr class="loading-row"><td colspan="9">Carregando dados...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -383,7 +385,7 @@ async function loadFornProdCache() {
 // ═══════════════════════════════════════════════════════════
 async function loadAlertas() {
   const el = document.getElementById('alertas-body');
-  if (el) el.innerHTML = '<tr class="loading-row"><td colspan="11">Carregando dados...</td></tr>';
+  if (el) el.innerHTML = '<tr class="loading-row"><td colspan="9">Carregando dados...</td></tr>';
   try {
     const pages = await Promise.all(
       [0,1,2,3,4,5,6,7,8,9,10,11].map(i =>
@@ -399,7 +401,7 @@ async function loadAlertas() {
   } catch (e) {
     console.error(e);
     const el2 = document.getElementById('alertas-body');
-    if (el2) el2.innerHTML = '<tr class="loading-row"><td colspan="11" style="color:var(--red)">Erro ao carregar dados.</td></tr>';
+    if (el2) el2.innerHTML = '<tr class="loading-row"><td colspan="9" style="color:var(--red)">Erro ao carregar dados.</td></tr>';
   }
 }
 
@@ -522,6 +524,7 @@ function atualizarKPIs() {
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmtQtd(v); };
   set('kpi-ruptura', count('RUPTURA')); set('kpi-critico', count('CRITICO'));
   set('kpi-baixo', count('BAIXO')); set('kpi-ok', count('OK'));
+  set('kpi-sem_mov', count('SEM_MOVIMENTO'));
   const badge = document.getElementById('badge-ruptura');
   if (badge) badge.textContent = count('RUPTURA');
 }
@@ -533,8 +536,7 @@ function atualizarBadgeSidebar() {
 }
 
 function onFilterChange() {
-  filtroSituacaoAtivo = document.getElementById('filtro-situacao')?.value || '';
-  document.querySelectorAll('.semaforo-card').forEach(c => c.classList.remove('active'));
+  // grupo/subgrupo/fornecedor mudaram — mantém o filtro de situação (semáforo) ativo
   paginaAtual = 1;
   renderAlertas();
 }
@@ -544,8 +546,6 @@ function onSearch() { paginaAtual = 1; renderAlertas(); }
 function filtrarSituacao(sit, card) {
   const isSame = filtroSituacaoAtivo === sit;
   filtroSituacaoAtivo = isSame ? '' : sit;
-  const sel = document.getElementById('filtro-situacao');
-  if (sel) sel.value = filtroSituacaoAtivo;
   document.querySelectorAll('.semaforo-card').forEach(c => c.classList.remove('active'));
   if (!isSame) card.classList.add('active');
   paginaAtual = 1;
@@ -604,7 +604,7 @@ function renderAlertas() {
   if (countEl) countEl.textContent = `${total} produto${total !== 1 ? 's' : ''} · mostrando ${inicio + 1}–${fim}`;
   const tbody = document.getElementById('alertas-body');
   if (!tbody) return;
-  if (!dadosPagina.length) { tbody.innerHTML = '<tr class="loading-row"><td colspan="11">Nenhum produto encontrado</td></tr>'; renderPaginacao(0, 0, 0); return; }
+  if (!dadosPagina.length) { tbody.innerHTML = '<tr class="loading-row"><td colspan="9">Nenhum produto encontrado</td></tr>'; renderPaginacao(0, 0, 0); return; }
   tbody.innerHTML = dadosPagina.map(r => {
     const cobDias = r.cobertura_dias;
     const cobTxt = cobDias === null ? '∞' : (cobDias > 999 ? '999+' : fmtQtd(cobDias)) + 'd';
@@ -613,14 +613,12 @@ function renderAlertas() {
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
-      <td style="font-weight:500;max-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
-      <td style="color:var(--text-secondary);font-size:12px;white-space:nowrap">${r.subgrupo || r.grupo || '—'}</td>
+      <td style="font-weight:500;max-width:240px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${r.curva_abc_qtd ? badgeABC(r.curva_abc_qtd) : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
       <td>${badgeSituacao(r.situacao_estoque)}</td>
-      <td>${badgeABC(r.curva_abc_qtd)}</td>
       <td style="font-size:12px;color:var(--text-secondary);max-width:160px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome_fornecedor}">${f.nome_fornecedor}</div>`).join('') || '—'}</td>
       <td onclick="event.stopPropagation()"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="${noCarrinho ? `removerDoCarrinho(${r.id_produto})` : `adicionarAoCarrinho(${r.id_produto})`}" title="${noCarrinho ? 'Remover do pedido' : 'Adicionar ao pedido'}">${noCarrinho ? '✓' : '+'}</button></td>
     </tr>`;
@@ -646,6 +644,97 @@ function renderPaginacao(pagina, totalPags, total) {
 }
 
 function irPagina(p) { paginaAtual = p; renderAlertas(); document.querySelector('.table-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+// ═══════════════════════════════════════════════════════════
+// COMPRAR AGORA — worklist priorizada por fornecedor
+// Só mostra o que precisa de decisão (qtd_sugerida > 0, que já desconta
+// estoque + pedido em aberto). Gestão por exceção: falso-alarme não aparece.
+// ═══════════════════════════════════════════════════════════
+async function loadComprarAgora() {
+  const cont = document.getElementById('ca-lista');
+  try {
+    if (!Array.isArray(alertasConsolidado) || !alertasConsolidado.length) {
+      if (cont) cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Carregando dados...</div>';
+      await loadAll();
+    }
+    renderComprarAgora();
+  } catch (err) {
+    console.error('loadComprarAgora', err);
+    if (cont) cont.innerHTML = `<div class="alert alert-error">Não foi possível montar a lista de compra.${err?.message ? ' ' + err.message : ''}</div>`;
+  }
+}
+
+function comprarAgoraEsporadico(r) {
+  // usa a flag da view (comp_produtos_consolidado.esporadico) quando existir;
+  // senão, cai num proxy por baixo giro (<= 2 saídas em 90 dias)
+  if (r.esporadico !== undefined && r.esporadico !== null) return !!r.esporadico;
+  return (Number(r.saida_90d_total) || 0) <= 2;
+}
+
+function renderComprarAgora() {
+  const cont = document.getElementById('ca-lista');
+  if (!cont) return;
+  const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const busca = (document.getElementById('ca-busca')?.value || '').toLowerCase();
+  const incluiEsp = !!document.getElementById('ca-inclui-esporadicos')?.checked;
+  const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
+  const qtdComprar = r => Math.ceil(Number(r.qtd_sugerida) || 0);
+  const custoItem  = r => qtdComprar(r) * (Number(r.preco_compra) || 0);
+  const ignorados = Array.isArray(compIgnorados) ? compIgnorados : [];
+
+  let itens = (alertasConsolidado ?? []).filter(r => {
+    if ((Number(r.qtd_sugerida) || 0) <= 0) return false;
+    if (ignorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
+    if (ignorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
+    if (ignorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
+    return true;
+  });
+  if (!incluiEsp) itens = itens.filter(r => !comprarAgoraEsporadico(r));
+  if (busca) itens = itens.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
+
+  const grupos = {};
+  itens.forEach(r => {
+    const fornExt = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
+    const forn = fornExt[0]?.nome_fornecedor || 'Sem fornecedor definido';
+    (grupos[forn] = grupos[forn] || []).push(r);
+  });
+  const gruposOrd = Object.entries(grupos).map(([forn, arr]) => {
+    arr.sort((a, b) => (prioMap[a.situacao_estoque] || 9) - (prioMap[b.situacao_estoque] || 9) || ((a.cobertura_dias ?? 99999) - (b.cobertura_dias ?? 99999)));
+    return { forn, arr, minPrio: Math.min(...arr.map(r => prioMap[r.situacao_estoque] || 9)), valor: arr.reduce((s, r) => s + custoItem(r), 0) };
+  }).sort((a, b) => a.minPrio - b.minPrio || b.valor - a.valor);
+
+  const totalItens = itens.length;
+  const totalValor = itens.reduce((s, r) => s + custoItem(r), 0);
+  setTxt('ca-kpi-itens', fmtQtd(totalItens, 0));
+  setTxt('ca-kpi-valor', window.fmt(totalValor));
+  setTxt('ca-kpi-forn', String(gruposOrd.length));
+  setTxt('ca-resumo', `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} · ${gruposOrd.length} ${gruposOrd.length === 1 ? 'fornecedor' : 'fornecedores'}`);
+
+  if (!totalItens) {
+    cont.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--text-muted)"><div style="font-size:28px;margin-bottom:8px">✓</div>Nada urgente para comprar agora.<div style="font-size:12px;margin-top:4px">O que precisa de reposição já está pedido ou coberto.' + (incluiEsp ? '' : ' Marque "incluir esporádicos" para ver itens de baixo giro.') + '</div></div>';
+    return;
+  }
+
+  cont.innerHTML = gruposOrd.map(g => `
+    <div class="table-card" style="margin-bottom:14px">
+      <div class="table-card-header">
+        <div class="table-card-title">🏭 ${g.forn} <span class="badge badge-gray">${g.arr.length} ${g.arr.length === 1 ? 'item' : 'itens'}</span></div>
+        <div style="font-size:13px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-dark)">${window.fmtFull(g.valor)}</div>
+      </div>
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Produto</th><th>Situação</th><th class="right">Estoque</th><th class="right">Comprar</th><th class="right">Custo est.</th></tr></thead>
+        <tbody>${g.arr.map(r => `<tr class="clickable" style="cursor:pointer" onclick="abrirProduto(${r.id_produto})">
+          <td style="font-weight:500;max-width:300px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${comprarAgoraEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+          <td>${badgeSituacao(r.situacao_estoque)}</td>
+          <td class="right mono" style="color:${(Number(r.estoque_total) || 0) <= 0 ? 'var(--red)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
+          <td class="right mono" style="font-weight:700;color:var(--blue-mid)">${fmtQtd(qtdComprar(r), 0)}</td>
+          <td class="right mono">${window.fmtFull(custoItem(r))}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+    </div>`).join('');
+}
+window.loadComprarAgora = loadComprarAgora;
+window.renderComprarAgora = renderComprarAgora;
 
 // ═══════════════════════════════════════════════════════════
 // DRAWER — ANÁLISE DO PRODUTO
@@ -3164,6 +3253,7 @@ let _paginaAtiva = null;
 let _iniciado = false;
 
 const CMP_PAGE_LOADERS = {
+  'cmp-comprar':      () => loadComprarAgora(),
   'cmp-alertas':      () => loadAll(),
   'cmp-totais':       () => loadTotais(),
   'cmp-balanco':      () => loadBalanco(),
