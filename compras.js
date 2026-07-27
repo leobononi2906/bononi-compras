@@ -586,10 +586,10 @@ function renderAlertas() {
     dados.sort((a, b) => {
       const pa = prioMap[a.situacao_estoque] || 9, pb = prioMap[b.situacao_estoque] || 9;
       if (pa !== pb) return pa - pb;
-      return (abcMap[a.curva_abc_qtd] || 9) - (abcMap[b.curva_abc_qtd] || 9);
+      return (abcMap[a.curva_abc_valor] || 9) - (abcMap[b.curva_abc_valor] || 9);
     });
   } else if (ordemAlertas === 'cobertura') { dados.sort((a, b) => dir * ((a.cobertura_dias ?? 99999) - (b.cobertura_dias ?? 99999))); }
-  else if (ordemAlertas === 'abc') { dados.sort((a, b) => dir * ((abcMap[a.curva_abc_qtd] || 9) - (abcMap[b.curva_abc_qtd] || 9))); }
+  else if (ordemAlertas === 'abc') { dados.sort((a, b) => dir * ((abcMap[a.curva_abc_valor] || 9) - (abcMap[b.curva_abc_valor] || 9))); }
   else if (ordemAlertas === 'qtd_sugerida') { dados.sort((a, b) => dir * ((a.qtd_sugerida || 0) - (b.qtd_sugerida || 0))); }
   else if (ordemAlertas === 'estoque') { dados.sort((a, b) => dir * ((a.estoque_total || 0) - (b.estoque_total || 0))); }
   else if (ordemAlertas === 'pedido_aberto') { dados.sort((a, b) => dir * ((a.pedido_aberto_total || 0) - (b.pedido_aberto_total || 0))); }
@@ -613,7 +613,7 @@ function renderAlertas() {
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
-      <td style="font-weight:500;max-width:240px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${r.curva_abc_qtd ? badgeABC(r.curva_abc_qtd) : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+      <td style="font-weight:500;max-width:240px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica (≤12/ano)">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
@@ -664,7 +664,7 @@ async function loadComprarAgora() {
   }
 }
 
-function comprarAgoraEsporadico(r) {
+function itemEsporadico(r) {
   // usa a flag da view (comp_produtos_consolidado.esporadico) quando existir;
   // senão, cai num proxy por baixo giro (<= 2 saídas em 90 dias)
   if (r.esporadico !== undefined && r.esporadico !== null) return !!r.esporadico;
@@ -689,7 +689,7 @@ function renderComprarAgora() {
     if (ignorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
     return true;
   });
-  if (!incluiEsp) itens = itens.filter(r => !comprarAgoraEsporadico(r));
+  if (!incluiEsp) itens = itens.filter(r => !itemEsporadico(r));
   if (busca) itens = itens.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
 
   const grupos = {};
@@ -724,7 +724,7 @@ function renderComprarAgora() {
       <div style="overflow-x:auto"><table class="data-table">
         <thead><tr><th>Produto</th><th>Situação</th><th class="right">Estoque</th><th class="right">Comprar</th><th class="right">Custo est.</th></tr></thead>
         <tbody>${g.arr.map(r => `<tr class="clickable" style="cursor:pointer" onclick="abrirProduto(${r.id_produto})">
-          <td style="font-weight:500;max-width:300px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${comprarAgoraEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+          <td style="font-weight:500;max-width:300px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
           <td>${badgeSituacao(r.situacao_estoque)}</td>
           <td class="right mono" style="color:${(Number(r.estoque_total) || 0) <= 0 ? 'var(--red)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
           <td class="right mono" style="font-weight:700;color:var(--blue-mid)">${fmtQtd(qtdComprar(r), 0)}</td>
@@ -1364,7 +1364,7 @@ async function loadTotais() {
   try {
     let rows = alertasConsolidado.length > 0 ? alertasConsolidado : null;
     if (!rows) {
-      const { data } = await sb.from('comp_produtos_consolidado').select('grupo,id_produto,estoque_total,preco_compra,situacao_estoque,curva_abc_qtd').range(0, 9999);
+      const { data } = await sb.from('comp_produtos_consolidado').select('grupo,id_produto,estoque_total,preco_compra,situacao_estoque,curva_abc_valor').range(0, 9999);
       rows = data || [];
     }
     const totalSkus = rows.length;
@@ -1390,7 +1390,7 @@ async function loadTotais() {
     });
     renderTotGrupos(grupoMap);
     const abcCount = { A: 0, B: 0, C: 0, '—': 0 };
-    rows.forEach(r => { const k = r.curva_abc_qtd || '—'; abcCount[k] = (abcCount[k] || 0) + 1; });
+    rows.forEach(r => { const k = r.curva_abc_valor || '—'; abcCount[k] = (abcCount[k] || 0) + 1; });
     if (chartABC) chartABC.destroy();
     chartABC = new Chart(document.getElementById('chart-abc').getContext('2d'), {
       type: 'doughnut',
@@ -3194,7 +3194,7 @@ function parsearRespostaIA(resposta, pergunta) {
       const rg = new RegExp(`${ref}[^\\n]*(\\d+)\\s*(?:un|pç|peças?|unid)?`,'i');
       const mq = resposta.match(rg); if (mq) qtd = parseInt(mq[1]);
       const fp = (fornProdMap[prod.id_produto]||[]).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor))[0];
-      itens.push({ id_produto:prod.id_produto, nome:prod.nome, referencia:prod.referencia, situacao:prod.situacao_estoque, abc:prod.curva_abc_qtd, estoque:prod.estoque_total, cobertura:prod.cobertura_dias, qtd_sugerida:Math.round(qtd), preco_unitario:prod.preco_compra||0, id_fornecedor:fp?.id_fornecedor||null, fornecedor:fp?.nome_fornecedor||fornecedor||'' });
+      itens.push({ id_produto:prod.id_produto, nome:prod.nome, referencia:prod.referencia, situacao:prod.situacao_estoque, abc:prod.curva_abc_valor, estoque:prod.estoque_total, cobertura:prod.cobertura_dias, qtd_sugerida:Math.round(qtd), preco_unitario:prod.preco_compra||0, id_fornecedor:fp?.id_fornecedor||null, fornecedor:fp?.nome_fornecedor||fornecedor||'' });
       if (!fornecedor && fp) fornecedor = fp.nome_fornecedor;
     }
   });

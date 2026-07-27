@@ -28,7 +28,8 @@ Meta: tornar o app **mais fácil e confiável** que o ERP, pra equipe migrar —
 | **Tela "🎯 Comprar Agora"** (worklist priorizada por fornecedor, gestão por exceção) | ✅ local |
 | Pesquisa do estado da arte (17 afirmações verificadas) | ✅ ver doc |
 | Diagnóstico do produto ref 000086 | ✅ ver §3 |
-| SQL aditivo da view (365d + flag esporádico) | ⏸️ **bloqueado pelo gate de permissão** — pronto em §5 |
+| SQL aditivo da view (365d + flag esporádico) | ✅ **aplicado em produção 27/07** |
+| ABC por valor + etiqueta esporádico na exibição (P0.2) | ✅ **em produção 27/07** |
 
 > Tudo em **branch local**, **sem push** (produção intacta). Publicar = push da branch → preview Vercel → merge na `main` após OK.
 
@@ -59,8 +60,8 @@ Detalhe conceitual completo em [PESQUISA-DEMANDA-E-REPOSICAO §0](PESQUISA-DEMAN
 ### P0 — Fundamentos (fazem os números pararem de enganar)
 | # | Item | Depende de | Obs |
 |---|---|---|---|
-| P0.1 | **Rodar o SQL aditivo da view** (§5): expõe `saida_365d_total`, `consumo_diario_365d_total`, flag `esporadico` | liberar permissão de DDL | Não quebra nada (aditivo). Já usado pelo frontend com fallback. |
-| P0.2 | **ABC por valor + esporádico** na exibição (usar `curva_abc_valor` em vez de `curva_abc_qtd`; mostrar tag esporádico) | P0.1 | Corrige o "2 vendas = A" |
+| P0.1 | ✅ **FEITO 27/07** — SQL aditivo aplicado em produção: expõe `saida_365d_total`, `consumo_diario_365d_total`, flag `esporadico`. Não quebrou nada (aditivo). | — | Frontend usa a flag real automaticamente (fallback já existia). |
+| P0.2 | ✅ **FEITO 27/07** — exibição por `curva_abc_valor` (Alertas + gráfico Totais + payload IA) e etiqueta esporádico no Alertas. | P0.1 | Corrigiu o "2 vendas = A" (ABC virou Pareto real 127/282/2458). |
 | P0.3 | **Não alarmar item já coberto por pedido** — Alertas mostra "🚚 a caminho" em vez de vermelho de ação quando `pedido_aberto` cobre | — | Mata o ruído que afoga a equipe |
 
 ### P1 — Ação e usabilidade

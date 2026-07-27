@@ -4,6 +4,14 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 27/07/2026
+
+### Alterado — ABC por valor + etiqueta esporádico (P0.1 + P0.2)
+- **View `comp_produtos_consolidado` (SQL aditivo aplicado em produção):** acrescentadas 3 colunas no fim — `saida_365d_total`, `consumo_diario_365d_total` e `esporadico` (flag de baixo giro: vende mas ≤12/ano). As 18 colunas antigas ficaram idênticas (não quebra nenhuma tela). *(migration `comp_produtos_consolidado_add_365d_esporadico`)*
+- **Curva ABC agora é por VALOR, não por quantidade.** Alertas, gráfico de Totais e o payload da IA passaram de `curva_abc_qtd` → `curva_abc_valor`. Mata o "item de 3 vendas/ano vira A" (por quantidade a base poluída inflava a curva; por valor a distribuição fica Pareto real: A=127, B=282, C=2458).
+- **Etiqueta "esporádico" no Alertas** (ao lado do nome), usando a flag real da view. A helper `comprarAgoraEsporadico` virou `itemEsporadico` (agora compartilhada entre Comprar Agora e Alertas); usa a flag `esporadico` da view com fallback pro proxy de 90 dias.
+- Efeito: worklist do Comprar Agora fica mais limpa (~340 → 214 itens por decisão) e o ABC deixa de enganar. *(compras.js — trocas de campo + 1 etiqueta; `node --check` ok)*
+
 ## 26/07/2026
 
 ### Adicionado — tela "🎯 Comprar Agora" (worklist priorizada)
