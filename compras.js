@@ -28,6 +28,34 @@ const PAGINAS_HTML = {
     <div class="section-title" style="margin-top:18px">Comprar agora — por fornecedor</div>
     <div id="ca-lista"><div style="text-align:center;padding:40px;color:var(--text-muted)">Carregando...</div></div>
   </div>`,
+  'cmp-parado': `<div class="page-content" id="page-cmp-parado">
+    <div class="cards-grid cards-grid-3">
+      <div class="card"><div class="card-label">Capital parado</div><div class="card-value red" id="ep-kpi-valor">—</div><div class="card-sub">estoque × custo, na janela</div></div>
+      <div class="card"><div class="card-label">Itens parados</div><div class="card-value" id="ep-kpi-itens">—</div><div class="card-sub">com estoque e sem giro</div></div>
+      <div class="card"><div class="card-label">Unidades encalhadas</div><div class="card-value" id="ep-kpi-qtd">—</div><div class="card-sub">soma do estoque parado</div></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
+      <input type="text" id="ep-busca" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="renderEstoqueParado()" style="width:240px" />
+      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary)">Sem venda há
+        <select id="ep-janela" class="filter-select" onchange="renderEstoqueParado()">
+          <option value="365" selected>1 ano</option>
+          <option value="90">90 dias</option>
+        </select>
+      </label>
+      <div class="toggle-group" style="margin-left:auto">
+        <button class="toggle-btn active" id="ep-ord-valor" onclick="setOrdemParado('valor', this)">Maior valor (R$)</button>
+        <button class="toggle-btn" id="ep-ord-qtd" onclick="setOrdemParado('qtd', this)">Maior quantidade</button>
+      </div>
+    </div>
+    <div class="table-card" style="margin-top:14px">
+      <div class="table-card-header"><div class="table-card-title">🧹 Estoque parado — priorizado por impacto</div><span style="font-size:12px;color:var(--text-muted)" id="ep-resumo"></span></div>
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Produto</th><th>Grupo</th><th class="right">Estoque</th><th class="right">Custo un.</th><th class="right">R$ parado</th><th>Fornecedor</th></tr></thead>
+        <tbody id="ep-body"><tr class="loading-row"><td colspan="6">Carregando...</td></tr></tbody>
+      </table></div>
+      <div id="ep-paginacao" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"></div>
+    </div>
+  </div>`,
   'cmp-alertas': `<div class="page-content" id="page-cmp-alertas">
     <div class="cards-grid cards-grid-5">
       <div class="semaforo-card ruptura" onclick="filtrarSituacao('RUPTURA', this)"><div class="card-label">🔴 Ruptura</div><div class="card-value red" id="kpi-ruptura">—</div><div class="card-sub">Estoque zerado com giro</div></div>
@@ -678,6 +706,15 @@ function itemCoberto(r) {
   return (Number(r.pedido_aberto_total) || 0) > 0 && (Number(r.qtd_sugerida) || 0) <= 0;
 }
 
+// item marcado como ignorado em Configurações (por produto, subgrupo ou grupo).
+// Usado para tirar do estoque parado e dos totais o que a equipe já decidiu não repor.
+function itemIgnorado(r) {
+  return !!(compIgnorados || []).find(x =>
+    (x.tipo === 'grupo'    && x.valor === r.grupo)    ||
+    (x.tipo === 'subgrupo' && x.valor === r.subgrupo) ||
+    (x.tipo === 'produto'  && x.id_produto === r.id_produto));
+}
+
 function renderComprarAgora() {
   const cont = document.getElementById('ca-lista');
   if (!cont) return;
@@ -742,6 +779,109 @@ function renderComprarAgora() {
 }
 window.loadComprarAgora = loadComprarAgora;
 window.renderComprarAgora = renderComprarAgora;
+
+// ═══════════════════════════════════════════════════════════
+// ESTOQUE PARADO — worklist do que "se livrar" (encalhe)
+// Espelho do Comprar Agora: item COM estoque e SEM giro na janela escolhida,
+// priorizado por capital parado (estoque × custo). Desconsidera ignorados.
+// ═══════════════════════════════════════════════════════════
+let paradoOrdem = 'valor'; // 'valor' | 'qtd'
+let paradoPagina = 1;
+
+async function loadEstoqueParado() {
+  const body = document.getElementById('ep-body');
+  try {
+    if (!Array.isArray(alertasConsolidado) || !alertasConsolidado.length) {
+      if (body) body.innerHTML = '<tr class="loading-row"><td colspan="6">Carregando dados...</td></tr>';
+      await loadAll();
+    }
+    renderEstoqueParado();
+  } catch (err) {
+    console.error('loadEstoqueParado', err);
+    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="6" style="color:var(--red)">Não foi possível carregar o estoque parado.${err?.message ? ' ' + err.message : ''}</td></tr>`;
+  }
+}
+
+function setOrdemParado(ordem, btn) {
+  paradoOrdem = ordem;
+  document.querySelectorAll('#page-cmp-parado .toggle-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  paradoPagina = 1;
+  renderEstoqueParado();
+}
+
+function renderEstoqueParado() {
+  const body = document.getElementById('ep-body');
+  if (!body) return;
+  const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
+  const busca = (document.getElementById('ep-busca')?.value || '').toLowerCase();
+  const janela = parseInt(document.getElementById('ep-janela')?.value || '365', 10);
+  const capital = r => Math.max(0, Number(r.estoque_total) || 0) * (Number(r.preco_compra) || 0);
+  // "sem venda na janela": usa saída 90d ou 365d da view; cai pro situacao_estoque se a coluna 365d não existir
+  const semVenda = r => janela === 90
+    ? (Number(r.saida_90d_total) || 0) <= 0
+    : (r.saida_365d_total !== undefined && r.saida_365d_total !== null
+        ? (Number(r.saida_365d_total) || 0) <= 0
+        : r.situacao_estoque === 'SEM_MOVIMENTO');
+
+  let itens = (alertasConsolidado ?? []).filter(r =>
+    (Number(r.estoque_total) || 0) > 0 && semVenda(r) && !itemIgnorado(r));
+  if (busca) itens = itens.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
+
+  itens.sort((a, b) => paradoOrdem === 'qtd'
+    ? (Number(b.estoque_total) || 0) - (Number(a.estoque_total) || 0)
+    : capital(b) - capital(a));
+
+  const totalItens = itens.length;
+  const totalValor = itens.reduce((s, r) => s + capital(r), 0);
+  const totalQtd = itens.reduce((s, r) => s + Math.max(0, Number(r.estoque_total) || 0), 0);
+  setTxt('ep-kpi-valor', window.fmt(totalValor));
+  setTxt('ep-kpi-itens', fmtQtd(totalItens, 0));
+  setTxt('ep-kpi-qtd', fmtQtd(totalQtd, 0));
+  setTxt('ep-resumo', `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} · ${window.fmt(totalValor)} parado`);
+
+  if (!totalItens) {
+    body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:40px;color:var(--text-muted)">Nada parado nessa janela. 🎉</td></tr>';
+    renderPaginacaoParado(0, 0, 0);
+    return;
+  }
+
+  const porPagina = 50;
+  const totalPaginas = Math.ceil(totalItens / porPagina);
+  if (paradoPagina > totalPaginas) paradoPagina = 1;
+  const inicio = (paradoPagina - 1) * porPagina;
+  const pagina = itens.slice(inicio, inicio + porPagina);
+
+  body.innerHTML = pagina.map(r => {
+    const forn = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor))[0]?.nome_fornecedor || '—';
+    return `<tr class="clickable" style="cursor:pointer" onclick="abrirProduto(${r.id_produto})">
+      <td style="font-weight:500;max-width:280px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:150px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.grupo || ''}">${r.grupo || '—'}</div></td>
+      <td class="right mono">${fmtQtd(r.estoque_total, 0)}</td>
+      <td class="right mono">${window.fmtFull(Number(r.preco_compra) || 0)}</td>
+      <td class="right mono" style="font-weight:700;color:var(--blue-dark)">${window.fmtFull(capital(r))}</td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:150px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${forn}">${forn}</div></td>
+    </tr>`;
+  }).join('');
+  renderPaginacaoParado(paradoPagina, totalPaginas, totalItens);
+}
+
+function renderPaginacaoParado(pagina, totalPags, total) {
+  const el = document.getElementById('ep-paginacao');
+  if (!el) return;
+  if (totalPags <= 1) { el.innerHTML = ''; return; }
+  const range = new Set([1, totalPags, pagina - 1, pagina, pagina + 1].filter(p => p >= 1 && p <= totalPags));
+  const pages = []; let last = 0;
+  [...range].sort((a,b)=>a-b).forEach(p => { if (last && p - last > 1) pages.push('...'); pages.push(p); last = p; });
+  el.innerHTML = `<button class="btn btn-outline" style="height:28px;font-size:12px" ${pagina === 1 ? 'disabled' : ''} onclick="irPaginaParado(${pagina - 1})">← Anterior</button>${pages.map(p => p === '...' ? '<span style="color:var(--text-muted);padding:0 4px">…</span>' : `<button class="btn ${p === pagina ? 'btn-primary' : 'btn-outline'}" style="height:28px;min-width:32px;font-size:12px" onclick="irPaginaParado(${p})">${p}</button>`).join('')}<button class="btn btn-outline" style="height:28px;font-size:12px" ${pagina === totalPags ? 'disabled' : ''} onclick="irPaginaParado(${pagina + 1})">Próxima →</button><span style="font-size:12px;color:var(--text-muted);margin-left:8px">${total} itens</span>`;
+}
+
+function irPaginaParado(p) { paradoPagina = p; renderEstoqueParado(); document.getElementById('page-cmp-parado')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+window.loadEstoqueParado = loadEstoqueParado;
+window.renderEstoqueParado = renderEstoqueParado;
+window.setOrdemParado = setOrdemParado;
+window.irPaginaParado = irPaginaParado;
 
 // ═══════════════════════════════════════════════════════════
 // DRAWER — ANÁLISE DO PRODUTO
@@ -1371,9 +1511,10 @@ async function loadTotais() {
   try {
     let rows = alertasConsolidado.length > 0 ? alertasConsolidado : null;
     if (!rows) {
-      const { data } = await sb.from('comp_produtos_consolidado').select('grupo,id_produto,estoque_total,preco_compra,situacao_estoque,curva_abc_valor').range(0, 9999);
+      const { data } = await sb.from('comp_produtos_consolidado').select('grupo,subgrupo,id_produto,estoque_total,preco_compra,situacao_estoque,curva_abc_valor').range(0, 9999);
       rows = data || [];
     }
+    rows = rows.filter(r => !itemIgnorado(r)); // Totais desconsidera produtos ignorados (Configurações)
     const totalSkus = rows.length;
     const totalValor = rows.reduce((a, r) => a + (Math.max(0, r.estoque_total || 0) * (r.preco_compra || 0)), 0);
     const negativos = rows.filter(r => (r.estoque_total || 0) < 0).length;
@@ -3261,6 +3402,7 @@ let _iniciado = false;
 
 const CMP_PAGE_LOADERS = {
   'cmp-comprar':      () => loadComprarAgora(),
+  'cmp-parado':       () => loadEstoqueParado(),
   'cmp-alertas':      () => loadAll(),
   'cmp-totais':       () => loadTotais(),
   'cmp-balanco':      () => loadBalanco(),

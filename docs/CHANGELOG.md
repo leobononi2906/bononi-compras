@@ -4,7 +4,19 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
-## 27/07/2026
+## 28/07/2026
+
+### Adicionado — tela "🧹 Estoque Parado" (worklist do que se livrar)
+- Nova tela (espelho do Comprar Agora, mas do outro lado): lista o **estoque encalhado** — item **com estoque e sem giro** na janela escolhida — **priorizado por capital parado** (estoque × custo). Objetivo: liberar dinheiro preso em prateleira (devolução, liquidação, transferência entre empresas, baixa).
+- **Ordenação por valor (R$ parado) ou por quantidade** (botões no topo). **Janela "sem venda há" configurável** na tela: **1 ano** (padrão) ou **90 dias** — usa `saida_365d`/`saida_90d` da view.
+- **Desconsidera produtos ignorados** (Configurações). KPIs: capital parado, nº de itens, unidades encalhadas. Clique na linha abre o produto. Coluna de fornecedor (externo) para negociar devolução.
+- Diagnóstico que motivou: ~R$ 3,16M em 3.468 SKUs parados (sem venda há 1+ ano com estoque); top 100 itens = 61% desse valor (dá pra atacar por worklist curta).
+- *Arquivos: compras.js (PAGINAS_HTML, loader, loadEstoqueParado/renderEstoqueParado + helper `itemIgnorado`), index.html (nav + rota). `node --check` ok.*
+
+### Alterado — Totais de Estoque desconsidera ignorados
+- O Totais agora **exclui os produtos marcados como ignorados** (Configurações) dos números e gráficos, igual ao Alertas e ao Estoque Parado. *(compras.js — filtro `itemIgnorado` no `loadTotais`; de brinde, o fallback passou a trazer `subgrupo`.)*
+
+## 28/07/2026 — parte da manhã
 
 ### Alterado — ABC por valor + etiqueta esporádico (P0.1 + P0.2)
 - **View `comp_produtos_consolidado` (SQL aditivo aplicado em produção):** acrescentadas 3 colunas no fim — `saida_365d_total`, `consumo_diario_365d_total` e `esporadico` (flag de baixo giro: vende mas ≤12/ano). As 18 colunas antigas ficaram idênticas (não quebra nenhuma tela). *(migration `comp_produtos_consolidado_add_365d_esporadico`)*

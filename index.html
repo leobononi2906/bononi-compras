@@ -335,6 +335,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
         <div class="nav-module-items">
           <a class="nav-item" data-pagina="cmp-comprar"      onclick="navegarPara('cmp-comprar')">      <span class="nav-dot"></span>🎯 Comprar Agora</a>
           <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Alertas e Reposição</a>
+          <a class="nav-item" data-pagina="cmp-parado"       onclick="navegarPara('cmp-parado')">       <span class="nav-dot"></span>🧹 Estoque Parado</a>
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
           <a class="nav-item" data-pagina="cmp-balanco"      onclick="navegarPara('cmp-balanco')">      <span class="nav-dot"></span>Balanço Físico</a>
           <a class="nav-item" data-pagina="cmp-importacao"   onclick="navegarPara('cmp-importacao')">   <span class="nav-dot"></span>Importação</a>
@@ -418,6 +419,7 @@ window.setLastUpdate = () => { document.getElementById('last-update').textConten
 const PAGINAS = {
   'cmp-comprar':      { label: 'Comprar Agora',          breadcrumb: 'Compras · Comprar Agora' },
   'cmp-alertas':      { label: 'Alertas e Reposição',    breadcrumb: 'Compras · Alertas' },
+  'cmp-parado':       { label: 'Estoque Parado',         breadcrumb: 'Compras · Estoque Parado' },
   'cmp-totais':       { label: 'Totais de Estoque',      breadcrumb: 'Compras · Totais' },
   'cmp-balanco':      { label: 'Balanço Físico',         breadcrumb: 'Compras · Balanço' },
   'cmp-importacao':   { label: 'Importação',             breadcrumb: 'Compras · Importação' },

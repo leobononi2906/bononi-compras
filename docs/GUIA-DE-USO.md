@@ -73,13 +73,26 @@ Dentro do produto dá pra adicionar ao **carrinho**. O carrinho fica numa barra 
 
 ---
 
-## 3. Totais de Estoque
+## 3. 🧹 Estoque Parado — *do que se livrar*
+
+O contrário do Comprar Agora: aqui aparece o **estoque encalhado** — item que **tem estoque mas não vende** — para você agir e liberar o dinheiro preso na prateleira.
+
+- **Ordenado por impacto:** por padrão mostra o **maior valor parado** (estoque × custo) no topo. Dá pra trocar para **maior quantidade** no botão ao lado.
+- **"Sem venda há"**: escolha a janela — **1 ano** (padrão) ou **90 dias**. Quanto maior a janela, mais "morto" é o item.
+- **Não conta o que você já ignorou** em Configurações.
+- Cada linha mostra estoque, custo, **R$ parado** e o fornecedor (pra negociar devolução). Clique pra abrir o produto.
+
+O que fazer com o que aparece: **devolver ao fornecedor**, **promoção/liquidação**, **transferir para outra empresa** que ainda vende, ou **dar baixa**.
+
+---
+
+## 4. Totais de Estoque
 
 Visão de cima do estoque inteiro: quanto vale, dividido por grupo, por situação e pela **curva ABC** (A = os itens mais importantes, C = os menos). A curva ABC agora é **por valor de venda** — o gráfico reflete de fato onde está o dinheiro. Boa para reunião e para enxergar concentração.
 
 ---
 
-## 4. Balanço Físico — *contagem no depósito*
+## 5. Balanço Físico — *contagem no depósito*
 
 Serve para conferir se o que o sistema diz bate com a prateleira. É **contagem cega**: você conta sem ver o saldo do sistema, para não "viciar" o número.
 
@@ -90,7 +103,7 @@ Fluxo:
 
 ---
 
-## 5. Importação — *mercadoria vindo de fora*
+## 6. Importação — *mercadoria vindo de fora*
 
 Acompanha cada processo de importação como um quadro (kanban). Cada cartão é um processo e caminha pelas etapas:
 
@@ -106,13 +119,13 @@ O resumo financeiro soma os pagamentos normais, ajusta com o que foi **recebido*
 
 ---
 
-## 6. Fornecedores
+## 7. Fornecedores
 
 Ranking de com quem a gente mais compra. Abre um painel com o detalhe e o histórico de cada fornecedor. Bom para negociar e para enxergar dependência.
 
 ---
 
-## 7. Configurações
+## 8. Configurações
 
 - **Ignorar Produtos:** tem item que nunca vai ser reposto por aqui e só polui os alertas? Marque para **ignorar**. Ele some da tela de Alertas. Pode ignorar um produto, um subgrupo inteiro ou um grupo inteiro.
 - **Ignorados:** a lista do que está escondido — dá pra remover e trazer de volta.
@@ -129,7 +142,7 @@ Provavelmente ele está OK (sem necessidade de compra) ou foi marcado como **ign
 Era um bug de layout — corrigido. Se acontecer de novo, avise.
 
 **"Não consigo abrir o menu no tablet/celular."**
-Corrigido em 27/07 — o botão de menu (☰) agora aparece em qualquer tamanho de tela (antes sumia numa faixa de largura de tablet). Se ainda não aparecer, dê um **Ctrl+Shift+R**.
+Corrigido em 28/07 — o botão de menu (☰) agora aparece em qualquer tamanho de tela (antes sumia numa faixa de largura de tablet). Se ainda não aparecer, dê um **Ctrl+Shift+R**.
 
 ---
 

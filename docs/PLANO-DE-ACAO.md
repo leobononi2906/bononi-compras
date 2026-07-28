@@ -28,9 +28,9 @@ Meta: tornar o app **mais fácil e confiável** que o ERP, pra equipe migrar —
 | **Tela "🎯 Comprar Agora"** (worklist priorizada por fornecedor, gestão por exceção) | ✅ local |
 | Pesquisa do estado da arte (17 afirmações verificadas) | ✅ ver doc |
 | Diagnóstico do produto ref 000086 | ✅ ver §3 |
-| SQL aditivo da view (365d + flag esporádico) | ✅ **aplicado em produção 27/07** |
-| ABC por valor + etiqueta esporádico na exibição (P0.2) | ✅ **em produção 27/07** |
-| "🚚 a caminho" no Alertas p/ item já pedido (P0.3) | ✅ **em produção 27/07** |
+| SQL aditivo da view (365d + flag esporádico) | ✅ **aplicado em produção 28/07** |
+| ABC por valor + etiqueta esporádico na exibição (P0.2) | ✅ **em produção 28/07** |
+| "🚚 a caminho" no Alertas p/ item já pedido (P0.3) | ✅ **em produção 28/07** |
 
 > Tudo em **branch local**, **sem push** (produção intacta). Publicar = push da branch → preview Vercel → merge na `main` após OK.
 
@@ -61,17 +61,20 @@ Detalhe conceitual completo em [PESQUISA-DEMANDA-E-REPOSICAO §0](PESQUISA-DEMAN
 ### P0 — Fundamentos (fazem os números pararem de enganar)
 | # | Item | Depende de | Obs |
 |---|---|---|---|
-| P0.1 | ✅ **FEITO 27/07** — SQL aditivo aplicado em produção: expõe `saida_365d_total`, `consumo_diario_365d_total`, flag `esporadico`. Não quebrou nada (aditivo). | — | Frontend usa a flag real automaticamente (fallback já existia). |
-| P0.2 | ✅ **FEITO 27/07** — exibição por `curva_abc_valor` (Alertas + gráfico Totais + payload IA) e etiqueta esporádico no Alertas. | P0.1 | Corrigiu o "2 vendas = A" (ABC virou Pareto real 127/282/2458). |
-| P0.3 | ✅ **FEITO 27/07** — Alertas mostra "🚚 a caminho" (azul) em vez de vermelho quando `pedido_aberto > 0` e `qtd_sugerida = 0`. Helper `itemCoberto`. | — | Matou o ruído (76 dos 520 vermelhos viram "a caminho"). Semáforo/contagem inalterados. |
+| P0.1 | ✅ **FEITO 28/07** — SQL aditivo aplicado em produção: expõe `saida_365d_total`, `consumo_diario_365d_total`, flag `esporadico`. Não quebrou nada (aditivo). | — | Frontend usa a flag real automaticamente (fallback já existia). |
+| P0.2 | ✅ **FEITO 28/07** — exibição por `curva_abc_valor` (Alertas + gráfico Totais + payload IA) e etiqueta esporádico no Alertas. | P0.1 | Corrigiu o "2 vendas = A" (ABC virou Pareto real 127/282/2458). |
+| P0.3 | ✅ **FEITO 28/07** — Alertas mostra "🚚 a caminho" (azul) em vez de vermelho quando `pedido_aberto > 0` e `qtd_sugerida = 0`. Helper `itemCoberto`. | — | Matou o ruído (76 dos 520 vermelhos viram "a caminho"). Semáforo/contagem inalterados. |
 
 ### P1 — Ação e usabilidade
 | # | Item | Depende de |
 |---|---|---|
 | P1.1 | **Comprar Agora** — refinar com "pedir até (data)" e agrupamento por fornecedor com ações | lead time (P2.1) |
 | P1.2 | **Simplificar o Drawer** — decisão no topo, 3-4 números essenciais, resto recolhido | — |
-| P1.3 | ✅ **FEITO 27/07** — hambúrguer visível até 900px (override `.menu-toggle` no CSS injetado). | — |
+| P1.3 | ✅ **FEITO 28/07** — hambúrguer visível até 900px (override `.menu-toggle` no CSS injetado). | — |
 | P1.4 | Definir se **"Comprar Agora" vira a tela inicial** (landing) da equipe | decisão do Leo |
+| P1.5 | ✅ **FEITO 28/07** — nova tela **🧹 Estoque Parado** (encalhe priorizado por capital parado; ordena por valor/qtd; janela "sem venda" configurável; desconsidera ignorados). Totais tb passou a desconsiderar ignorados. | — |
+| P1.6 | **Unificar Totais de Estoque + Fornecedores** numa aba só (reduzir abas / simplificar) | — |
+| P1.7 | **Filtrar "falsos fornecedores"** no ranking: notas de retorno (ex.: Unisa açúcar) e empresas do grupo não são fornecedores reais | levantar os ids/nomes |
 
 ### P2 — Qualidade do cálculo (precisa de dados novos)
 | # | Item | Depende de |

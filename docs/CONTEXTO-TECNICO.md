@@ -118,7 +118,7 @@ Fórmula do resumo: `subtotal = normais + RECEBIDO − TRANSFERIDO` → `+10% cu
 | `vw_fb_pedidos_compra` | Pedidos de compra |
 | `vw_fb_mov_estoque` | Movimentações de O.S. |
 | `vw_giro_saidas_unificado` | Saídas M2 (nov/24–out/25) + Firebird (nov/25→hoje) |
-| `comp_produtos_consolidado` | View **nossa** (não-Firebird, pode evoluir) — motor de Alertas/Comprar Agora. Colunas: estoque/reserva/pedido em aberto, saída e consumo 90d **e 365d**, cobertura, `qtd_sugerida` (meta 45d − estoque − pedido), `situacao_estoque`, `curva_abc_qtd`/`curva_abc_valor` e flag `esporadico` (vende ≤12/ano). Aditivo de 27/07: +`saida_365d_total`, +`consumo_diario_365d_total`, +`esporadico`. Frontend: helpers `itemEsporadico` e `itemCoberto`. |
+| `comp_produtos_consolidado` | View **nossa** (não-Firebird, pode evoluir) — motor de Alertas/Comprar Agora. Colunas: estoque/reserva/pedido em aberto, saída e consumo 90d **e 365d**, cobertura, `qtd_sugerida` (meta 45d − estoque − pedido), `situacao_estoque`, `curva_abc_qtd`/`curva_abc_valor` e flag `esporadico` (vende ≤12/ano). Aditivo de 28/07: +`saida_365d_total`, +`consumo_diario_365d_total`, +`esporadico`. Frontend: helpers `itemEsporadico` e `itemCoberto`. |
 
 **Empresas na `vw_fb_produtos_compras`:** BATTOGO, BONONI PR, BONONI SC, BONONI UMUARAMA, MLB PR, MLB SC, MLB SP, OPERADOR LOGISTICO, SANTA TEREZA, TRUCKPREST.
 
