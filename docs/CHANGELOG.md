@@ -4,6 +4,24 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 06/08/2026 (2ª rodada) — Fornecedores real, drawer e persistência do carrinho
+
+### Corrigido — Fornecedores só conta compra real; aba incorporada a "Totais de Estoque"
+- **A aba não era real:** `comp_lead_time_forn` somava **toda** linha de `vw_fb_historico_compras` — remessa, retorno, conserto, devolução, inventário, estoque inicial e transferência entre unidades. Isso inflava o volume de **R$ 120 mi → R$ 10,9 mi** de compra real. View recriada com a whitelist de tipos de compra (mesma do drawer) — **aplicada em produção**.
+- **Intergrupo fora do ranking** (Bononi/MLB e afins): filtrado no front por `IDS_INTERGRUPO_FORN`. Sobram **355 fornecedores externos · R$ 4,76 mi**.
+- **A aba lateral "Fornecedores" saiu**; o conteúdo (KPIs + ranking clicável + top-10) foi **incorporado à página "Totais de Estoque"**. O drawer de detalhe do fornecedor continua (fica no DOM, aberto pela tabela em Totais).
+
+### Adicionado — carrinho de pedido não se perde mais
+- **Rascunho persiste em `localStorage`**: fechar/atualizar o navegador não perde o pedido — ele é **restaurado** ao reabrir (toast "Rascunho restaurado").
+- **Aviso ao sair** (beforeunload) quando há pedido não salvo. Rótulo **"• não salvo"** (laranja) no rodapé do carrinho enquanto há alteração pendente; some ao salvar. **＋ Novo** pede confirmação se houver rascunho não salvo.
+
+### Alterado — Pedidos e drawer
+- **Data de criação** do pedido: lista agora mostra **data + hora** (e marca de última edição); ao editar, o rodapé do carrinho mostra `(criado dd/mm hh:mm)`. Corrigido `fmtData`, que quebrava com timestamp ("Invalid Date").
+- **Colunas Pedir ↔ Fornecedor trocadas** na tabela de Compras (Pedir antes).
+- **Drawer:** card "Fornecedor sugerido" mais estreito; mini-tabela mensal virou **horizontal** (meses nas colunas, linhas Saídas/Compras); drawer alargado 580 → **680px**.
+
+---
+
 ## 06/08/2026 — reunião de melhorias na tela de Compras
 
 ### Adicionado — tela "📋 Pedidos de Compra" (persistência, Fase 1)

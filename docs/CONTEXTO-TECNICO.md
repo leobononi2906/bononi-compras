@@ -68,10 +68,10 @@
 | ID | Tela | Funções-chave (linha) |
 |---|---|---|
 | `cmp-alertas` | Alertas e Reposição | `loadAlertas` (384), `renderAlertas` (565), `atualizarKPIs` (520) |
-| `cmp-totais` | Totais de Estoque | `loadTotais` (1274), `renderTotGrupos` (1327) |
+| `cmp-totais` | Totais de Estoque **(+ Fornecedores incorporado)** | `loadTotais` (1274, chama `loadFornecedores`), `renderTotGrupos` (1327), `renderFornecedores` |
 | `cmp-balanco` | Balanço Físico | `loadBalanco` (1522), `abrirSessaoContagem` (1767), `renderContagem` (1799) |
 | `cmp-importacao` | Importação | `loadImportacao` (2002), `renderImpKanban` (2169), `renderImpLista` (2217) |
-| `cmp-fornecedores` | Fornecedores | `loadFornecedores` (1368), `abrirFornDrawer` (1432) |
+| `cmp-fornecedores` | *(incorporado em Totais — só o `forn-drawer` no DOM)* | `loadFornecedores`, `abrirFornDrawer` |
 | `cmp-config` | Configurações | `loadConfiguracoes` (3229), `cfgBuscarProdutos` (3250), `loadCfgLogs` (3374) |
 | `cmp-chat` | Assistente IA | `abrirChat` (3026), `enviarChat` (3058) |
 

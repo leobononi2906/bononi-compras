@@ -210,6 +210,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .cart-footer { padding: 10px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 .drawer { position: fixed; top: 0; right: -600px; width: 580px; max-width: 95vw; height: 100vh; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 300; transition: right 0.28s ease; display: flex; flex-direction: column; }
 .drawer.open { right: 0; }
+#produto-drawer { width: 680px; }
 .drawer-overlay { position: fixed; inset: 0; background: rgba(15,29,53,0.35); z-index: 299; display: none; }
 .drawer-overlay.open { display: block; }
 .drawer-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
@@ -345,7 +346,6 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
           <a class="nav-item" data-pagina="cmp-balanco"      onclick="navegarPara('cmp-balanco')">      <span class="nav-dot"></span>Balanço Físico</a>
           <a class="nav-item" data-pagina="cmp-importacao"   onclick="navegarPara('cmp-importacao')">   <span class="nav-dot"></span>Importação</a>
-          <a class="nav-item" data-pagina="cmp-fornecedores" onclick="navegarPara('cmp-fornecedores')"> <span class="nav-dot"></span>Fornecedores</a>
           <a class="nav-item" data-pagina="cmp-config"       onclick="navegarPara('cmp-config')">       <span class="nav-dot"></span>⚙️ Configurações</a>
         </div>
       </div>
@@ -427,10 +427,9 @@ const PAGINAS = {
   'cmp-alertas':      { label: 'Compras',                breadcrumb: 'Compras · Reposição' },
   'cmp-pedidos':      { label: 'Pedidos de Compra',      breadcrumb: 'Compras · Pedidos' },
   'cmp-parado':       { label: 'Estoque Parado',         breadcrumb: 'Compras · Estoque Parado' },
-  'cmp-totais':       { label: 'Totais de Estoque',      breadcrumb: 'Compras · Totais' },
+  'cmp-totais':       { label: 'Totais de Estoque',      breadcrumb: 'Compras · Totais e Fornecedores' },
   'cmp-balanco':      { label: 'Balanço Físico',         breadcrumb: 'Compras · Balanço' },
   'cmp-importacao':   { label: 'Importação',             breadcrumb: 'Compras · Importação' },
-  'cmp-fornecedores': { label: 'Ranking de Fornecedores',breadcrumb: 'Compras · Fornecedores' },
   'cmp-config':       { label: 'Configurações',             breadcrumb: 'Compras · Configurações' },
 };
 

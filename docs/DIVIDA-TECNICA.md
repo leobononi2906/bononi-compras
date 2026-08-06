@@ -11,6 +11,12 @@ Prioridades: 🔴 alta · 🟠 média · 🟡 baixa.
 - **Paginação do Alertas/Compras invisível** — `renderPaginacao` usava `querySelector('.table-card')` (primeira do documento, não a certa). Agora container fixo `#alertas-paginacao` no HTML + fallback com escopo `#page-cmp-alertas`.
 - **Card do semáforo não desmarcava** — estado virou fonte única + `sincronizarSemaforo` no render.
 - **Contador dos KPIs ignorava filtros** — passou a usar `baseFiltradaAlertas` (mesmo recorte da tabela).
+- **Fornecedores contava operação sem financeiro** — `comp_lead_time_forn` somava toda linha de `vw_fb_historico_compras` (remessa/retorno/conserto/devolução/inventário/estoque inicial/transferência), inflando R$120mi→R$10,9mi. View recriada com whitelist de tipos de compra (aplicada em produção). Intergrupo filtrado no front (`IDS_INTERGRUPO_FORN`) → 355 fornec. · R$4,76mi.
+- **`fmtData` quebrava com timestamp** ("Invalid Date" na data do pedido) — agora aceita `YYYY-MM-DD` e ISO; novo `fmtDataHora`.
+
+### ✅ Feito nesta rodada (frontend)
+- **Aba "Fornecedores" incorporada em "Totais de Estoque"** — nav lateral removida; KPIs+ranking+top-10 movidos p/ a página de Totais (`loadTotais` chama `loadFornecedores`); `cmp-fornecedores` reduzida ao drawer no DOM.
+- **Carrinho de pedido persiste** em `localStorage` (sobrevive a refresh/fechar navegador) + aviso `beforeunload` + rótulo "não salvo". Pedido mostra data/hora de criação/edição. Colunas Pedir↔Fornecedor trocadas. Drawer: mini-tabela horizontal, card fornecedor estreito, largura 680px.
 
 ### 🟠 Backlog novo (pendente de go)
 | Item | Contexto |

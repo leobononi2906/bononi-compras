@@ -111,8 +111,8 @@ const PAGINAS_HTML = {
             <th class="right sortable" onclick="setOrdemAlertas('qtd_sugerida', this)">Qtd Sugerida <span class="sort-icon">↕</span></th>
             <th class="right sortable" onclick="setOrdemAlertas('pedido_aberto', this)">Ped. Aberto <span class="sort-icon">↕</span></th>
             <th class="sortable" onclick="setOrdemAlertas('prioridade', this)">Situação <span class="sort-icon">↕</span></th>
-            <th class="sortable" onclick="setOrdemAlertas('fornecedor', this)">Fornecedor <span class="sort-icon">↕</span></th>
             <th style="width:150px">Pedir</th>
+            <th class="sortable" onclick="setOrdemAlertas('fornecedor', this)">Fornecedor <span class="sort-icon">↕</span></th>
           </tr></thead>
           <tbody id="alertas-body"><tr class="loading-row"><td colspan="9">Carregando dados...</td></tr></tbody>
         </table>
@@ -186,6 +186,15 @@ const PAGINAS_HTML = {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:20px">
       <div class="table-card"><div class="table-card-header"><span class="table-card-title">Estoque por Grupo</span><div class="toggle-group"><button class="toggle-btn active" onclick="setTotOrdem('valor', this)">Por Valor</button><button class="toggle-btn" onclick="setTotOrdem('qtd', this)">Por SKUs</button></div></div><div style="overflow-x:auto;max-height:400px;overflow-y:auto"><table class="data-table"><thead><tr><th>Grupo</th><th class="right">SKUs</th><th class="right">Valor Estoque</th><th class="right">Rupturas</th></tr></thead><tbody id="tot-grupos-body"></tbody></table></div></div>
       <div><div class="chart-card"><div class="chart-header"><span class="chart-title">Distribuição por Curva ABC</span></div><div class="chart-body"><canvas id="chart-abc" height="180"></canvas></div></div><div class="chart-card" style="margin-top:14px"><div class="chart-header"><span class="chart-title">Situação do Estoque</span></div><div class="chart-body"><canvas id="chart-situacao" height="180"></canvas></div></div></div>
+    </div>
+    <div style="margin-top:26px">
+      <div style="font-size:15px;font-weight:700">Fornecedores — Compras Reais</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Somente compras externas que geram financeiro. Exclui remessa, retorno, conserto, devolução, inventário, estoque inicial, transferências e fornecedores intergrupo.</div>
+    </div>
+    <div class="cards-grid cards-grid-3" style="margin-top:12px"><div class="card"><div class="card-label">Fornecedores Ativos</div><div class="card-value blue" id="forn-total">—</div></div><div class="card"><div class="card-label">Volume Comprado (real)</div><div class="card-value" id="forn-volume">—</div></div><div class="card"><div class="card-label">Lead Time Médio</div><div class="card-value" id="forn-lead">—</div></div></div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:14px">
+      <div class="table-card"><div class="table-card-header"><span class="table-card-title">Ranking de Fornecedores</span><div class="toggle-group"><button class="toggle-btn active" onclick="setFornOrdem('volume', this)">Volume R$</button><button class="toggle-btn" onclick="setFornOrdem('compras', this)">Nº Compras</button><button class="toggle-btn" onclick="setFornOrdem('produtos', this)">Nº Produtos</button><button class="toggle-btn" onclick="setFornOrdem('lead', this)">Lead Time</button></div></div><div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="data-table"><thead><tr><th>#</th><th>Fornecedor</th><th class="right">Volume</th><th class="right">Nº Compras</th><th class="right">Produtos</th><th class="right">Lead Pedido→NF</th><th class="right">Última Compra</th></tr></thead><tbody id="forn-ranking-body"></tbody></table></div></div>
+      <div class="chart-card"><div class="chart-header"><span class="chart-title">Top 10 por Volume</span></div><div class="chart-body"><canvas id="chart-forn-top10" height="340"></canvas></div></div>
     </div></div>`,
 
   'cmp-balanco': `<div class="page-content" id="page-cmp-balanco">
@@ -223,14 +232,9 @@ const PAGINAS_HTML = {
   <div class="drawer-overlay" id="imp-drawer-overlay" onclick="fecharImpDrawer()"></div>
   <div class="drawer" id="imp-drawer" style="width:720px"><div class="drawer-header"><div><div class="drawer-title" id="imp-drawer-titulo">—</div><div class="drawer-sub" id="imp-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharImpDrawer()">✕</button></div><div style="padding:0 24px;border-bottom:1px solid var(--border)"><div class="drawer-tabs" style="border:none;margin:0"><div class="drawer-tab active" onclick="switchImpTab('info',this)">📋 Informações & Pedidos</div><div class="drawer-tab" onclick="switchImpTab('pagamentos',this)">💰 Pagamentos</div><div class="drawer-tab" onclick="switchImpTab('docs',this)">📎 Documentos</div></div></div><div class="drawer-body"><div class="drawer-tab-content active" id="imptab-info"></div><div class="drawer-tab-content" id="imptab-pagamentos"></div><div class="drawer-tab-content" id="imptab-docs"></div></div></div>`,
 
-  'cmp-fornecedores': `<div class="page-content" id="page-cmp-fornecedores">
-    <div class="cards-grid cards-grid-3"><div class="card"><div class="card-label">Fornecedores Ativos</div><div class="card-value blue" id="forn-total">—</div></div><div class="card"><div class="card-label">Volume Total Comprado</div><div class="card-value" id="forn-volume">—</div></div><div class="card"><div class="card-label">Lead Time Médio</div><div class="card-value" id="forn-lead">—</div></div></div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:20px">
-      <div class="table-card"><div class="table-card-header"><span class="table-card-title">Ranking de Fornecedores</span><div class="toggle-group"><button class="toggle-btn active" onclick="setFornOrdem('volume', this)">Volume R$</button><button class="toggle-btn" onclick="setFornOrdem('compras', this)">Nº Compras</button><button class="toggle-btn" onclick="setFornOrdem('produtos', this)">Nº Produtos</button><button class="toggle-btn" onclick="setFornOrdem('lead', this)">Lead Time</button></div></div><div style="overflow-x:auto;max-height:500px;overflow-y:auto"><table class="data-table"><thead><tr><th>#</th><th>Fornecedor</th><th class="right">Volume 12m</th><th class="right">Nº Compras</th><th class="right">Produtos</th><th class="right">Lead Pedido→NF</th><th class="right">Última Compra</th></tr></thead><tbody id="forn-ranking-body"></tbody></table></div></div>
-      <div class="chart-card"><div class="chart-header"><span class="chart-title">Top 10 por Volume</span></div><div class="chart-body"><canvas id="chart-forn-top10" height="340"></canvas></div></div>
-    </div>
-  </div>
-  <div class="drawer-overlay" id="forn-drawer-overlay" onclick="fecharFornDrawer()"></div>
+  // 'cmp-fornecedores' foi incorporada em "Totais de Estoque" (a aba lateral saiu).
+  // Mantemos apenas o drawer de detalhe do fornecedor no DOM (aberto pela tabela em Totais).
+  'cmp-fornecedores': `<div class="drawer-overlay" id="forn-drawer-overlay" onclick="fecharFornDrawer()"></div>
   <div class="drawer" id="forn-drawer" style="width:720px"><div class="drawer-header"><div><div class="drawer-title" id="forn-drawer-nome">—</div><div class="drawer-sub" id="forn-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharFornDrawer()">✕</button></div><div style="padding:0 24px;border-bottom:1px solid var(--border)"><div class="drawer-tabs" style="border:none;margin:0"><div class="drawer-tab active" onclick="switchFornTab('resumo',this)">Resumo</div><div class="drawer-tab" onclick="switchFornTab('produtos',this)">Produtos</div><div class="drawer-tab" onclick="switchFornTab('historico',this)">Histórico</div></div></div><div class="drawer-body"><div class="drawer-tab-content active" id="forntab-resumo"></div><div class="drawer-tab-content" id="forntab-produtos"></div><div class="drawer-tab-content" id="forntab-historico"></div></div></div>`,
 
   'cmp-config': `<div class="page-content" id="page-cmp-config">
@@ -354,7 +358,32 @@ let ordemDir = 'desc';
 let filtroSituacaoAtivo = '';
 let cartItems = [];
 let pedidoAtualId = null;   // pedido de compra em edição (null = pedido novo)
+let pedidoAtualCriadoEm = null;  // data de criação do pedido em edição
 let pedidosCache = [];
+let cartSnapshotSalvo = '';  // JSON do carrinho no último salvamento/abertura (para detectar não-salvo)
+const LS_CART = 'compras_cart_draft_v1';
+
+// Persiste o rascunho do carrinho para sobreviver a refresh / fechar navegador
+function persistirCarrinho() {
+  try {
+    if (cartItems.length) localStorage.setItem(LS_CART, JSON.stringify({ cartItems, pedidoAtualId, pedidoAtualCriadoEm }));
+    else localStorage.removeItem(LS_CART);
+  } catch (_) {}
+}
+function restaurarCarrinho() {
+  try {
+    const d = JSON.parse(localStorage.getItem(LS_CART) || 'null');
+    if (d && Array.isArray(d.cartItems) && d.cartItems.length) {
+      cartItems = d.cartItems;
+      pedidoAtualId = d.pedidoAtualId || null;
+      pedidoAtualCriadoEm = d.pedidoAtualCriadoEm || null;
+      cartSnapshotSalvo = pedidoAtualId ? JSON.stringify(cartItems) : '';  // rascunho novo restaurado continua "não-salvo"
+    }
+  } catch (_) {}
+}
+function carrinhoNaoSalvo() {
+  return cartItems.length > 0 && JSON.stringify(cartItems) !== cartSnapshotSalvo;
+}
 let chartGiroMensal = null;
 let chartABC = null;
 let chartSituacao = null;
@@ -378,8 +407,15 @@ function fmtQtd(v, dec = 0) {
 
 function fmtData(d) {
   if (!d) return '—';
-  const dt = new Date(d + 'T00:00:00');
-  return dt.toLocaleDateString('pt-BR');
+  // aceita 'YYYY-MM-DD' (data pura) e timestamps ISO ('...T...Z')
+  const dt = /T/.test(d) ? new Date(d) : new Date(d + 'T00:00:00');
+  return isNaN(dt) ? '—' : dt.toLocaleDateString('pt-BR');
+}
+
+function fmtDataHora(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt) ? '—' : dt.toLocaleDateString('pt-BR') + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 function badgeSituacao(s) {
@@ -695,7 +731,6 @@ function renderAlertas() {
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
       <td>${(itemCoberto(r) && (r.situacao_estoque === 'RUPTURA' || r.situacao_estoque === 'CRITICO')) ? '<span class="badge badge-blue" title="Sem ação: reposição já pedida e a caminho">🚚 a caminho</span>' : badgeSituacao(r.situacao_estoque)}</td>
-      <td style="font-size:12px;color:var(--text-secondary);max-width:160px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome_fornecedor}">${f.nome_fornecedor}</div>`).join('') || '—'}</td>
       <td onclick="event.stopPropagation()">
         <div style="display:flex;gap:4px;align-items:center;justify-content:flex-end">
           <input type="number" min="0" value="${noCarrinho ? Math.round((cartItems.find(c => c.id_produto === r.id_produto)?.qtd_pedido) || 0) : Math.max(0, Math.ceil(r.qtd_sugerida || 0))}" id="qtd-in-${r.id_produto}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();incluirNoPedido(${r.id_produto})}" style="width:52px;height:26px;text-align:right;border:1px solid ${noCarrinho ? 'var(--green)' : 'var(--border)'};border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" title="Quantidade a pedir" />
@@ -704,6 +739,7 @@ function renderAlertas() {
             : `<button class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Incluir no pedido">Incluir</button>`}
         </div>
       </td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:160px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome_fornecedor}">${f.nome_fornecedor}</div>`).join('') || '—'}</td>
     </tr>`;
   }).join('');
   renderPaginacao(paginaAtual, totalPaginas, total);
@@ -1019,7 +1055,7 @@ async function loadDrawerResumo(prod) {
     const aviso = demandaReprimida(prod) ? `<div style="margin-bottom:10px;padding:8px 12px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;font-size:12px;color:#B91C1C">📉 <b>Demanda reprimida:</b> ficou zerado com saída no último ano — a média recente subestima a real. Avalie repor com folga.</div>` : '';
     if (best) {
       blocoForn.innerHTML = aviso + `
-        <div class="card" style="padding:12px 16px;border-left:3px solid var(--blue-mid)">
+        <div class="card" style="padding:10px 14px;border-left:3px solid var(--blue-mid);max-width:440px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
             <div>
               <div class="card-label">Fornecedor sugerido</div>
@@ -1035,7 +1071,7 @@ async function loadDrawerResumo(prod) {
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">${explica}</div>
         </div>`;
     } else {
-      blocoForn.innerHTML = aviso + `<div class="card" style="padding:10px 16px"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
+      blocoForn.innerHTML = aviso + `<div class="card" style="padding:10px 14px;max-width:440px"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
     }
   }
   // Margem e ultimo preco de compra
@@ -1191,30 +1227,25 @@ async function loadDrawerGiro(idProduto) {
       </div>
 
       <div class="chart-card">
-        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span></div>
+        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span><span style="font-size:11px;color:var(--text-muted)">Σ Saídas <b style="color:var(--blue-dark)">${fmtQtd(totalVendido12m,0)}</b> · Compras <b style="color:var(--green)">${fmtQtd(totalComprado,0)}</b></span></div>
         <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <table style="border-collapse:collapse;font-size:12px;white-space:nowrap">
             <thead>
-              <tr style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.3px">
-                <th style="text-align:left;padding:5px 8px;font-weight:600">Mês</th>
-                <th style="text-align:right;padding:5px 8px;font-weight:600">Saídas</th>
-                <th style="text-align:right;padding:5px 8px;font-weight:600">Compras</th>
+              <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.3px">
+                <th style="text-align:left;padding:4px 8px;font-weight:600;position:sticky;left:0;background:var(--surface)"></th>
+                ${meses.map(m => `<th style="text-align:right;padding:4px 8px;font-weight:600">${m.label}</th>`).join('')}
               </tr>
             </thead>
             <tbody>
-              ${meses.map(m => `<tr style="border-top:1px solid var(--border)">
-                <td style="text-align:left;padding:5px 8px">${m.label}</td>
-                <td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>
-                <td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>
-              </tr>`).join('')}
-            </tbody>
-            <tfoot>
-              <tr style="border-top:2px solid var(--border);font-weight:700">
-                <td style="text-align:left;padding:5px 8px">Total</td>
-                <td class="mono" style="text-align:right;padding:5px 8px;color:var(--blue-dark)">${fmtQtd(totalVendido12m, 0)}</td>
-                <td class="mono" style="text-align:right;padding:5px 8px;color:var(--green)">${fmtQtd(totalComprado, 0)}</td>
+              <tr style="border-top:1px solid var(--border)">
+                <td style="text-align:left;padding:5px 8px;font-weight:600;color:var(--blue-dark);position:sticky;left:0;background:var(--surface)">Saídas</td>
+                ${meses.map(m => `<td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}
               </tr>
-            </tfoot>
+              <tr style="border-top:1px solid var(--border)">
+                <td style="text-align:left;padding:5px 8px;font-weight:600;color:var(--green);position:sticky;left:0;background:var(--surface)">Compras</td>
+                ${meses.map(m => `<td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>`).join('')}
+              </tr>
+            </tbody>
           </table>
         </div>
       </div>`;
@@ -1569,9 +1600,21 @@ function atualizarCarrinho() {
   setEl('kpi-pedido-forn', `${forn} fornecedor${forn !== 1 ? 'es' : ''}`);
   const panel = document.getElementById('cart-panel');
   if (panel) { if (count > 0) panel.classList.add('open'); else panel.classList.remove('open'); }
-  const statusLbl = document.getElementById('cart-status-label');
-  if (statusLbl) statusLbl.innerHTML = pedidoAtualId ? `✏️ Editando pedido <b>#${pedidoAtualId}</b>` : 'Pedido de compras';
+  renderCartStatusLabel();
+  persistirCarrinho();
   renderCarrinho();
+}
+
+function renderCartStatusLabel() {
+  const statusLbl = document.getElementById('cart-status-label');
+  if (!statusLbl) return;
+  const naoSalvo = carrinhoNaoSalvo() ? ' <span style="color:var(--orange);font-weight:600">• não salvo</span>' : '';
+  if (pedidoAtualId) {
+    const dt = pedidoAtualCriadoEm ? ` <span style="color:var(--text-muted)">(criado ${fmtDataHora(pedidoAtualCriadoEm)})</span>` : '';
+    statusLbl.innerHTML = `✏️ Editando pedido <b>#${pedidoAtualId}</b>${dt}${naoSalvo}`;
+  } else {
+    statusLbl.innerHTML = `Pedido de compras${naoSalvo}`;
+  }
 }
 
 function renderCarrinho() {
@@ -1593,6 +1636,8 @@ function atualizarQtdCart(idx, val) {
   const total = cartItems.reduce((a, c) => a + (c.qtd_pedido * (c.vl_unit || 0)), 0);
   const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   setEl('cart-total-valor', fmt(total)); setEl('kpi-pedido-valor', fmt(total));
+  renderCartStatusLabel();
+  persistirCarrinho();
 }
 
 function removerItemCart(idx) { cartItems.splice(idx, 1); atualizarCarrinho(); renderAlertas(); }
@@ -1640,8 +1685,11 @@ function baixarPedidoTxt() {
 // Tabelas: comp_pedidos (cabeçalho) + comp_pedido_itens
 // ═══════════════════════════════════════════════════════════
 function novoPedido() {
+  if (carrinhoNaoSalvo() && !confirm('Há um pedido não salvo no carrinho. Iniciar um novo vai descartá-lo. Continuar?')) return;
   cartItems = [];
   pedidoAtualId = null;
+  pedidoAtualCriadoEm = null;
+  cartSnapshotSalvo = '';
   atualizarCarrinho();
   renderAlertas();
   showToast('Novo pedido iniciado.');
@@ -1680,14 +1728,16 @@ async function salvarPedidoCompra() {
       if (e1) throw e1;
       await sb.from('comp_pedido_itens').delete().eq('pedido_id', pedidoId);
     } else {
-      const { data, error: e0 } = await sb.from('comp_pedidos').insert({ empresa, observacao: obs, criado_por: u.nome || u.email || '—', criado_por_email: u.email || null, status: 'rascunho', total_itens: totalItens, total_valor: totalValor }).select('id').single();
+      const { data, error: e0 } = await sb.from('comp_pedidos').insert({ empresa, observacao: obs, criado_por: u.nome || u.email || '—', criado_por_email: u.email || null, status: 'rascunho', total_itens: totalItens, total_valor: totalValor }).select('id,criado_em').single();
       if (e0) throw e0;
       pedidoId = data.id;
+      pedidoAtualCriadoEm = data.criado_em || null;
     }
     const itens = cartItems.map(c => ({ pedido_id: pedidoId, id_produto: c.id_produto, referencia: c.referencia, nome: c.nome_produto, qtd: c.qtd_pedido, preco_unit: c.vl_unit || 0, id_fornecedor: c.id_fornecedor || null, nome_fornecedor: c.nome_fornecedor || null }));
     if (itens.length) { const { error: e2 } = await sb.from('comp_pedido_itens').insert(itens); if (e2) throw e2; }
     const novo = !pedidoAtualId;
     pedidoAtualId = pedidoId;
+    cartSnapshotSalvo = JSON.stringify(cartItems);   // marca como salvo (some o aviso "não salvo")
     fecharModalSalvarPedido();
     atualizarCarrinho();
     showToast(novo ? `Pedido #${pedidoId} salvo.` : `Pedido #${pedidoId} atualizado.`);
@@ -1726,7 +1776,7 @@ function renderPedidos() {
     <td class="right mono">${fmtQtd(p.total_itens, 0)}</td>
     <td class="right mono">${fmt(p.total_valor || 0)}</td>
     <td>${p.status === 'finalizado' ? '<span class="badge badge-green">finalizado</span>' : '<span class="badge badge-gray">rascunho</span>'}</td>
-    <td style="font-size:12px;color:var(--text-muted)">${p.criado_em ? fmtData(p.criado_em) : '—'}</td>
+    <td style="font-size:12px;color:var(--text-muted)">${fmtDataHora(p.criado_em)}${p.atualizado_em && p.atualizado_em !== p.criado_em ? `<br><span style="font-size:10px">✏️ ${fmtDataHora(p.atualizado_em)}</span>` : ''}</td>
     <td style="white-space:nowrap"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="abrirPedidoParaEditar(${p.id})">Abrir</button>${p.status !== 'finalizado' ? `<button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px;color:var(--red);margin-left:4px" onclick="excluirPedido(${p.id})" title="Excluir rascunho">🗑</button>` : ''}</td>
   </tr>`).join('');
 }
@@ -1740,6 +1790,8 @@ async function abrirPedidoParaEditar(id) {
     if (!ped) { showToast('Pedido não encontrado.', 'error'); return; }
     cartItems = (itens || []).map(it => ({ id_produto: it.id_produto, nome_produto: it.nome, referencia: it.referencia, id_fornecedor: it.id_fornecedor, nome_fornecedor: it.nome_fornecedor, qtd_sugerida: Number(it.qtd) || 0, qtd_pedido: Number(it.qtd) || 0, vl_unit: Number(it.preco_unit) || 0 }));
     pedidoAtualId = id;
+    pedidoAtualCriadoEm = ped.criado_em || null;
+    cartSnapshotSalvo = JSON.stringify(cartItems);   // recém-aberto = salvo (sem alterações ainda)
     window.navegarPara?.('cmp-alertas');
     atualizarCarrinho();
     document.getElementById('cart-panel')?.classList.add('open');
@@ -1812,6 +1864,7 @@ async function loadTotais() {
       data: { labels: sitNames, datasets: [{ data: sitLabels.map(s => sitCount[s] || 0), backgroundColor: sitColors, borderWidth: 0 }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } } }
     });
+    loadFornecedores();   // seção "Fornecedores — Compras Reais" incorporada nesta página
   } catch (e) { console.error(e); }
 }
 
@@ -1867,7 +1920,9 @@ async function loadFornecedores() {
     ]);
     const leadMap = {};
     (rLead.data || []).forEach(l => { leadMap[l.id_fornecedor] = l; });
-    fornData = (rForn.data || []).map(f => ({ ...f, ...leadMap[f.id_fornecedor] }));
+    fornData = (rForn.data || [])
+      .filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor))   // exclui fornecedores intergrupo (NFs internas, sem compra externa real)
+      .map(f => ({ ...f, ...leadMap[f.id_fornecedor] }));
     document.getElementById('forn-total').textContent = fmtQtd(fornData.length);
     const volTotal = fornData.reduce((a, r) => a + (r.valor_total_comprado || 0), 0);
     document.getElementById('forn-volume').textContent = fmt(volTotal);
@@ -3695,7 +3750,6 @@ const CMP_PAGE_LOADERS = {
   'cmp-totais':       () => loadTotais(),
   'cmp-balanco':      () => loadBalanco(),
   'cmp-importacao':   () => loadImportacao(),
-  'cmp-fornecedores': () => loadFornecedores(),
   'cmp-config':       () => loadConfiguracoes(),
 };
 
@@ -4095,6 +4149,9 @@ window.ModuloCompras = {
       container.innerHTML = '';
       container.appendChild(wrapper);
       _iniciado = true;
+      // Restaura rascunho de pedido (sobrevive a refresh / fechar navegador)
+      restaurarCarrinho();
+      if (cartItems.length) { atualizarCarrinho(); showToast('Rascunho de pedido restaurado.'); }
     }
     container.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
     const target = container.querySelector('#page-' + paginaId);
@@ -4109,6 +4166,11 @@ window.ModuloCompras = {
   },
   destroy() { _iniciado = false; _container = null; }
 };
+
+// Aviso ao sair com pedido não salvo (o rascunho é preservado em localStorage de qualquer forma)
+window.addEventListener('beforeunload', function(e) {
+  if (carrinhoNaoSalvo()) { e.preventDefault(); e.returnValue = ''; return ''; }
+});
 
 // DRAWER_DELEGATED_CLICK_PATCH
 document.addEventListener('click', function(ev) {
