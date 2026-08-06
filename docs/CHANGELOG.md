@@ -4,6 +4,50 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 06/08/2026 — reunião de melhorias na tela de Compras
+
+### Adicionado — tela "📋 Pedidos de Compra" (persistência, Fase 1)
+- **Pedido deixa de ser volátil.** O operador monta o carrinho e **Salva** (modal pede *empresa* — texto livre — e observação; o **responsável** vem sozinho do login). Fecha a página, não perde nada.
+- Nova tela **Pedidos** no menu: lista todos com empresa, responsável, itens, valor, status (rascunho/finalizado) e data. **Abrir** recarrega os itens no carrinho para editar; **🗑** exclui rascunho. Salvar de novo num pedido aberto **atualiza** (não duplica). Rodapé do carrinho mostra "✏️ Editando pedido #X" e botão **＋ Novo**.
+- **Banco (aplicado em produção):** tabelas `comp_pedidos` (empresa, criado_por, status, totais, datas) + `comp_pedido_itens` (produto, ref, qtd, preço, fornecedor, cascade). RLS off + grant anon/authenticated, padrão das demais `comp_`. Migration em `sql/comp_pedidos_fase1.sql`. **Falta Fase 2:** finalizar (travar) + imprimir + vincular o `.txt` ao finalizado.
+
+### Adicionado — baixar pedido no layout de importação do ERP (.txt)
+- Botão **"↓ .txt"** no carrinho gera uma linha por item `referencia;qtd` (a referência = "Código do Produto", ex.: `000003`), separador `;`, quantidade inteira — o layout que o ERP importa. O "↓ Excel" continua.
+
+### Adicionado — pedido direto na linha (input + Incluir)
+- Cada linha da tabela tem **campo de quantidade** (já vem com a sugestão) **+ botão Incluir** (Enter também inclui). Item já no pedido mostra **Atualizar / ✕**. Fim do "+ e pronto"; agora dá pra digitar a quantidade na hora.
+
+### Adicionado — flag "📉 demanda reprimida"
+- Etiqueta na lista (e aviso no drawer) para itens **zerados que venderam no último ano**, ou cujo ritmo de 365d supera bem o de 90d. Sinaliza que a **média recente está subestimada pela falta de estoque** — não confiar no número baixo. Pega ~1.133 itens. *(helper `demandaReprimida`, frontend, sem banco.)*
+
+### Adicionado — bloco "Fornecedor sugerido" no drawer
+- No Resumo, um bloco com **melhor fornecedor · preço · referência · data da última compra** + a **sugestão explicada** (`consumo/dia × 45 − estoque − a caminho = X`), para o comprador decidir de quem comprar sem trocar de aba.
+
+### Adicionado — auditoria de valores na Importação
+- Lançar/editar/excluir pagamento e quitar fornecedor passam a registrar **quem fez + data/hora + antes→depois** na tabela existente `comp_audit_log` (`modulo='importacao'`). O drawer de Importação ganhou um **`<details>` "🕓 Histórico de lançamentos"** acima da tabela de pagamentos, por processo. Registra daqui pra frente. Sem mudança de banco.
+
+### Alterado — tela renomeada e navegação
+- **"Alertas e Reposição" → "Compras"**. **"Comprar Agora" saiu do menu** (página mantida no código) para simplificar enquanto a equipe entende melhor o fluxo.
+
+### Alterado — tabela: paginação, cabeçalho fixo e ordenação por coluna
+- **Paginação corrigida** — o `renderPaginacao` fazia `querySelector('.table-card')` e pegava a **primeira** tabela do documento (não a de Compras), então os controles sumiam. Agora há container fixo próprio: ← Anterior / 1 2 3 … / Próxima →.
+- **Cabeçalho fixo** (`sticky`) ao rolar a lista.
+- **Ordenação clicando em cada coluna** (Produto, Estoque, Cobertura, Qtd Sugerida, Ped. Aberto, Situação, Fornecedor), com seta ↑/↓/↕. **Botões de cima removidos** (Prioridade/Menor Cobertura/Curva ABC/Maior Sugestão), redundantes com a ordenação nas colunas.
+
+### Corrigido — card do semáforo que não desmarcava
+- Clicar em Ruptura/Baixo filtrava, mas **não dava para desmarcar sem reiniciar**. Reescrito para o estado ser fonte única (`filtroSituacaoAtivo`) e o destaque sincronizar no render (`sincronizarSemaforo`).
+
+### Corrigido — contador dos KPIs não batia com a tabela
+- Os cards do semáforo contavam **todos** os produtos, ignorando o filtro de grupo/subgrupo/fornecedor/busca ativo (ex.: card OK=611 com a tabela mostrando 146 de AUTO ELETRICA). Agora os KPIs respeitam o **mesmo recorte** da tabela (helper `baseFiltradaAlertas`).
+
+### Alterado — drawer: cobertura única (90d) e gráfico vira mini-tabela
+- Removida a cobertura duplicada do topo do drawer; ficou só a **"Cobertura Estimada" com base 90 dias** (mesma fonte da lista).
+- O gráfico de barras "Saídas vs Compras" (que a equipe não curtiu) virou uma **mini-tabela mensal** (Mês × Saídas × Compras + total) com números exatos.
+
+### Nota técnica — o que NÃO mudou no backend (decisão da reunião)
+- **Cobertura/semáforo continuam FÍSICOS.** Não consolidar estoque+comprado na cobertura; só a `qtd_sugerida` desconta o pedido em aberto (já era assim). A versão "demanda efetiva" foi descartada.
+- **Lead time:** a régua "cobertura < lead time (piso 15d, fornecedor principal)" foi validada mas **move 0 itens hoje** (o `lead_time_medio` da base é ~15d para 3.429 de 3.455 produtos). SQL pronta e **não aplicada** em `sql/comp_produtos_consolidado__lead_time_e_demanda_efetiva.sql`, guardada para quando a base de lead melhorar.
+
 ## 28/07/2026
 
 ### Adicionado — tela "🧹 Estoque Parado" (worklist do que se livrar)

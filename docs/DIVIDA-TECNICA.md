@@ -5,6 +5,23 @@ Prioridades: 🔴 alta · 🟠 média · 🟡 baixa.
 
 ---
 
+## 0. Atualização 06/08/2026 (reunião de melhorias)
+
+### ✅ Corrigido
+- **Paginação do Alertas/Compras invisível** — `renderPaginacao` usava `querySelector('.table-card')` (primeira do documento, não a certa). Agora container fixo `#alertas-paginacao` no HTML + fallback com escopo `#page-cmp-alertas`.
+- **Card do semáforo não desmarcava** — estado virou fonte única + `sincronizarSemaforo` no render.
+- **Contador dos KPIs ignorava filtros** — passou a usar `baseFiltradaAlertas` (mesmo recorte da tabela).
+
+### 🟠 Backlog novo (pendente de go)
+| Item | Contexto |
+|---|---|
+| **Pedido de Compra — Fase 2** | Falta finalizar (travar edição) + imprimir (layout limpo) + vincular o `.txt` ao pedido finalizado. Fase 1 (salvar/listar/editar rascunho) já em produção (`comp_pedidos`/`comp_pedido_itens`) |
+| **Fix stockout de verdade** | A média por dia de calendário pune item que ficou zerado. Solução correta: consumo por **dias COM estoque** (reconstruir de `vw_fb_mov_estoque`). Hoje só sinalizamos com o flag "demanda reprimida" |
+| **Lead time inerte** | SQL "cobertura < lead (piso 15, fornecedor principal)" pronta mas não aplicada — move 0 itens (base de lead ~15d p/ quase tudo). Reaplicar quando a base de lead melhorar. Arquivo `sql/comp_produtos_consolidado__lead_time_e_demanda_efetiva.sql` |
+| **Auditoria da Importação só daqui pra frente** | `comp_audit_log` passou a registrar lançamentos de valor; lançamentos antigos não têm histórico |
+
+---
+
 ## 1. Layout / CSS — a raiz de vários problemas
 
 **Diagnóstico central:** o `compras.js` injeta, na linha 8, um bloco **inteiro** de CSS que foi escrito para um **shell antigo** (app single-file). Esse CSS foi colado no `index.html` atual, que já tem o seu próprio layout (flex, sidebar 228px). Resultado: regras duplicadas e conflitantes. Como o CSS do `compras.js` é anexado **depois**, ele vence o do `index.html` em empates de especificidade.

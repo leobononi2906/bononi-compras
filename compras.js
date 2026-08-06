@@ -14,6 +14,22 @@
 
 
 const PAGINAS_HTML = {
+  'cmp-pedidos': `<div class="page-content" id="page-cmp-pedidos">
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <input type="text" id="ped-busca" class="search-input" placeholder="🔍 Buscar por empresa ou responsável..." oninput="renderPedidos()" style="width:280px" />
+      <select id="ped-filtro-status" class="filter-select" onchange="renderPedidos()" style="height:36px">
+        <option value="">Todos os status</option>
+        <option value="rascunho">Rascunho</option>
+        <option value="finalizado">Finalizado</option>
+      </select>
+      <button class="btn btn-outline" onclick="loadPedidos()" style="height:36px" title="Recarregar">↻</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="ped-resumo"></span>
+    </div>
+    <div class="table-card"><div style="overflow-x:auto"><table class="data-table">
+      <thead><tr><th>#</th><th>Empresa</th><th>Responsável</th><th class="right">Itens</th><th class="right">Valor</th><th>Status</th><th>Criado</th><th></th></tr></thead>
+      <tbody id="pedidos-body"><tr class="loading-row"><td colspan="8">Carregando...</td></tr></tbody>
+    </table></div></div>
+  </div>`,
   'cmp-comprar': `<div class="page-content" id="page-cmp-comprar">
     <div class="cards-grid cards-grid-3">
       <div class="card"><div class="card-label">Itens a comprar</div><div class="card-value blue" id="ca-kpi-itens">—</div><div class="card-sub">precisam de decisão agora</div></div>
@@ -79,12 +95,7 @@ const PAGINAS_HTML = {
     <div class="section-title" style="margin-top:20px">Produtos — <span id="alertas-count">carregando...</span></div>
     <div class="table-card">
       <div class="table-card-header">
-        <div class="toggle-group">
-          <button class="toggle-btn active" onclick="setOrdemAlertas('prioridade', this)">Prioridade</button>
-          <button class="toggle-btn" onclick="setOrdemAlertas('cobertura', this)">Menor Cobertura</button>
-          <button class="toggle-btn" onclick="setOrdemAlertas('abc', this)">Curva ABC</button>
-          <button class="toggle-btn" onclick="setOrdemAlertas('qtd_sugerida', this)">Maior Sugestão</button>
-        </div>
+        <span style="font-size:12px;color:var(--text-muted)">↕ Clique nas colunas para ordenar</span>
         <div style="display:flex;align-items:center;gap:8px">
           <span style="font-size:12px;color:var(--text-muted)" id="selected-count"></span>
           <button class="btn btn-outline" onclick="adicionarSelecionados()" id="btn-add-selected" style="display:none">+ Adicionar Selecionados ao Pedido</button>
@@ -94,18 +105,19 @@ const PAGINAS_HTML = {
         <table class="data-table">
           <thead><tr>
             <th style="width:32px"><input type="checkbox" id="check-all" onchange="toggleCheckAll(this)" /></th>
-            <th>Produto</th>
-            <th class="right">Estoque</th>
-            <th class="right">Cobertura</th>
-            <th class="right">Qtd Sugerida</th>
-            <th class="right">Ped. Aberto</th>
-            <th>Situação</th>
-            <th>Fornecedor</th>
-            <th style="width:48px"></th>
+            <th class="sortable" onclick="setOrdemAlertas('nome', this)">Produto <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAlertas('estoque', this)">Estoque <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAlertas('cobertura', this)">Cobertura <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAlertas('qtd_sugerida', this)">Qtd Sugerida <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAlertas('pedido_aberto', this)">Ped. Aberto <span class="sort-icon">↕</span></th>
+            <th class="sortable" onclick="setOrdemAlertas('prioridade', this)">Situação <span class="sort-icon">↕</span></th>
+            <th class="sortable" onclick="setOrdemAlertas('fornecedor', this)">Fornecedor <span class="sort-icon">↕</span></th>
+            <th style="width:150px">Pedir</th>
           </tr></thead>
           <tbody id="alertas-body"><tr class="loading-row"><td colspan="9">Carregando dados...</td></tr></tbody>
         </table>
       </div>
+      <div id="alertas-paginacao" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"></div>
     </div>
   </div>
   <div class="drawer-overlay" id="drawer-overlay" onclick="fecharDrawer()"></div>
@@ -125,9 +137,8 @@ const PAGINAS_HTML = {
     </div>
     <div style="flex:1;overflow-y:auto">
       <div class="drawer-tab-content active" id="dtab-resumo" style="padding:16px 20px">
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
           <div class="card" style="padding:12px 14px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:20px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color:var(--blue-mid);background:var(--blue-pale);border-radius:4px;padding:3px 7px"></div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Cobertura</div><div class="card-value" id="dr-cobertura" style="font-size:20px">—</div><div class="card-sub">dias de estoque</div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:20px">—</div><div class="card-sub">reposição sugerida</div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Lead Time</div><div class="card-value" id="dr-lead-time" style="font-size:20px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
         </div>
@@ -137,6 +148,7 @@ const PAGINAS_HTML = {
           <div class="card" style="padding:12px 14px"><div class="card-label">Margem Estimada</div><div class="card-value" id="dr-margem" style="font-size:18px">—</div><div class="card-sub" id="dr-margem-sub"></div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Última Compra / Venda</div><div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted)">Compra:</span> <span id="dr-ultima-compra" style="font-size:12px;font-weight:600">—</span></div><div style="margin-top:2px"><span style="font-size:11px;color:var(--text-muted)">Venda:</span> <span id="dr-ultima-venda" style="font-size:12px;font-weight:600">—</span></div></div>
         </div>
+        <div id="dr-forn-sugerido" style="margin-bottom:14px"></div>
         <div id="dtab-giro-inner"></div>
       </div>
       <div class="drawer-tab-content" id="dtab-historico" style="padding:20px 24px">
@@ -155,7 +167,18 @@ const PAGINAS_HTML = {
   <div class="cart-panel" id="cart-panel">
     <div class="cart-header" onclick="toggleCarrinho()"><div class="cart-title">🛒 Pedido em Andamento <span class="cart-count" id="cart-count">0</span></div><div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace" id="cart-total-valor">R$ 0</span><span id="cart-chevron" style="font-size:12px;color:var(--text-muted)">▲</span></div></div>
     <div id="cart-body" style="flex:1;overflow-y:auto"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Sugerido</th><th class="right">Pedido</th><th class="right">Vl Unit</th><th class="right">Total</th><th></th></tr></thead><tbody id="cart-items-body"></tbody></table></div></div>
-    <div class="cart-footer"><div style="font-size:13px;color:var(--text-muted)">Pedido de compras</div><div style="display:flex;gap:8px"><button class="btn btn-outline" onclick="exportarPedido()">↓ Exportar Excel</button><button class="btn btn-primary" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
+    <div class="cart-footer"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-outline" onclick="exportarPedido()">↓ Excel</button><button class="btn btn-outline" onclick="baixarPedidoTxt()" title="Layout do ERP: codigo;qtd">↓ .txt</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
+  </div>
+  <div id="modal-salvar-pedido" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1200;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border-radius:10px;max-width:440px;width:92%;box-shadow:var(--shadow-lg);overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)"><span style="font-weight:700" id="msp-titulo">Salvar pedido de compra</span><button onclick="fecharModalSalvarPedido()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">×</button></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Empresa *</label><input id="msp-empresa" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px" placeholder="Ex: Bononi Matriz" onkeydown="if(event.key==='Enter')salvarPedidoCompra()" /></div>
+        <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Observação</label><input id="msp-obs" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px" placeholder="Opcional" /></div>
+        <div style="font-size:12px;color:var(--text-muted)">Responsável: <b id="msp-responsavel">—</b> · <span id="msp-resumo"></span></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)"><button class="btn btn-outline" onclick="fecharModalSalvarPedido()">Cancelar</button><button class="btn btn-primary" onclick="salvarPedidoCompra()">Salvar</button></div>
+    </div>
   </div>`,
 
   'cmp-totais': `<div class="page-content" id="page-cmp-totais">
@@ -330,6 +353,8 @@ let ordemAlertas = 'prioridade';
 let ordemDir = 'desc';
 let filtroSituacaoAtivo = '';
 let cartItems = [];
+let pedidoAtualId = null;   // pedido de compra em edição (null = pedido novo)
+let pedidosCache = [];
 let chartGiroMensal = null;
 let chartABC = null;
 let chartSituacao = null;
@@ -548,8 +573,29 @@ function onGrupoChange() {
   onFilterChange();
 }
 
+// Base de filtros compartilhada entre a tabela e os KPIs (semáforo).
+// Aplica ignorados + busca + grupo + subgrupo + fornecedor, MAS não o filtro de situação —
+// assim os cards do semáforo mostram a contagem dentro do mesmo recorte da tabela.
+function baseFiltradaAlertas() {
+  const busca = (document.getElementById('busca-produto')?.value || '').toLowerCase();
+  const grupo = document.getElementById('filtro-grupo')?.value || '';
+  const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
+  let dados = alertasConsolidado.filter(r => {
+    if (compIgnorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
+    if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
+    if (compIgnorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
+    return true;
+  });
+  if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
+  if (grupo) dados = dados.filter(r => r.grupo === grupo);
+  if (subgrupo) dados = dados.filter(r => r.subgrupo === subgrupo);
+  if (fornSelecionados.size > 0) dados = dados.filter(r => (fornProdMap[r.id_produto] || []).some(f => fornSelecionados.has(f.id_fornecedor)));
+  return dados;
+}
+
 function atualizarKPIs() {
-  const count = (sit) => alertasConsolidado.filter(r => r.situacao_estoque === sit).length;
+  const base = baseFiltradaAlertas();
+  const count = (sit) => base.filter(r => r.situacao_estoque === sit).length;
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmtQtd(v); };
   set('kpi-ruptura', count('RUPTURA')); set('kpi-critico', count('CRITICO'));
   set('kpi-baixo', count('BAIXO')); set('kpi-ok', count('OK'));
@@ -572,41 +618,38 @@ function onFilterChange() {
 
 function onSearch() { paginaAtual = 1; renderAlertas(); }
 
-function filtrarSituacao(sit, card) {
-  const isSame = filtroSituacaoAtivo === sit;
-  filtroSituacaoAtivo = isSame ? '' : sit;
+// Classe CSS de cada card do semáforo por situação
+const SEMAFORO_CLASSE = { RUPTURA: 'ruptura', CRITICO: 'critico', BAIXO: 'baixo', OK: 'ok', SEM_MOVIMENTO: 'sem_mov' };
+// Sincroniza o destaque dos cards a partir do estado (fonte única) — evita desync que travava o "desmarcar"
+function sincronizarSemaforo() {
   document.querySelectorAll('.semaforo-card').forEach(c => c.classList.remove('active'));
-  if (!isSame) card.classList.add('active');
+  const cls = SEMAFORO_CLASSE[filtroSituacaoAtivo];
+  if (cls) document.querySelector('.semaforo-card.' + cls)?.classList.add('active');
+}
+function filtrarSituacao(sit) {
+  filtroSituacaoAtivo = (filtroSituacaoAtivo === sit) ? '' : sit;
   paginaAtual = 1;
   renderAlertas();
 }
 
 function setOrdemAlertas(ordem, btn) {
   if (ordemAlertas === ordem) { ordemDir = ordemDir === 'asc' ? 'desc' : 'asc'; }
-  else { ordemAlertas = ordem; ordemDir = ['cobertura','estoque','pedido_aberto'].includes(ordem) ? 'asc' : 'desc'; }
+  else { ordemAlertas = ordem; ordemDir = ['cobertura','estoque','pedido_aberto','nome','fornecedor'].includes(ordem) ? 'asc' : 'desc'; }
   document.querySelectorAll('#page-cmp-alertas .sort-icon').forEach(el => el.textContent = '↕');
   if (btn && btn.tagName === 'TH') { const icon = btn.querySelector('.sort-icon'); if (icon) icon.textContent = ordemDir === 'asc' ? '↑' : '↓'; }
+  // Ao ordenar por coluna, tira o destaque dos botões de atalho (evita estado inconsistente)
+  if (btn && btn.tagName === 'TH') { document.querySelectorAll('#page-cmp-alertas .toggle-group .toggle-btn').forEach(b => b.classList.remove('active')); }
   if (btn && btn.classList && btn.classList.contains('toggle-btn')) { btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); }
   paginaAtual = 1;
   renderAlertas();
 }
 
 function renderAlertas() {
-  const busca = (document.getElementById('busca-produto')?.value || '').toLowerCase();
-  const grupo = document.getElementById('filtro-grupo')?.value || '';
-  const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
   const sit = filtroSituacaoAtivo;
-  // Filtrar produtos ignorados (grupo, subgrupo ou produto individual)
-  let dados = alertasConsolidado.filter(r => {
-    if (compIgnorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
-    if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
-    if (compIgnorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
-    return true;
-  });
-  if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
-  if (grupo) dados = dados.filter(r => r.grupo === grupo);
-  if (subgrupo) dados = dados.filter(r => r.subgrupo === subgrupo);
-  if (fornSelecionados.size > 0) dados = dados.filter(r => (fornProdMap[r.id_produto] || []).some(f => fornSelecionados.has(f.id_fornecedor)));
+  // KPIs do semáforo refletem o mesmo recorte (grupo/subgrupo/fornecedor/busca) da tabela
+  atualizarKPIs();
+  sincronizarSemaforo();
+  let dados = baseFiltradaAlertas();
   if (sit) dados = dados.filter(r => r.situacao_estoque === sit);
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
   const abcMap  = { A: 1, B: 2, C: 3 };
@@ -623,6 +666,10 @@ function renderAlertas() {
   else if (ordemAlertas === 'estoque') { dados.sort((a, b) => dir * ((a.estoque_total || 0) - (b.estoque_total || 0))); }
   else if (ordemAlertas === 'pedido_aberto') { dados.sort((a, b) => dir * ((a.pedido_aberto_total || 0) - (b.pedido_aberto_total || 0))); }
   else if (ordemAlertas === 'nome') { dados.sort((a, b) => dir * (a.nome || '').localeCompare(b.nome || '')); }
+  else if (ordemAlertas === 'fornecedor') {
+    const fnome = r => ((fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor))[0]?.nome_fornecedor || '');
+    dados.sort((a, b) => dir * fnome(a).localeCompare(fnome(b)));
+  }
   alertasFiltrados = dados;
   const total = dados.length, porPagina = 50;
   const totalPaginas = Math.ceil(total / porPagina);
@@ -642,14 +689,21 @@ function renderAlertas() {
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
-      <td style="font-weight:500;max-width:240px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica (≤12/ano)">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+      <td style="font-weight:500;max-width:240px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica (≤12/ano)">esporádico</span>' : ''}${demandaReprimida(r) ? '<span class="badge" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5" title="Zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga.">📉 demanda reprimida</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
       <td>${(itemCoberto(r) && (r.situacao_estoque === 'RUPTURA' || r.situacao_estoque === 'CRITICO')) ? '<span class="badge badge-blue" title="Sem ação: reposição já pedida e a caminho">🚚 a caminho</span>' : badgeSituacao(r.situacao_estoque)}</td>
       <td style="font-size:12px;color:var(--text-secondary);max-width:160px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome_fornecedor}">${f.nome_fornecedor}</div>`).join('') || '—'}</td>
-      <td onclick="event.stopPropagation()"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="${noCarrinho ? `removerDoCarrinho(${r.id_produto})` : `adicionarAoCarrinho(${r.id_produto})`}" title="${noCarrinho ? 'Remover do pedido' : 'Adicionar ao pedido'}">${noCarrinho ? '✓' : '+'}</button></td>
+      <td onclick="event.stopPropagation()">
+        <div style="display:flex;gap:4px;align-items:center;justify-content:flex-end">
+          <input type="number" min="0" value="${noCarrinho ? Math.round((cartItems.find(c => c.id_produto === r.id_produto)?.qtd_pedido) || 0) : Math.max(0, Math.ceil(r.qtd_sugerida || 0))}" id="qtd-in-${r.id_produto}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();incluirNoPedido(${r.id_produto})}" style="width:52px;height:26px;text-align:right;border:1px solid ${noCarrinho ? 'var(--green)' : 'var(--border)'};border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" title="Quantidade a pedir" />
+          ${noCarrinho
+            ? `<button class="btn btn-primary" style="height:26px;padding:0 7px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Atualizar quantidade no pedido">Atualizar</button><button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px" onclick="removerDoCarrinho(${r.id_produto})" title="Remover do pedido">✕</button>`
+            : `<button class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Incluir no pedido">Incluir</button>`}
+        </div>
+      </td>
     </tr>`;
   }).join('');
   renderPaginacao(paginaAtual, totalPaginas, total);
@@ -662,10 +716,11 @@ function renderPaginacao(pagina, totalPags, total) {
   if (!el) {
     el = document.createElement('div');
     el.id = 'alertas-paginacao';
-    el.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)';
-    document.querySelector('.table-card')?.appendChild(el);
+    el.style.cssText = 'display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)';
+    document.querySelector('#page-cmp-alertas .table-card')?.appendChild(el);
   }
-  if (totalPags <= 1) { el.innerHTML = ''; return; }
+  if (totalPags <= 1) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = 'flex';
   const range = new Set([1, totalPags, pagina - 1, pagina, pagina + 1].filter(p => p >= 1 && p <= totalPags));
   const pages = []; let last = 0;
   [...range].sort((a,b)=>a-b).forEach(p => { if (last && p - last > 1) pages.push('...'); pages.push(p); last = p; });
@@ -698,6 +753,19 @@ function itemEsporadico(r) {
   // senão, cai num proxy por baixo giro (<= 2 saídas em 90 dias)
   if (r.esporadico !== undefined && r.esporadico !== null) return !!r.esporadico;
   return (Number(r.saida_90d_total) || 0) <= 2;
+}
+
+// "Demanda reprimida": item zerado que teve saída no último ano — a média recente (90d)
+// está subestimada porque não havia estoque para vender. Sinaliza p/ o comprador não
+// confiar na média baixa. Reforça quando o ritmo anual é bem maior que o de 90 dias.
+function demandaReprimida(r) {
+  const est = Number(r.estoque_total) || 0;
+  const s365 = Number(r.saida_365d_total) || 0;
+  const rate90 = Number(r.consumo_diario_total) || 0;      // ritmo base 90d
+  const rate365 = Number(r.consumo_diario_365d_total) || 0; // ritmo base 365d
+  if (s365 <= 0) return false;                       // sem venda no ano → não é reprimida
+  if (est <= 0) return true;                         // zerado, mas girou no ano
+  return rate90 > 0 && rate365 > rate90 * 1.5;       // ritmo anual bem acima do recente (caiu por falta)
 }
 
 // "a caminho": a reposição já pedida cobre a necessidade (qtd_sugerida zerada e há
@@ -935,12 +1003,41 @@ async function loadDrawerResumo(prod) {
   // Badge pedido a caminho
   const badge = document.getElementById('dr-pedido-aberto-badge');
   if (badge) { const emAberto = prod.pedido_aberto_total || 0; if (emAberto > 0) { badge.textContent = '📦 ' + fmtQtd(emAberto,0) + ' un. a caminho'; badge.style.display = 'inline-block'; } else { badge.style.display = 'none'; } }
-  const cob = prod.cobertura_dias;
-  set('dr-cobertura', cob === null ? '∞' : cob >= 9999 ? '999+d' : fmtQtd(cob, 0) + 'd');
   set('dr-consumo', fmtQtd(prod.consumo_diario_total, 2));
   set('dr-sugerida', fmtQtd(prod.qtd_sugerida, 0));
   set('dr-ultima-compra', prod.dt_ultima_compra ? fmtData(prod.dt_ultima_compra) : '—');
   set('dr-ultima-venda', prod.dt_ultima_venda ? fmtData(prod.dt_ultima_venda) : '—');
+  // Bloco "Fornecedor sugerido": melhor preço entre fornecedores externos + sugestão explicada
+  const blocoForn = document.getElementById('dr-forn-sugerido');
+  if (blocoForn) {
+    const forns = (fornProdMap[prod.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
+    const comPreco = forns.filter(f => (f.preco_fornecedor || 0) > 0).sort((a, b) => a.preco_fornecedor - b.preco_fornecedor);
+    const best = comPreco[0] || forns[0];
+    const cd = prod.consumo_diario_total || 0, est = Math.max(0, prod.estoque_total || 0), aberto = prod.pedido_aberto_total || 0;
+    const sug = Math.max(0, Math.ceil(prod.qtd_sugerida || 0));
+    const explica = `Sugestão: consumo ${fmtQtd(cd, 2)}/dia × 45d − estoque ${fmtQtd(est, 0)} − a caminho ${fmtQtd(aberto, 0)} = <b style="color:var(--blue-mid)">${fmtQtd(sug, 0)}</b>`;
+    const aviso = demandaReprimida(prod) ? `<div style="margin-bottom:10px;padding:8px 12px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;font-size:12px;color:#B91C1C">📉 <b>Demanda reprimida:</b> ficou zerado com saída no último ano — a média recente subestima a real. Avalie repor com folga.</div>` : '';
+    if (best) {
+      blocoForn.innerHTML = aviso + `
+        <div class="card" style="padding:12px 16px;border-left:3px solid var(--blue-mid)">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
+            <div>
+              <div class="card-label">Fornecedor sugerido</div>
+              <div style="font-size:14px;font-weight:700">${best.nome_fornecedor || '—'}</div>
+              <div style="font-size:11px;color:var(--text-muted)">Ref forn: ${best.referencia_fornecedor || '—'}${forns.length > 1 ? ` · +${forns.length - 1} opção(ões)` : ''}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="card-label">Preço</div>
+              <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-dark)">${best.preco_fornecedor ? fmt(best.preco_fornecedor) : '—'}</div>
+              <div style="font-size:11px;color:var(--text-muted)">últ. compra: ${prod.dt_ultima_compra ? fmtData(prod.dt_ultima_compra) : '—'}</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">${explica}</div>
+        </div>`;
+    } else {
+      blocoForn.innerHTML = aviso + `<div class="card" style="padding:10px 16px"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
+    }
+  }
   // Margem e ultimo preco de compra
   try {
     const { data: pData } = await sb.from('vw_fb_produtos_compras').select('preco_venda,preco_compra').eq('id_produto', prod.id_produto).limit(1).single();
@@ -1055,7 +1152,9 @@ async function loadDrawerGiro(idProduto) {
     const mesesComVenda = meses.filter(m=>m.saidas>0).length;
     const media30d = v30 / 30;
     const estoqueAtual = produtoAtual?.estoque_total || 0;
-    const coberturaDias = media30d > 0 ? Math.round(estoqueAtual / media30d) : null;
+    // Cobertura estimada com base em 90 dias — mesma fonte da lista (view comp_produtos_consolidado)
+    const cob90 = produtoAtual?.cobertura_dias;
+    const coberturaDias = (cob90 === null || cob90 === undefined) ? null : (cob90 >= 9999 ? 9999 : Math.round(cob90));
 
     // Cards compactos: 4 períodos com média grande + total pequeno
     const periodos = [
@@ -1084,37 +1183,41 @@ async function loadDrawerGiro(idProduto) {
           <div class="card-label">Cobertura Estimada</div>
           <div style="display:flex;align-items:baseline;gap:6px">
             <div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${coberturaDias !== null ? (coberturaDias < 15 ? 'var(--red)' : coberturaDias < 30 ? 'var(--orange)' : 'var(--green)') : 'var(--text-muted)'}">
-              ${coberturaDias !== null ? coberturaDias+'d' : '∞'}
+              ${coberturaDias === null ? '∞' : coberturaDias >= 9999 ? '999+d' : coberturaDias+'d'}
             </div>
-            <div style="font-size:11px;color:var(--text-muted)">base méd. 30d &nbsp;•&nbsp; ${mesesComVenda}/12 meses com venda</div>
+            <div style="font-size:11px;color:var(--text-muted)">base méd. 90d &nbsp;•&nbsp; ${mesesComVenda}/12 meses com venda</div>
           </div>
         </div>
       </div>
 
       <div class="chart-card">
         <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span></div>
-        <div class="chart-body"><canvas id="chart-giro-mensal" height="160"></canvas></div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead>
+              <tr style="color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.3px">
+                <th style="text-align:left;padding:5px 8px;font-weight:600">Mês</th>
+                <th style="text-align:right;padding:5px 8px;font-weight:600">Saídas</th>
+                <th style="text-align:right;padding:5px 8px;font-weight:600">Compras</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${meses.map(m => `<tr style="border-top:1px solid var(--border)">
+                <td style="text-align:left;padding:5px 8px">${m.label}</td>
+                <td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>
+                <td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>
+              </tr>`).join('')}
+            </tbody>
+            <tfoot>
+              <tr style="border-top:2px solid var(--border);font-weight:700">
+                <td style="text-align:left;padding:5px 8px">Total</td>
+                <td class="mono" style="text-align:right;padding:5px 8px;color:var(--blue-dark)">${fmtQtd(totalVendido12m, 0)}</td>
+                <td class="mono" style="text-align:right;padding:5px 8px;color:var(--green)">${fmtQtd(totalComprado, 0)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
       </div>`;
-
-    if (chartGiroMensal) chartGiroMensal.destroy();
-    chartGiroMensal = new Chart(document.getElementById('chart-giro-mensal').getContext('2d'), {
-      type: 'bar',
-      data: {
-        labels: meses.map(m => m.label),
-        datasets: [
-          { label: 'Saídas', data: meses.map(m => m.saidas), backgroundColor: '#1A3A8F', borderRadius: 3 },
-          { label: 'Compras', data: meses.map(m => m.compras), backgroundColor: '#0F9D6E', borderRadius: 3 },
-        ]
-      },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } } },
-        scales: {
-          x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-          y: { grid: { color: '#E2E8F2' }, ticks: { font: { size: 11 }, callback: v => fmtQtd(v,0) } }
-        }
-      }
-    });
   } catch(e) {
     const c = document.getElementById('dtab-giro-inner');
     if (c) c.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erro ao carregar giro</div>';
@@ -1438,6 +1541,22 @@ function adicionarAoCarrinho(idProduto) {
   atualizarCarrinho(); renderAlertas();
 }
 
+// Inclui/atualiza no pedido com a quantidade digitada na linha da tabela
+function incluirNoPedido(idProduto) {
+  const inp = document.getElementById('qtd-in-' + idProduto);
+  const qtd = inp ? (parseFloat(inp.value) || 0) : 0;
+  const prod = alertasConsolidado.find(r => r.id_produto === idProduto);
+  if (!prod) return;
+  if (qtd <= 0) { showToast('Informe uma quantidade maior que zero.', 'error'); return; }
+  const existente = cartItems.find(c => c.id_produto === idProduto);
+  if (existente) { existente.qtd_pedido = qtd; showToast('Quantidade atualizada no pedido.'); }
+  else {
+    cartItems.push({ id_produto: idProduto, nome_produto: prod.nome, referencia: prod.referencia, id_fornecedor: null, nome_fornecedor: prod.fornecedor_principal || 'A definir', qtd_sugerida: prod.qtd_sugerida, qtd_pedido: qtd, vl_unit: prod.preco_compra || 0 });
+    showToast('Incluído no pedido.');
+  }
+  atualizarCarrinho(); renderAlertas();
+}
+
 function removerDoCarrinho(idProduto) { cartItems = cartItems.filter(c => c.id_produto !== idProduto); atualizarCarrinho(); renderAlertas(); }
 
 function atualizarCarrinho() {
@@ -1450,6 +1569,8 @@ function atualizarCarrinho() {
   setEl('kpi-pedido-forn', `${forn} fornecedor${forn !== 1 ? 'es' : ''}`);
   const panel = document.getElementById('cart-panel');
   if (panel) { if (count > 0) panel.classList.add('open'); else panel.classList.remove('open'); }
+  const statusLbl = document.getElementById('cart-status-label');
+  if (statusLbl) statusLbl.innerHTML = pedidoAtualId ? `✏️ Editando pedido <b>#${pedidoAtualId}</b>` : 'Pedido de compras';
   renderCarrinho();
 }
 
@@ -1500,6 +1621,141 @@ function exportarPedido() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a'); a.href = url; a.download = `pedido_compra_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
   URL.revokeObjectURL(url);
+}
+
+// Baixar pedido no layout de importação do ERP: uma linha por item "codigo;qtd"
+// codigo = referência (Código do Produto, ex.: 000003) · separador ";" · qtd inteira
+function baixarPedidoTxt() {
+  const itens = cartItems.filter(c => (c.qtd_pedido || 0) > 0 && (c.referencia || '').toString().trim());
+  if (!itens.length) { alert('Nenhum item com quantidade e código para baixar.'); return; }
+  const linhas = itens.map(c => `${c.referencia};${Math.round(c.qtd_pedido || 0)}`);
+  const blob = new Blob([linhas.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `pedido_compra_${new Date().toISOString().slice(0, 10)}.txt`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PEDIDO DE COMPRA PERSISTENTE (Fase 1) — salvar / listar / editar rascunho
+// Tabelas: comp_pedidos (cabeçalho) + comp_pedido_itens
+// ═══════════════════════════════════════════════════════════
+function novoPedido() {
+  cartItems = [];
+  pedidoAtualId = null;
+  atualizarCarrinho();
+  renderAlertas();
+  showToast('Novo pedido iniciado.');
+}
+
+function abrirModalSalvarPedido() {
+  if (!cartItems.length) { alert('Adicione itens ao pedido antes de salvar.'); return; }
+  const u = (window.getUsuario && window.getUsuario()) || {};
+  const totalItens = cartItems.length;
+  const totalValor = cartItems.reduce((a, c) => a + (c.qtd_pedido * (c.vl_unit || 0)), 0);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('msp-responsavel', u.nome || u.email || '—');
+  set('msp-resumo', `${totalItens} ${totalItens === 1 ? 'item' : 'itens'} · ${fmt(totalValor)}`);
+  set('msp-titulo', pedidoAtualId ? `Atualizar pedido #${pedidoAtualId}` : 'Salvar pedido de compra');
+  const m = document.getElementById('modal-salvar-pedido');
+  if (m) m.style.display = 'flex';
+  setTimeout(() => document.getElementById('msp-empresa')?.focus(), 50);
+}
+
+function fecharModalSalvarPedido() {
+  const m = document.getElementById('modal-salvar-pedido');
+  if (m) m.style.display = 'none';
+}
+
+async function salvarPedidoCompra() {
+  const empresa = (document.getElementById('msp-empresa')?.value || '').trim();
+  if (!empresa) { showToast('Informe a empresa.', 'error'); document.getElementById('msp-empresa')?.focus(); return; }
+  const obs = (document.getElementById('msp-obs')?.value || '').trim();
+  const u = (window.getUsuario && window.getUsuario()) || {};
+  const totalItens = cartItems.length;
+  const totalValor = cartItems.reduce((a, c) => a + (c.qtd_pedido * (c.vl_unit || 0)), 0);
+  try {
+    let pedidoId = pedidoAtualId;
+    if (pedidoId) {
+      const { error: e1 } = await sb.from('comp_pedidos').update({ empresa, observacao: obs, total_itens: totalItens, total_valor: totalValor, atualizado_em: new Date().toISOString() }).eq('id', pedidoId);
+      if (e1) throw e1;
+      await sb.from('comp_pedido_itens').delete().eq('pedido_id', pedidoId);
+    } else {
+      const { data, error: e0 } = await sb.from('comp_pedidos').insert({ empresa, observacao: obs, criado_por: u.nome || u.email || '—', criado_por_email: u.email || null, status: 'rascunho', total_itens: totalItens, total_valor: totalValor }).select('id').single();
+      if (e0) throw e0;
+      pedidoId = data.id;
+    }
+    const itens = cartItems.map(c => ({ pedido_id: pedidoId, id_produto: c.id_produto, referencia: c.referencia, nome: c.nome_produto, qtd: c.qtd_pedido, preco_unit: c.vl_unit || 0, id_fornecedor: c.id_fornecedor || null, nome_fornecedor: c.nome_fornecedor || null }));
+    if (itens.length) { const { error: e2 } = await sb.from('comp_pedido_itens').insert(itens); if (e2) throw e2; }
+    const novo = !pedidoAtualId;
+    pedidoAtualId = pedidoId;
+    fecharModalSalvarPedido();
+    atualizarCarrinho();
+    showToast(novo ? `Pedido #${pedidoId} salvo.` : `Pedido #${pedidoId} atualizado.`);
+    try { auditLog?.('pedido_salvo', { pedido_id: pedidoId, empresa, total_itens: totalItens }); } catch (e) {}
+  } catch (e) { showToast('Erro ao salvar: ' + (e.message || e), 'error'); }
+}
+
+async function loadPedidos() {
+  const body = document.getElementById('pedidos-body');
+  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="8">Carregando...</td></tr>';
+  try {
+    const { data, error } = await sb.from('comp_pedidos').select('*').order('criado_em', { ascending: false }).range(0, 499);
+    if (error) throw error;
+    pedidosCache = data || [];
+  } catch (e) {
+    pedidosCache = [];
+    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="8" style="color:var(--red)">Erro ao carregar: ${e.message || e}</td></tr>`;
+    return;
+  }
+  renderPedidos();
+}
+
+function renderPedidos() {
+  const busca = (document.getElementById('ped-busca')?.value || '').toLowerCase();
+  const st = document.getElementById('ped-filtro-status')?.value || '';
+  let d = pedidosCache.slice();
+  if (st) d = d.filter(p => p.status === st);
+  if (busca) d = d.filter(p => (p.empresa || '').toLowerCase().includes(busca) || (p.criado_por || '').toLowerCase().includes(busca));
+  const resumo = document.getElementById('ped-resumo'); if (resumo) resumo.textContent = `${d.length} pedido${d.length !== 1 ? 's' : ''}`;
+  const body = document.getElementById('pedidos-body'); if (!body) return;
+  if (!d.length) { body.innerHTML = '<tr class="loading-row"><td colspan="8">Nenhum pedido salvo</td></tr>'; return; }
+  body.innerHTML = d.map(p => `<tr>
+    <td class="mono">#${p.id}</td>
+    <td style="font-weight:600">${p.empresa || '—'}</td>
+    <td>${p.criado_por || '—'}</td>
+    <td class="right mono">${fmtQtd(p.total_itens, 0)}</td>
+    <td class="right mono">${fmt(p.total_valor || 0)}</td>
+    <td>${p.status === 'finalizado' ? '<span class="badge badge-green">finalizado</span>' : '<span class="badge badge-gray">rascunho</span>'}</td>
+    <td style="font-size:12px;color:var(--text-muted)">${p.criado_em ? fmtData(p.criado_em) : '—'}</td>
+    <td style="white-space:nowrap"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="abrirPedidoParaEditar(${p.id})">Abrir</button>${p.status !== 'finalizado' ? `<button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px;color:var(--red);margin-left:4px" onclick="excluirPedido(${p.id})" title="Excluir rascunho">🗑</button>` : ''}</td>
+  </tr>`).join('');
+}
+
+async function abrirPedidoParaEditar(id) {
+  try {
+    const [{ data: ped }, { data: itens }] = await Promise.all([
+      sb.from('comp_pedidos').select('*').eq('id', id).single(),
+      sb.from('comp_pedido_itens').select('*').eq('pedido_id', id)
+    ]);
+    if (!ped) { showToast('Pedido não encontrado.', 'error'); return; }
+    cartItems = (itens || []).map(it => ({ id_produto: it.id_produto, nome_produto: it.nome, referencia: it.referencia, id_fornecedor: it.id_fornecedor, nome_fornecedor: it.nome_fornecedor, qtd_sugerida: Number(it.qtd) || 0, qtd_pedido: Number(it.qtd) || 0, vl_unit: Number(it.preco_unit) || 0 }));
+    pedidoAtualId = id;
+    window.navegarPara?.('cmp-alertas');
+    atualizarCarrinho();
+    document.getElementById('cart-panel')?.classList.add('open');
+    showToast(`Pedido #${id} aberto para edição.`);
+  } catch (e) { showToast('Erro ao abrir pedido: ' + (e.message || e), 'error'); }
+}
+
+async function excluirPedido(id) {
+  if (!confirm(`Excluir o pedido #${id}? Esta ação não pode ser desfeita.`)) return;
+  try {
+    const { error } = await sb.from('comp_pedidos').delete().eq('id', id);   // itens caem por ON DELETE CASCADE
+    if (error) throw error;
+    if (pedidoAtualId === id) { pedidoAtualId = null; atualizarCarrinho(); }
+    showToast(`Pedido #${id} excluído.`);
+    loadPedidos();
+  } catch (e) { showToast('Erro ao excluir: ' + (e.message || e), 'error'); }
 }
 
 
@@ -2659,6 +2915,7 @@ async function loadImpTabInfo(p) {
 async function toggleQuitadoFornecedor(processoId, valor) {
   try {
     await sb.from('import_processos').update({ quitado_fornecedor: valor, atualizado_em: new Date().toISOString() }).eq('id', processoId);
+    auditLog('importacao', 'quitar_fornecedor', 'import_processo', processoId, valor ? 'Marcou fornecedor como QUITADO' : 'Desmarcou quitação do fornecedor', null, { quitado_fornecedor: valor });
     const lbl = document.getElementById('lbl-quitado');
     if (lbl) { lbl.textContent = valor ? '✓ Quitado' : 'Pendente'; lbl.style.color = valor ? 'var(--green)' : 'var(--text-muted)'; }
     // Atualiza objeto local para refletir no kanban/lista sem recarregar tudo
@@ -2672,7 +2929,26 @@ async function loadImpTabPagamentos(p) {
   const el = document.getElementById('imptab-pagamentos');
   el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</div>';
   try {
-    const {data:pags} = await sb.from('import_pagamentos').select('*').eq('processo_id',p.id).order('data_pagamento');
+    const [{ data: pags }, { data: logs }] = await Promise.all([
+      sb.from('import_pagamentos').select('*').eq('processo_id', p.id).order('data_pagamento'),
+      sb.from('comp_audit_log').select('*').eq('modulo', 'importacao').eq('entidade_id', String(p.id)).order('criado_em', { ascending: false }).range(0, 99)
+    ]);
+
+    // Log expansível: quem lançou/editou/removeu valores neste processo
+    const acaoLabel = { lancar_pagamento: '➕ Lançou pagamento', editar_pagamento: '✏️ Editou pagamento', excluir_pagamento: '🗑️ Removeu pagamento', quitar_fornecedor: '✓ Quitação fornecedor' };
+    const logHtml = `
+      <details style="margin-bottom:14px;border:1px solid var(--border);border-radius:8px;background:var(--surface2)">
+        <summary style="cursor:pointer;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-secondary)">🕓 Histórico de lançamentos${logs?.length ? ` (${logs.length})` : ''}</summary>
+        <div style="max-height:260px;overflow-y:auto;padding:2px 14px 12px">
+          ${!logs?.length
+            ? '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Nenhum lançamento registrado ainda. A partir de agora, cada alteração de valor fica registrada aqui com o responsável.</div>'
+            : logs.map(l => `<div style="display:flex;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;align-items:baseline">
+                <span style="color:var(--text-muted);white-space:nowrap;font-family:'DM Mono',monospace;font-size:11px">${l.criado_em ? new Date(l.criado_em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                <span style="font-weight:700;white-space:nowrap">${l.usuario || '—'}</span>
+                <span style="color:var(--text-secondary)">${acaoLabel[l.acao] || l.acao}${l.descricao ? ' — ' + l.descricao : ''}</span>
+              </div>`).join('')}
+        </div>
+      </details>`;
 
     // Totais por tipo
     const porTipo = {};
@@ -2709,6 +2985,7 @@ async function loadImpTabPagamentos(p) {
       }).join('');
 
     el.innerHTML = `
+      ${logHtml}
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-size:13px;font-weight:600">Pagamentos</div>
         <button class="btn btn-primary" style="height:30px;font-size:12px" onclick="abrirModalAddPagamento('${p.id}')">+ Novo Pagamento</button>
@@ -3075,7 +3352,7 @@ function abrirModalAddPagamento(processoId) {
 
 async function salvarPagamento(processoId) {
   try {
-    const {error} = await sb.from('import_pagamentos').insert({
+    const dados = {
       processo_id:  processoId,
       tipo:         document.getElementById('pag-f-tipo')?.value,
       status:       document.getElementById('pag-f-status')?.value,
@@ -3083,8 +3360,10 @@ async function salvarPagamento(processoId) {
       valor_brl:    parseFloat(document.getElementById('pag-f-brl')?.value) || null,
       valor_usd:    parseFloat(document.getElementById('pag-f-usd')?.value) || null,
       observacoes:  document.getElementById('pag-f-obs')?.value || null,
-    });
+    };
+    const {error} = await sb.from('import_pagamentos').insert(dados);
     if (error) throw error;
+    auditLog('importacao', 'lancar_pagamento', 'import_processo', processoId, `${IMP_TIPOS_PAG[dados.tipo] || dados.tipo}: ${dados.valor_brl ? fmt(dados.valor_brl) : '—'}${dados.valor_usd ? ' / US$ ' + dados.valor_usd : ''} (${dados.status === 'PAGO' ? 'Pago' : 'A pagar'})`, null, dados);
     showToast('✅ Pagamento salvo!');
     fecharModalProcesso();
     await loadImportacao();
@@ -3140,15 +3419,20 @@ async function editarPagamento(pagId) {
 
 async function salvarEdicaoPagamento(pagId) {
   try {
-    const { error } = await sb.from('import_pagamentos').update({
+    const { data: antesArr } = await sb.from('import_pagamentos').select('*').eq('id', pagId);
+    const antes = antesArr?.[0] || null;
+    const depois = {
       tipo:           document.getElementById('pag-f-tipo')?.value,
       status:         document.getElementById('pag-f-status')?.value,
       data_pagamento: document.getElementById('pag-f-datapag')?.value || null,
       valor_brl:      parseFloat(document.getElementById('pag-f-brl')?.value) || null,
       valor_usd:      parseFloat(document.getElementById('pag-f-usd')?.value) || null,
       observacoes:    document.getElementById('pag-f-obs')?.value || null,
-    }).eq('id', pagId);
+    };
+    const { error } = await sb.from('import_pagamentos').update(depois).eq('id', pagId);
     if (error) throw error;
+    const procId = antes?.processo_id || impProcessoAtual?.id;
+    auditLog('importacao', 'editar_pagamento', 'import_processo', procId, `${IMP_TIPOS_PAG[depois.tipo] || depois.tipo}: BRL ${antes?.valor_brl ? fmt(antes.valor_brl) : '—'} → ${depois.valor_brl ? fmt(depois.valor_brl) : '—'}`, antes, depois);
     showToast('✅ Pagamento atualizado!');
     fecharModalProcesso();
     const pid = impProcessoAtual?.id;
@@ -3159,7 +3443,10 @@ async function salvarEdicaoPagamento(pagId) {
 
 async function removerPagamento(pagId) {
   if (!confirm('Remover este pagamento?')) return;
+  const { data: antesArr } = await sb.from('import_pagamentos').select('*').eq('id', pagId);
+  const antes = antesArr?.[0] || null;
   await sb.from('import_pagamentos').delete().eq('id',pagId);
+  auditLog('importacao', 'excluir_pagamento', 'import_processo', antes?.processo_id || impProcessoAtual?.id, `${IMP_TIPOS_PAG[antes?.tipo] || antes?.tipo || 'pagamento'}: ${antes?.valor_brl ? fmt(antes.valor_brl) : '—'}`, antes, null);
   const pid=impProcessoAtual?.id;
   await loadImportacao();
   if (pid) { impProcessoAtual=impProcessos.find(x=>x.id===pid); loadImpTabPagamentos(impProcessoAtual); }
@@ -3401,6 +3688,7 @@ let _paginaAtiva = null;
 let _iniciado = false;
 
 const CMP_PAGE_LOADERS = {
+  'cmp-pedidos':      () => loadPedidos(),
   'cmp-comprar':      () => loadComprarAgora(),
   'cmp-parado':       () => loadEstoqueParado(),
   'cmp-alertas':      () => loadAll(),
@@ -3692,6 +3980,16 @@ window.toggleFornHist         = toggleFornHist;
 window.abrirCarrinho          = abrirCarrinho;
 window.toggleCarrinho         = toggleCarrinho;
 window.exportarPedido         = exportarPedido;
+window.baixarPedidoTxt        = baixarPedidoTxt;
+window.incluirNoPedido        = incluirNoPedido;
+window.novoPedido             = novoPedido;
+window.abrirModalSalvarPedido = abrirModalSalvarPedido;
+window.fecharModalSalvarPedido = fecharModalSalvarPedido;
+window.salvarPedidoCompra     = salvarPedidoCompra;
+window.loadPedidos            = loadPedidos;
+window.renderPedidos          = renderPedidos;
+window.abrirPedidoParaEditar  = abrirPedidoParaEditar;
+window.excluirPedido          = excluirPedido;
 window.adicionarSelecionados  = adicionarSelecionados;
 window.toggleCheckAll         = toggleCheckAll;
 window.onRowCheck             = onRowCheck;
@@ -3784,7 +4082,7 @@ window.ModuloCompras = {
     if (!_iniciado) {
       const wrapper = document.createElement('div');
       wrapper.id = 'compras-pages';
-      const FIXED_IDS = ['chat-overlay','chat-panel','modal-historico-overlay','drawer-overlay','produto-drawer','cart-panel','toast'];
+      const FIXED_IDS = ['chat-overlay','chat-panel','modal-historico-overlay','drawer-overlay','produto-drawer','cart-panel','modal-salvar-pedido','toast'];
       Object.entries(PAGINAS_HTML).forEach(([pid, html]) => {
         const tmp = document.createElement('div');
         tmp.innerHTML = html;

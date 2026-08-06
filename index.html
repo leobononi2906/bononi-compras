@@ -132,6 +132,11 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .table-card-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .data-table th { padding: 10px 14px; text-align: left; font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
+/* Cabeçalho fixo da tabela de Compras (Reposição) durante o scroll vertical */
+#page-cmp-alertas .data-table thead th { position: sticky; top: 0; z-index: 3; }
+.data-table th.sortable { cursor: pointer; user-select: none; }
+.data-table th.sortable:hover { color: var(--text-secondary); background: var(--surface); }
+.data-table th .sort-icon { opacity: 0.45; font-size: 9px; margin-left: 2px; }
 .data-table td { padding: 11px 14px; border-bottom: 1px solid #F0F4FA; vertical-align: middle; }
 .data-table tr:last-child td { border-bottom: none; }
 .data-table tr:hover td { background: #F8FAFC; }
@@ -333,8 +338,9 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
           <span class="nav-module-chevron">▼</span>
         </div>
         <div class="nav-module-items">
-          <a class="nav-item" data-pagina="cmp-comprar"      onclick="navegarPara('cmp-comprar')">      <span class="nav-dot"></span>🎯 Comprar Agora</a>
-          <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Alertas e Reposição</a>
+          <!-- Comprar Agora oculto temporariamente (entender melhor antes de usar) — página mantida, só saiu do menu -->
+          <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Compras</a>
+          <a class="nav-item" data-pagina="cmp-pedidos"      onclick="navegarPara('cmp-pedidos')">      <span class="nav-dot"></span>📋 Pedidos</a>
           <a class="nav-item" data-pagina="cmp-parado"       onclick="navegarPara('cmp-parado')">       <span class="nav-dot"></span>🧹 Estoque Parado</a>
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
           <a class="nav-item" data-pagina="cmp-balanco"      onclick="navegarPara('cmp-balanco')">      <span class="nav-dot"></span>Balanço Físico</a>
@@ -418,7 +424,8 @@ window.setLastUpdate = () => { document.getElementById('last-update').textConten
 
 const PAGINAS = {
   'cmp-comprar':      { label: 'Comprar Agora',          breadcrumb: 'Compras · Comprar Agora' },
-  'cmp-alertas':      { label: 'Alertas e Reposição',    breadcrumb: 'Compras · Alertas' },
+  'cmp-alertas':      { label: 'Compras',                breadcrumb: 'Compras · Reposição' },
+  'cmp-pedidos':      { label: 'Pedidos de Compra',      breadcrumb: 'Compras · Pedidos' },
   'cmp-parado':       { label: 'Estoque Parado',         breadcrumb: 'Compras · Estoque Parado' },
   'cmp-totais':       { label: 'Totais de Estoque',      breadcrumb: 'Compras · Totais' },
   'cmp-balanco':      { label: 'Balanço Físico',         breadcrumb: 'Compras · Balanço' },
