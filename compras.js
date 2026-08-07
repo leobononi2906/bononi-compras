@@ -217,6 +217,47 @@ const PAGINAS_HTML = {
       <div class="chart-card"><div class="chart-header"><span class="chart-title">Top 10 por Volume</span></div><div class="chart-body"><canvas id="chart-forn-top10" height="340"></canvas></div></div>
     </div></div>`,
 
+  'cmp-ajustes': `<div class="page-content" id="page-cmp-ajustes">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:12px;color:var(--text-muted)">Período</span>
+      <input type="date" id="aj-de" class="filter-select" style="height:36px" onchange="renderAjustes()" />
+      <span style="font-size:12px;color:var(--text-muted)">a</span>
+      <input type="date" id="aj-ate" class="filter-select" style="height:36px" onchange="renderAjustes()" />
+      <select id="aj-empresa" class="filter-select" style="height:36px" onchange="renderAjustes()"><option value="">Todas as empresas</option></select>
+      <select id="aj-motivo" class="filter-select" style="height:36px" onchange="renderAjustes()"><option value="">Todos os motivos</option></select>
+      <button class="btn btn-outline" style="height:36px" onclick="loadAjustes()" title="Recarregar">↻</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="aj-resumo"></span>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Ajustes de estoque lançados no ERP (tipo Ajuste, sem vínculo de venda/OS). O <b>% divergente</b> por balanço depende de replicar as tabelas de balanço do ERP (pendência TI).</div>
+    <div class="cards-grid cards-grid-4">
+      <div class="card"><div class="card-label">Entrou (ajuste +)</div><div class="card-value" id="aj-kpi-entrada" style="color:var(--green)">—</div><div class="card-sub" id="aj-kpi-entrada-qtd">—</div></div>
+      <div class="card"><div class="card-label">Saiu (ajuste −)</div><div class="card-value" id="aj-kpi-saida" style="color:var(--red)">—</div><div class="card-sub" id="aj-kpi-saida-qtd">—</div></div>
+      <div class="card"><div class="card-label">Líquido</div><div class="card-value" id="aj-kpi-liquido">—</div><div class="card-sub">entrada − saída</div></div>
+      <div class="card"><div class="card-label">Nº de ajustes</div><div class="card-value blue" id="aj-kpi-num">—</div><div class="card-sub" id="aj-kpi-prod">—</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:18px">
+      <div class="table-card">
+        <div class="table-card-header"><span class="table-card-title">Ranking de produtos ajustados</span>
+          <div class="toggle-group"><button class="toggle-btn active" onclick="setAjusteMetric('valor',this)">Valor R$</button><button class="toggle-btn" onclick="setAjusteMetric('qtd',this)">Quantidade</button></div>
+        </div>
+        <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="data-table">
+          <thead><tr>
+            <th class="sortable" onclick="setOrdemAjustes('nome')">Produto <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAjustes('entrou')">Entrou <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAjustes('saiu')">Saiu <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAjustes('liquido')">Líquido <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAjustes('n')">Nº <span class="sort-icon">↕</span></th>
+          </tr></thead>
+          <tbody id="aj-ranking-body"><tr class="loading-row"><td colspan="5">Carregando...</td></tr></tbody>
+        </table></div>
+      </div>
+      <div>
+        <div class="table-card"><div class="table-card-header"><span class="table-card-title">Por motivo</span></div><div style="overflow-x:auto;max-height:250px;overflow-y:auto"><table class="data-table"><thead><tr><th>Motivo</th><th class="right">Nº</th><th class="right">Líquido</th></tr></thead><tbody id="aj-motivo-body"></tbody></table></div></div>
+        <div class="table-card" style="margin-top:14px"><div class="table-card-header"><span class="table-card-title">Por mês</span></div><div style="overflow-x:auto;max-height:300px;overflow-y:auto"><table class="data-table"><thead><tr><th>Mês</th><th class="right">Entrou</th><th class="right">Saiu</th></tr></thead><tbody id="aj-mes-body"></tbody></table></div></div>
+      </div>
+    </div>
+  </div>`,
+
   'cmp-balanco': `<div class="page-content" id="page-cmp-balanco">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><div style="font-size:15px;font-weight:600">Balanço Físico</div><div style="font-size:12px;color:var(--text-muted);margin-top:2px">Contagem cega — o saldo só é revelado após encerrar</div></div><button class="btn btn-primary" onclick="novasSessao()">+ Nova Sessão de Contagem</button></div>
     <div class="table-card"><div class="table-card-header"><span class="table-card-title">Sessões de Contagem</span></div><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Sessão</th><th>Progresso</th><th class="right">Divergências</th><th>Status</th><th class="right">Data</th><th>Criado por</th><th></th></tr></thead><tbody id="balanco-body"><tr class="loading-row"><td colspan="7">Carregando sessões...</td></tr></tbody></table></div></div>
@@ -2100,6 +2141,156 @@ function setFornOrdem(ordem, btn) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// AJUSTES DE ESTOQUE — ajustes lançados no ERP (tipo 'A', sem vínculo de venda/OS)
+// Fonte: vw_fb_mov_estoque (Firebird TBL_MOV_PROD + TBL_ITENS_MOV_PROD)
+// ═══════════════════════════════════════════════════════════
+let ajustesData = [];
+let ajusteMetric = 'valor';
+let ajusteOrd = { col: 'liquido', dir: 'desc', abs: true };   // default = maior impacto
+
+function setOrdemAjustes(col) {
+  if (ajusteOrd.col === col && !ajusteOrd.abs) {
+    ajusteOrd.dir = ajusteOrd.dir === 'desc' ? 'asc' : 'desc';
+  } else {
+    ajusteOrd = { col, dir: col === 'nome' ? 'asc' : 'desc', abs: false };
+  }
+  renderAjustes();
+}
+
+function categorizeMotivo(m) {
+  const s = (m || '').toUpperCase();
+  if (!s.trim()) return 'Sem motivo';
+  if (/BALAN[CÇ]/.test(s)) return 'Balanço';
+  if (/INICIAL|INIICAR|INIVIAL|INICIA/.test(s)) return 'Estoque inicial';
+  if (/INVERTID|C[OÓ]DIGO/.test(s)) return 'Código invertido';
+  if (/TRANSI|INTEGRA|MIGRA|\bM2\b|\bRP\b/.test(s)) return 'Transição de ERP';
+  if (/ACERTO|AJUSTE|CORRE|CONFER|SOBRA|FALTA/.test(s)) return 'Acerto/ajuste';
+  return 'Outros/não classificado';
+}
+
+async function loadAjustes() {
+  const body = document.getElementById('aj-ranking-body');
+  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="5">Carregando...</td></tr>';
+  try {
+    const { data, error } = await sb.from('vw_fb_mov_estoque')
+      .select('data_mov,empresa,centro_estoque,id_produto,referencia,nome_produto,grupo,tipo_es,qtd,custo_unit,motivo')
+      .eq('tipo_mov', 'A').eq('cancelada', 'N')
+      .is('id_venda', null).is('id_os', null).is('id_consumo', null)
+      .order('data_mov', { ascending: false }).range(0, 9999);
+    if (error) throw error;
+    ajustesData = data || [];
+  } catch (e) {
+    ajustesData = [];
+    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="5" style="color:var(--red)">Erro ao carregar: ${e.message || e}</td></tr>`;
+    return;
+  }
+  // datas default = janela completa (só na 1ª carga)
+  const deEl = document.getElementById('aj-de'), ateEl = document.getElementById('aj-ate');
+  if (deEl && !deEl.value) {
+    const datas = ajustesData.map(r => r.data_mov).filter(Boolean).sort();
+    if (datas.length) { deEl.value = datas[0]; ateEl.value = datas[datas.length - 1]; }
+  }
+  const empSel = document.getElementById('aj-empresa');
+  if (empSel && empSel.options.length <= 1) {
+    [...new Set(ajustesData.map(r => r.empresa).filter(Boolean))].sort()
+      .forEach(e => { const o = document.createElement('option'); o.value = e; o.textContent = e; empSel.appendChild(o); });
+  }
+  const motSel = document.getElementById('aj-motivo');
+  if (motSel && motSel.options.length <= 1) {
+    [...new Set(ajustesData.map(r => categorizeMotivo(r.motivo)))].sort()
+      .forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; motSel.appendChild(o); });
+  }
+  renderAjustes();
+}
+
+function setAjusteMetric(m, btn) {
+  ajusteMetric = m;
+  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAjustes();
+}
+
+function renderAjustes() {
+  const de = document.getElementById('aj-de')?.value || '';
+  const ate = document.getElementById('aj-ate')?.value || '';
+  const emp = document.getElementById('aj-empresa')?.value || '';
+  const motCat = document.getElementById('aj-motivo')?.value || '';
+  const rows = ajustesData.filter(r => {
+    if (de && (r.data_mov || '') < de) return false;
+    if (ate && (r.data_mov || '') > ate) return false;
+    if (emp && r.empresa !== emp) return false;
+    if (motCat && categorizeMotivo(r.motivo) !== motCat) return false;
+    return true;
+  });
+  const isVal = ajusteMetric === 'valor';
+  const val = r => Math.abs((r.qtd || 0) * (r.custo_unit || 0));
+  const qty = r => Math.abs(r.qtd || 0);
+  let entVal = 0, saiVal = 0, entQtd = 0, saiQtd = 0;
+  const prodMap = {}, motMap = {}, mesMap = {};
+  rows.forEach(r => {
+    const isE = r.tipo_es === 'E';
+    const v = val(r), q = qty(r);
+    if (isE) { entVal += v; entQtd += q; } else { saiVal += v; saiQtd += q; }
+    const p = prodMap[r.id_produto] || (prodMap[r.id_produto] = { ref: r.referencia, nome: r.nome_produto, entV: 0, saiV: 0, entQ: 0, saiQ: 0, n: 0 });
+    if (isE) { p.entV += v; p.entQ += q; } else { p.saiV += v; p.saiQ += q; } p.n++;
+    const c = categorizeMotivo(r.motivo);
+    const mm = motMap[c] || (motMap[c] = { n: 0, v: 0 }); mm.n++; mm.v += (isE ? v : -v);
+    const mk = (r.data_mov || '').slice(0, 7);
+    if (mk) { const me = mesMap[mk] || (mesMap[mk] = { entV: 0, saiV: 0, entQ: 0, saiQ: 0 }); if (isE) { me.entV += v; me.entQ += q; } else { me.saiV += v; me.saiQ += q; } }
+  });
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('aj-kpi-entrada', fmt(entVal)); set('aj-kpi-entrada-qtd', fmtQtd(entQtd, 0) + ' un');
+  set('aj-kpi-saida', fmt(saiVal)); set('aj-kpi-saida-qtd', fmtQtd(saiQtd, 0) + ' un');
+  const liqEl = document.getElementById('aj-kpi-liquido');
+  if (liqEl) { liqEl.textContent = fmt(entVal - saiVal); liqEl.style.color = (entVal - saiVal) < 0 ? 'var(--red)' : 'var(--green)'; }
+  set('aj-kpi-num', fmtQtd(rows.length, 0)); set('aj-kpi-prod', Object.keys(prodMap).length + ' produtos');
+  set('aj-resumo', `${fmtQtd(rows.length, 0)} ajustes · ${Object.keys(prodMap).length} produtos`);
+  // Ranking — ordenação por coluna (default = maior impacto no líquido)
+  const arr = Object.entries(prodMap).map(([id, p]) => ({ id, ...p, liqV: p.entV - p.saiV, liqQ: p.entQ - p.saiQ }));
+  const colVal = p => {
+    switch (ajusteOrd.col) {
+      case 'nome': return (p.nome || '').toLowerCase();
+      case 'entrou': return isVal ? p.entV : p.entQ;
+      case 'saiu': return isVal ? p.saiV : p.saiQ;
+      case 'n': return p.n;
+      default: return isVal ? p.liqV : p.liqQ;   // liquido
+    }
+  };
+  arr.sort((a, b) => {
+    let av = colVal(a), bv = colVal(b);
+    if (ajusteOrd.col === 'nome') return ajusteOrd.dir === 'asc' ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
+    if (ajusteOrd.abs) { av = Math.abs(av); bv = Math.abs(bv); }
+    return ajusteOrd.dir === 'asc' ? av - bv : bv - av;
+  });
+  // marca a seta na coluna ativa
+  document.querySelectorAll('#page-cmp-ajustes thead .sort-icon').forEach(s => s.textContent = '↕');
+  const thAtivo = document.querySelector(`#page-cmp-ajustes thead th.sortable[onclick*="'${ajusteOrd.col}'"] .sort-icon`);
+  if (thAtivo) thAtivo.textContent = ajusteOrd.dir === 'asc' ? '↑' : '↓';
+  const rb = document.getElementById('aj-ranking-body');
+  if (rb) rb.innerHTML = arr.length ? arr.slice(0, 100).map(p => {
+    const liq = isVal ? p.liqV : p.liqQ;
+    const cor = liq < 0 ? 'var(--red)' : liq > 0 ? 'var(--green)' : 'var(--text-muted)';
+    const entTxt = (isVal ? p.entV : p.entQ) > 0 ? (isVal ? fmt(p.entV) : fmtQtd(p.entQ, 0)) : '—';
+    const saiTxt = (isVal ? p.saiV : p.saiQ) > 0 ? (isVal ? fmt(p.saiV) : fmtQtd(p.saiQ, 0)) : '—';
+    return `<tr><td style="font-weight:500;font-size:13px;max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome || ''}">${p.nome || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${p.ref || ''}</div></td>
+      <td class="right mono" style="color:var(--green)">${entTxt}</td>
+      <td class="right mono" style="color:var(--red)">${saiTxt}</td>
+      <td class="right mono" style="font-weight:700;color:${cor}">${isVal ? fmt(liq) : fmtQtd(liq, 0)}</td>
+      <td class="right mono" style="color:var(--text-muted)">${p.n}</td></tr>`;
+  }).join('') : '<tr class="loading-row"><td colspan="5">Nenhum ajuste no período</td></tr>';
+  // Por motivo
+  const mb = document.getElementById('aj-motivo-body');
+  if (mb) mb.innerHTML = Object.entries(motMap).sort((a, b) => Math.abs(b[1].v) - Math.abs(a[1].v)).map(([c, m]) =>
+    `<tr><td style="font-size:12px">${c}</td><td class="right mono">${m.n}</td><td class="right mono" style="color:${m.v < 0 ? 'var(--red)' : 'var(--green)'}">${fmt(m.v)}</td></tr>`).join('') || '<tr><td colspan="3" style="color:var(--text-muted)">—</td></tr>';
+  // Por mês (desc)
+  const meb = document.getElementById('aj-mes-body');
+  if (meb) meb.innerHTML = Object.entries(mesMap).sort((a, b) => b[0].localeCompare(a[0])).map(([mk, me]) => {
+    const [y, mo] = mk.split('-');
+    return `<tr><td class="mono">${mo}/${y.slice(2)}</td><td class="right mono" style="color:var(--green)">${me.entV > 0 ? fmt(me.entV) : '—'}</td><td class="right mono" style="color:var(--red)">${me.saiV > 0 ? fmt(me.saiV) : '—'}</td></tr>`;
+  }).join('') || '<tr><td colspan="3" style="color:var(--text-muted)">—</td></tr>';
+}
+
+// ═══════════════════════════════════════════════════════════
 // DRAWER DETALHE FORNECEDOR
 // ═══════════════════════════════════════════════════════════
 let fornAtual = null;
@@ -3876,6 +4067,7 @@ const CMP_PAGE_LOADERS = {
   'cmp-parado':       () => loadEstoqueParado(),
   'cmp-alertas':      () => loadAll(),
   'cmp-totais':       () => loadTotais(),
+  'cmp-ajustes':      () => loadAjustes(),
   'cmp-balanco':      () => loadBalanco(),
   'cmp-importacao':   () => loadImportacao(),
   'cmp-config':       () => loadConfiguracoes(),
@@ -4182,6 +4374,10 @@ window.onRowCheck             = onRowCheck;
 window.toggleGrupo            = toggleGrupo;
 window.setTotOrdem            = setTotOrdem;
 window.setFornOrdem           = setFornOrdem;
+window.loadAjustes            = loadAjustes;
+window.renderAjustes          = renderAjustes;
+window.setAjusteMetric        = setAjusteMetric;
+window.setOrdemAjustes        = setOrdemAjustes;
 window.abrirFornDrawer        = abrirFornDrawer;
 window.fecharFornDrawer       = fecharFornDrawer;
 window.switchFornTab          = switchFornTab;

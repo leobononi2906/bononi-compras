@@ -4,6 +4,17 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 07/08/2026 — nova aba "Ajustes de Estoque"
+
+- Nova tela **🩹 Ajustes de Estoque** (fonte `vw_fb_mov_estoque`, tipo `A`, sem vínculo de venda/OS): ~957 ajustes/12 meses.
+- **KPIs**: valor que entrou / saiu / líquido, nº de ajustes e produtos.
+- **Ranking de produtos ajustados** com **ordenação em todas as colunas** (Produto, Entrou, Saiu, Líquido, Nº) + toggle **Valor R$ / Quantidade**. Default = maior impacto no líquido. Cabeçalho fixo.
+- **Por motivo** (categorizado: Balanço / Estoque inicial / Acerto / Código invertido / Transição de ERP / Outros) e **Por mês**.
+- Filtros de **período, empresa e motivo**.
+- **Pendências pra completar** (descobertas no schema Firebird `C:\CLAUDE\ERP FIREBIRD`): (1) **% divergente** exige replicar `TBL_BALANCO` + `TBL_ITENS_BALANCO` (têm `QTD_ANTIGA` × `QTD_CONTADA` × `QTD_LANCADA`); (2) **autor do ajuste** existe em `TBL_MOV_PROD.CHUSUARIO`, falta expor na view. Ambos dependem da TI.
+
+---
+
 ## 07/08/2026 — ajustes finos (drawer, carrinho, pedidos, export .xls)
 
 ### Drawer do produto
