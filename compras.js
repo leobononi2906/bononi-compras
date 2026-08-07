@@ -245,10 +245,11 @@ const PAGINAS_HTML = {
             <th class="sortable" onclick="setOrdemAjustes('nome')">Produto <span class="sort-icon">↕</span></th>
             <th class="right sortable" onclick="setOrdemAjustes('entrou')">Entrou <span class="sort-icon">↕</span></th>
             <th class="right sortable" onclick="setOrdemAjustes('saiu')">Saiu <span class="sort-icon">↕</span></th>
-            <th class="right sortable" onclick="setOrdemAjustes('liquido')">Líquido <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAjustes('liq_val')">Líquido R$ <span class="sort-icon">↕</span></th>
+            <th class="right sortable" onclick="setOrdemAjustes('liq_qtd')">Líquido Qtd <span class="sort-icon">↕</span></th>
             <th class="right sortable" onclick="setOrdemAjustes('n')">Nº <span class="sort-icon">↕</span></th>
           </tr></thead>
-          <tbody id="aj-ranking-body"><tr class="loading-row"><td colspan="5">Carregando...</td></tr></tbody>
+          <tbody id="aj-ranking-body"><tr class="loading-row"><td colspan="6">Carregando...</td></tr></tbody>
         </table></div>
       </div>
       <div>
@@ -2146,7 +2147,7 @@ function setFornOrdem(ordem, btn) {
 // ═══════════════════════════════════════════════════════════
 let ajustesData = [];
 let ajusteMetric = 'valor';
-let ajusteOrd = { col: 'liquido', dir: 'desc', abs: true };   // default = maior impacto
+let ajusteOrd = { col: 'liq_val', dir: 'desc', abs: true };   // default = maior impacto em R$
 
 function setOrdemAjustes(col) {
   if (ajusteOrd.col === col && !ajusteOrd.abs) {
@@ -2252,8 +2253,9 @@ function renderAjustes() {
       case 'nome': return (p.nome || '').toLowerCase();
       case 'entrou': return isVal ? p.entV : p.entQ;
       case 'saiu': return isVal ? p.saiV : p.saiQ;
+      case 'liq_qtd': return p.liqQ;
       case 'n': return p.n;
-      default: return isVal ? p.liqV : p.liqQ;   // liquido
+      default: return p.liqV;   // liq_val
     }
   };
   arr.sort((a, b) => {
@@ -2268,16 +2270,17 @@ function renderAjustes() {
   if (thAtivo) thAtivo.textContent = ajusteOrd.dir === 'asc' ? '↑' : '↓';
   const rb = document.getElementById('aj-ranking-body');
   if (rb) rb.innerHTML = arr.length ? arr.slice(0, 100).map(p => {
-    const liq = isVal ? p.liqV : p.liqQ;
-    const cor = liq < 0 ? 'var(--red)' : liq > 0 ? 'var(--green)' : 'var(--text-muted)';
+    const corV = p.liqV < 0 ? 'var(--red)' : p.liqV > 0 ? 'var(--green)' : 'var(--text-muted)';
+    const corQ = p.liqQ < 0 ? 'var(--red)' : p.liqQ > 0 ? 'var(--green)' : 'var(--text-muted)';
     const entTxt = (isVal ? p.entV : p.entQ) > 0 ? (isVal ? fmt(p.entV) : fmtQtd(p.entQ, 0)) : '—';
     const saiTxt = (isVal ? p.saiV : p.saiQ) > 0 ? (isVal ? fmt(p.saiV) : fmtQtd(p.saiQ, 0)) : '—';
-    return `<tr><td style="font-weight:500;font-size:13px;max-width:280px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome || ''}">${p.nome || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${p.ref || ''}</div></td>
+    return `<tr><td style="font-weight:500;font-size:13px;max-width:260px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome || ''}">${p.nome || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${p.ref || ''}</div></td>
       <td class="right mono" style="color:var(--green)">${entTxt}</td>
       <td class="right mono" style="color:var(--red)">${saiTxt}</td>
-      <td class="right mono" style="font-weight:700;color:${cor}">${isVal ? fmt(liq) : fmtQtd(liq, 0)}</td>
+      <td class="right mono" style="font-weight:700;color:${corV}">${fmt(p.liqV)}</td>
+      <td class="right mono" style="font-weight:700;color:${corQ}">${fmtQtd(p.liqQ, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${p.n}</td></tr>`;
-  }).join('') : '<tr class="loading-row"><td colspan="5">Nenhum ajuste no período</td></tr>';
+  }).join('') : '<tr class="loading-row"><td colspan="6">Nenhum ajuste no período</td></tr>';
   // Por motivo
   const mb = document.getElementById('aj-motivo-body');
   if (mb) mb.innerHTML = Object.entries(motMap).sort((a, b) => Math.abs(b[1].v) - Math.abs(a[1].v)).map(([c, m]) =>
