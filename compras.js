@@ -154,19 +154,21 @@ const PAGINAS_HTML = {
       </div>
     </div>
     <div style="flex:1;overflow-y:auto">
-      <div class="drawer-tab-content active" id="dtab-resumo" style="padding:16px 20px">
-        <div id="dr-forn-sugerido" style="margin-bottom:12px"></div>
-        <div id="dr-pedido-aberto-info" style="margin-bottom:12px"></div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
-          <div class="card" style="padding:12px 14px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:20px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color:var(--blue-mid);background:var(--blue-pale);border-radius:4px;padding:3px 7px"></div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:20px">—</div><div class="card-sub">reposição sugerida</div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Lead Time</div><div class="card-value" id="dr-lead-time" style="font-size:20px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
+      <div class="drawer-tab-content active" id="dtab-resumo" style="padding:18px 22px">
+        <div style="display:flex;gap:12px;align-items:stretch;flex-wrap:wrap;margin-bottom:14px">
+          <div id="dr-forn-sugerido" style="flex:1;min-width:300px"></div>
+          <div id="dr-pedido-aberto-info" style="flex:1;min-width:280px;display:none"></div>
         </div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
-          <div class="card" style="padding:12px 14px"><div class="card-label">Consumo/dia</div><div class="card-value" id="dr-consumo" style="font-size:18px">—</div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Último Preço Compra</div><div class="card-value" id="dr-ultimo-preco" style="font-size:16px">—</div><div class="card-sub" id="dr-ultimo-preco-sub"></div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Margem Estimada</div><div class="card-value" id="dr-margem" style="font-size:18px">—</div><div class="card-sub" id="dr-margem-sub"></div></div>
-          <div class="card" style="padding:12px 14px"><div class="card-label">Última Compra / Venda</div><div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted)">Compra:</span> <span id="dr-ultima-compra" style="font-size:12px;font-weight:600">—</span></div><div style="margin-top:2px"><span style="font-size:11px;color:var(--text-muted)">Venda:</span> <span id="dr-ultima-venda" style="font-size:12px;font-weight:600">—</span></div></div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
+          <div class="card" style="padding:16px 18px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:26px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color:var(--blue-mid);background:var(--blue-pale);border-radius:4px;padding:3px 7px"></div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:26px">—</div><div class="card-sub">reposição sugerida</div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label">Lead Time</div><div class="card-value" id="dr-lead-time" style="font-size:26px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+          <div class="card" style="padding:16px 18px"><div class="card-label">Consumo/dia</div><div class="card-value" id="dr-consumo" style="font-size:22px">—</div><div class="card-sub" id="dr-consumo-sub">média 90 dias</div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label">Último Preço Compra</div><div class="card-value" id="dr-ultimo-preco" style="font-size:20px">—</div><div class="card-sub" id="dr-ultimo-preco-sub"></div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label">Margem Estimada</div><div class="card-value" id="dr-margem" style="font-size:22px">—</div><div class="card-sub" id="dr-margem-sub"></div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label">Última Compra / Venda</div><div style="margin-top:6px"><span style="font-size:11px;color:var(--text-muted)">Compra:</span> <span id="dr-ultima-compra" style="font-size:13px;font-weight:600">—</span></div><div style="margin-top:3px"><span style="font-size:11px;color:var(--text-muted)">Venda:</span> <span id="dr-ultima-venda" style="font-size:13px;font-weight:600">—</span></div></div>
         </div>
         <div id="dtab-giro-inner"></div>
       </div>
@@ -1072,7 +1074,7 @@ async function loadDrawerResumo(prod) {
     const aviso = demandaReprimida(prod) ? `<div style="margin-bottom:10px;padding:8px 12px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;font-size:12px;color:#B91C1C">📉 <b>Demanda reprimida:</b> ficou zerado com saída no último ano — a média recente subestima a real. Avalie repor com folga.</div>` : '';
     if (best) {
       blocoForn.innerHTML = aviso + `
-        <div class="card" style="padding:10px 14px;border-left:3px solid var(--blue-mid);max-width:360px">
+        <div class="card" style="padding:12px 16px;border-left:3px solid var(--blue-mid);width:100%;height:100%;box-sizing:border-box">
           <div class="card-label">Fornecedor sugerido</div>
           <div style="font-size:14px;font-weight:700">${best.nome_fornecedor || '—'}</div>
           <div style="font-size:11px;color:var(--text-muted)">Ref forn: ${best.referencia_fornecedor || '—'}${forns.length > 1 ? ` · +${forns.length - 1} opção(ões)` : ''}</div>
@@ -1083,7 +1085,7 @@ async function loadDrawerResumo(prod) {
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">${explica}</div>
         </div>`;
     } else {
-      blocoForn.innerHTML = aviso + `<div class="card" style="padding:10px 14px;max-width:360px"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
+      blocoForn.innerHTML = aviso + `<div class="card" style="padding:12px 16px;width:100%;height:100%;box-sizing:border-box"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
     }
     // Data da última compra DESTE fornecedor para ESTE produto (não a última compra global do produto)
     if (best) {
@@ -1135,13 +1137,14 @@ async function loadDrawerResumo(prod) {
 async function loadDrawerPedidoAberto(idProduto) {
   const box = document.getElementById('dr-pedido-aberto-info');
   if (!box) return;
-  box.innerHTML = '';
+  box.innerHTML = ''; box.style.display = 'none';
   try {
     const { data } = await sb.from('vw_fb_pedidos_compra')
       .select('id_pedido,data_pedido,data_prev_recebimento,nome_fornecedor,qtd_solicitada')
       .eq('id_produto', idProduto).eq('pedido_cancelado', 'N').eq('gerou_nf', 'N').eq('status_pedido', 'F')
       .order('data_pedido', { ascending: false });
     if (!data || !data.length) return;
+    box.style.display = '';
     // Agrupa por pedido (um produto pode estar em >1 pedido aberto)
     const porPedido = {};
     data.forEach(r => {
@@ -1151,7 +1154,7 @@ async function loadDrawerPedidoAberto(idProduto) {
     const pedidos = Object.values(porPedido);
     const totalQtd = pedidos.reduce((a, p) => a + p.qtd, 0);
     box.innerHTML = `
-      <div class="card" style="padding:10px 14px;border-left:3px solid var(--orange);max-width:360px;background:var(--orange-bg,#FFF7ED)">
+      <div class="card" style="padding:12px 16px;border-left:3px solid var(--orange);width:100%;height:100%;box-sizing:border-box;background:var(--orange-bg,#FFF7ED)">
         <div class="card-label" style="color:var(--orange)">📦 Pedido de compra em aberto</div>
         <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
           ${pedidos.map(p => `<div style="font-size:12px;display:flex;justify-content:space-between;gap:10px">

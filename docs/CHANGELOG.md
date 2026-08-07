@@ -11,6 +11,7 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 - **Aba "Pedido" removida** do drawer.
 - **Pedido de compra em aberto**: bloco novo com **nº do pedido · fornecedor · qtd · data · previsão** (fonte `vw_fb_pedidos_compra`, filtro `cancelado=N, gerou_nf=N, status=F` — mesmo do "a caminho").
 - **Data da última compra** no card do fornecedor agora é a **daquele fornecedor** (consulta por produto+fornecedor), não a última compra global do produto.
+- **Drawer alargado (680 → 820px)**: fornecedor e pedido em aberto ficam **lado a lado**; cards maiores; **Consumo/dia** ganhou a marca do período (**média 90 dias**); mais colunas visíveis no bloco Saídas × Compras.
 
 ### Tabela de Compras
 - **Nome do produto ocupa a largura toda** (1ª linha); **código + etiquetas** (A / 📉) foram para a 2ª linha.
