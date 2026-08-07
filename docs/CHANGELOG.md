@@ -4,6 +4,29 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 07/08/2026 — ajustes finos (drawer, carrinho, pedidos, export .xls)
+
+### Drawer do produto
+- **Fornecedor sugerido** subiu para o **topo** do resumo e ficou **mais estreito** (`max-width:360px`).
+- **Aba "Pedido" removida** do drawer.
+- **Pedido de compra em aberto**: bloco novo com **nº do pedido · fornecedor · qtd · data · previsão** (fonte `vw_fb_pedidos_compra`, filtro `cancelado=N, gerou_nf=N, status=F` — mesmo do "a caminho").
+- **Data da última compra** no card do fornecedor agora é a **daquele fornecedor** (consulta por produto+fornecedor), não a última compra global do produto.
+
+### Tabela de Compras
+- **Nome do produto ocupa a largura toda** (1ª linha); **código + etiquetas** (A / 📉) foram para a 2ª linha.
+- **"Esporádico" removido** da tabela. *(definição: saída no ano ≤ 12 unidades — flag `esporadico` da view; segue disponível para o filtro do Comprar Agora.)*
+- **Demanda reprimida** virou só o ícone **📉** (com tooltip) — não empurra mais o nome.
+
+### Carrinho / Pedidos
+- **"Pedido em Andamento" inicia recolhido** (só a barra do topo); expande ao clicar.
+- Ao **Salvar**, o pedido **sai do carrinho** (fica guardado em Pedidos) e a lista recarrega.
+- Aba **Pedidos**: "Abrir" abre um **drawer maior** (cabeçalho + itens) com **✏️ Continuar editando**; corrige o erro ao abrir outro pedido salvo (leitura não mexe no carrinho até confirmar).
+
+### Export
+- Download do pedido passou de `.txt` para **`.xls`** no layout do ERP: **sem cabeçalho, coluna A = código, coluna B = quantidade** (código preservado como texto p/ manter zeros à esquerda). Botão **"↓ .xls (ERP)"** no carrinho e no drawer do pedido; o CSV completo virou **"↓ Relatório"**.
+
+---
+
 ## 06/08/2026 (2ª rodada) — Fornecedores real, drawer e persistência do carrinho
 
 ### Corrigido — Fornecedores só conta compra real; aba incorporada a "Totais de Estoque"

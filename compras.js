@@ -29,6 +29,25 @@ const PAGINAS_HTML = {
       <thead><tr><th>#</th><th>Empresa</th><th>Responsável</th><th class="right">Itens</th><th class="right">Valor</th><th>Status</th><th>Criado</th><th></th></tr></thead>
       <tbody id="pedidos-body"><tr class="loading-row"><td colspan="8">Carregando...</td></tr></tbody>
     </table></div></div>
+  </div>
+  <div class="drawer-overlay" id="pedido-drawer-overlay" onclick="fecharPedidoDrawer()"></div>
+  <div class="drawer" id="pedido-drawer" style="width:760px">
+    <div class="drawer-header">
+      <div><div class="drawer-title" id="peddr-titulo">Pedido</div><div class="drawer-sub" id="peddr-sub">—</div></div>
+      <button class="drawer-close" onclick="fecharPedidoDrawer()">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:16px 20px">
+      <div id="peddr-cabecalho" style="margin-bottom:14px"></div>
+      <div class="table-card"><div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Qtd</th><th class="right">Vl Unit</th><th class="right">Total</th></tr></thead>
+        <tbody id="peddr-itens"></tbody>
+      </table></div></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--border);flex-shrink:0">
+      <button class="btn btn-outline" onclick="baixarPedidoXlsDrawer()" title="Baixar planilha (.xls) do pedido">↓ .xls</button>
+      <button class="btn btn-primary" onclick="continuarEditandoPedido()" id="peddr-btn-editar">✏️ Continuar editando</button>
+      <button class="btn btn-outline" onclick="fecharPedidoDrawer()">Fechar</button>
+    </div>
   </div>`,
   'cmp-comprar': `<div class="page-content" id="page-cmp-comprar">
     <div class="cards-grid cards-grid-3">
@@ -132,11 +151,12 @@ const PAGINAS_HTML = {
         <div class="drawer-tab" onclick="switchDrawerTab('historico',this)">📋 Histórico</div>
         <div class="drawer-tab" onclick="switchDrawerTab('fornecedores',this)">🏭 Fornecedores</div>
         <div class="drawer-tab" onclick="switchDrawerTab('estoque',this)">🏪 Estoque</div>
-        <div class="drawer-tab" onclick="switchDrawerTab('pedido',this)">🛒 Pedido</div>
       </div>
     </div>
     <div style="flex:1;overflow-y:auto">
       <div class="drawer-tab-content active" id="dtab-resumo" style="padding:16px 20px">
+        <div id="dr-forn-sugerido" style="margin-bottom:12px"></div>
+        <div id="dr-pedido-aberto-info" style="margin-bottom:12px"></div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
           <div class="card" style="padding:12px 14px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:20px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color:var(--blue-mid);background:var(--blue-pale);border-radius:4px;padding:3px 7px"></div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:20px">—</div><div class="card-sub">reposição sugerida</div></div>
@@ -148,7 +168,6 @@ const PAGINAS_HTML = {
           <div class="card" style="padding:12px 14px"><div class="card-label">Margem Estimada</div><div class="card-value" id="dr-margem" style="font-size:18px">—</div><div class="card-sub" id="dr-margem-sub"></div></div>
           <div class="card" style="padding:12px 14px"><div class="card-label">Última Compra / Venda</div><div style="margin-top:4px"><span style="font-size:11px;color:var(--text-muted)">Compra:</span> <span id="dr-ultima-compra" style="font-size:12px;font-weight:600">—</span></div><div style="margin-top:2px"><span style="font-size:11px;color:var(--text-muted)">Venda:</span> <span id="dr-ultima-venda" style="font-size:12px;font-weight:600">—</span></div></div>
         </div>
-        <div id="dr-forn-sugerido" style="margin-bottom:14px"></div>
         <div id="dtab-giro-inner"></div>
       </div>
       <div class="drawer-tab-content" id="dtab-historico" style="padding:20px 24px">
@@ -161,13 +180,12 @@ const PAGINAS_HTML = {
       </div>
       <div class="drawer-tab-content" id="dtab-fornecedores" style="padding:20px 24px"><div id="dr-forn-container"></div></div>
       <div class="drawer-tab-content" id="dtab-estoque" style="padding:20px 24px"><div class="table-card"><div style="overflow-x:auto;max-height:480px;overflow-y:auto"><table class="data-table"><thead><tr><th>Empresa</th><th>Centro</th><th class="right">Estoque</th><th class="right">Reserva</th><th>Status</th></tr></thead><tbody id="dr-estoque-body"></tbody></table></div></div></div>
-      <div class="drawer-tab-content" id="dtab-pedido" style="padding:20px 24px"><div id="pedido-forn-list"></div></div>
     </div>
   </div>
   <div class="cart-panel" id="cart-panel">
-    <div class="cart-header" onclick="toggleCarrinho()"><div class="cart-title">🛒 Pedido em Andamento <span class="cart-count" id="cart-count">0</span></div><div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace" id="cart-total-valor">R$ 0</span><span id="cart-chevron" style="font-size:12px;color:var(--text-muted)">▲</span></div></div>
-    <div id="cart-body" style="flex:1;overflow-y:auto"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Sugerido</th><th class="right">Pedido</th><th class="right">Vl Unit</th><th class="right">Total</th><th></th></tr></thead><tbody id="cart-items-body"></tbody></table></div></div>
-    <div class="cart-footer"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-outline" onclick="exportarPedido()">↓ Excel</button><button class="btn btn-outline" onclick="baixarPedidoTxt()" title="Layout do ERP: codigo;qtd">↓ .txt</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
+    <div class="cart-header" onclick="toggleCarrinho()" title="Clique para expandir/recolher"><div class="cart-title">🛒 Pedido em Andamento <span class="cart-count" id="cart-count">0</span></div><div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace" id="cart-total-valor">R$ 0</span><span id="cart-chevron" style="font-size:12px;color:var(--text-muted)">▼</span></div></div>
+    <div id="cart-body" style="flex:1;overflow-y:auto;display:none"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Sugerido</th><th class="right">Pedido</th><th class="right">Vl Unit</th><th class="right">Total</th><th></th></tr></thead><tbody id="cart-items-body"></tbody></table></div></div>
+    <div class="cart-footer" id="cart-foot" style="display:none"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-primary" onclick="baixarPedidoXls()" title="Planilha .xls (codigo/quantidade) que o ERP importa">↓ .xls (ERP)</button><button class="btn btn-outline" onclick="exportarPedido()" title="Relatório completo em CSV">↓ Relatório</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
   </div>
   <div id="modal-salvar-pedido" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1200;align-items:center;justify-content:center">
     <div style="background:var(--surface);border-radius:10px;max-width:440px;width:92%;box-shadow:var(--shadow-lg);overflow:hidden">
@@ -725,7 +743,7 @@ function renderAlertas() {
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
-      <td style="font-weight:500;max-width:240px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica (≤12/ano)">esporádico</span>' : ''}${demandaReprimida(r) ? '<span class="badge" style="background:#FEE2E2;color:#B91C1C;border:1px solid #FCA5A5" title="Zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga.">📉 demanda reprimida</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+      <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${demandaReprimida(r) ? '<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
@@ -1029,7 +1047,6 @@ function switchDrawerTab(tab, btn) {
   if (tab === 'historico'   && produtoAtual) loadDrawerHistorico(produtoAtual.id_produto);
   if (tab === 'fornecedores'&& produtoAtual) loadDrawerFornecedores(produtoAtual.id_produto);
   if (tab === 'estoque'     && produtoAtual) loadDrawerEstoque(produtoAtual.id_produto);
-  if (tab === 'pedido'      && produtoAtual) loadDrawerPedido(produtoAtual);
 }
 
 async function loadDrawerResumo(prod) {
@@ -1055,24 +1072,33 @@ async function loadDrawerResumo(prod) {
     const aviso = demandaReprimida(prod) ? `<div style="margin-bottom:10px;padding:8px 12px;background:#FEF2F2;border:1px solid #FCA5A5;border-radius:6px;font-size:12px;color:#B91C1C">📉 <b>Demanda reprimida:</b> ficou zerado com saída no último ano — a média recente subestima a real. Avalie repor com folga.</div>` : '';
     if (best) {
       blocoForn.innerHTML = aviso + `
-        <div class="card" style="padding:10px 14px;border-left:3px solid var(--blue-mid);max-width:440px">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">
-            <div>
-              <div class="card-label">Fornecedor sugerido</div>
-              <div style="font-size:14px;font-weight:700">${best.nome_fornecedor || '—'}</div>
-              <div style="font-size:11px;color:var(--text-muted)">Ref forn: ${best.referencia_fornecedor || '—'}${forns.length > 1 ? ` · +${forns.length - 1} opção(ões)` : ''}</div>
-            </div>
-            <div style="text-align:right">
-              <div class="card-label">Preço</div>
-              <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-dark)">${best.preco_fornecedor ? fmt(best.preco_fornecedor) : '—'}</div>
-              <div style="font-size:11px;color:var(--text-muted)">últ. compra: ${prod.dt_ultima_compra ? fmtData(prod.dt_ultima_compra) : '—'}</div>
-            </div>
+        <div class="card" style="padding:10px 14px;border-left:3px solid var(--blue-mid);max-width:360px">
+          <div class="card-label">Fornecedor sugerido</div>
+          <div style="font-size:14px;font-weight:700">${best.nome_fornecedor || '—'}</div>
+          <div style="font-size:11px;color:var(--text-muted)">Ref forn: ${best.referencia_fornecedor || '—'}${forns.length > 1 ? ` · +${forns.length - 1} opção(ões)` : ''}</div>
+          <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:6px">
+            <div style="font-size:11px;color:var(--text-muted)">últ. compra: <span id="dr-forn-ultcompra" style="font-weight:600;color:var(--text-secondary)">…</span></div>
+            <div style="font-size:16px;font-weight:700;font-family:'DM Mono',monospace;color:var(--blue-dark)">${best.preco_fornecedor ? fmt(best.preco_fornecedor) : '—'}</div>
           </div>
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">${explica}</div>
         </div>`;
     } else {
-      blocoForn.innerHTML = aviso + `<div class="card" style="padding:10px 14px;max-width:440px"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
+      blocoForn.innerHTML = aviso + `<div class="card" style="padding:10px 14px;max-width:360px"><div style="font-size:12px;color:var(--text-muted)">Sem fornecedor cadastrado para este produto.</div><div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${explica}</div></div>`;
     }
+    // Data da última compra DESTE fornecedor para ESTE produto (não a última compra global do produto)
+    if (best) {
+      (async () => {
+        try {
+          const { data } = await sb.from('vw_fb_historico_compras')
+            .select('data_compra').eq('id_produto', prod.id_produto).eq('id_fornecedor', best.id_fornecedor)
+            .order('data_compra', { ascending: false }).limit(1);
+          const el = document.getElementById('dr-forn-ultcompra');
+          if (el) el.textContent = data && data[0]?.data_compra ? fmtData(data[0].data_compra) : '—';
+        } catch (_) { const el = document.getElementById('dr-forn-ultcompra'); if (el) el.textContent = '—'; }
+      })();
+    }
+    // Bloco "pedido aberto": nº do pedido + data + previsão (fonte da badge "a caminho")
+    loadDrawerPedidoAberto(prod.id_produto);
   }
   // Margem e ultimo preco de compra
   try {
@@ -1103,6 +1129,39 @@ async function loadDrawerResumo(prod) {
       } else { set('dr-lead-time', '—'); set('dr-lead-time-sub', 'sem histórico'); }
     } else { set('dr-lead-time', '—'); set('dr-lead-time-sub', 'sem fornecedor'); }
   } catch(e) { set('dr-lead-time', '—'); set('dr-lead-time-sub', 'erro'); }
+}
+
+// Pedido de compra em aberto (a caminho) — mesmo filtro da view: cancelado=N, gerou_nf=N, status=F
+async function loadDrawerPedidoAberto(idProduto) {
+  const box = document.getElementById('dr-pedido-aberto-info');
+  if (!box) return;
+  box.innerHTML = '';
+  try {
+    const { data } = await sb.from('vw_fb_pedidos_compra')
+      .select('id_pedido,data_pedido,data_prev_recebimento,nome_fornecedor,qtd_solicitada')
+      .eq('id_produto', idProduto).eq('pedido_cancelado', 'N').eq('gerou_nf', 'N').eq('status_pedido', 'F')
+      .order('data_pedido', { ascending: false });
+    if (!data || !data.length) return;
+    // Agrupa por pedido (um produto pode estar em >1 pedido aberto)
+    const porPedido = {};
+    data.forEach(r => {
+      if (!porPedido[r.id_pedido]) porPedido[r.id_pedido] = { id: r.id_pedido, data: r.data_pedido, prev: r.data_prev_recebimento, forn: r.nome_fornecedor, qtd: 0 };
+      porPedido[r.id_pedido].qtd += Number(r.qtd_solicitada) || 0;
+    });
+    const pedidos = Object.values(porPedido);
+    const totalQtd = pedidos.reduce((a, p) => a + p.qtd, 0);
+    box.innerHTML = `
+      <div class="card" style="padding:10px 14px;border-left:3px solid var(--orange);max-width:360px;background:var(--orange-bg,#FFF7ED)">
+        <div class="card-label" style="color:var(--orange)">📦 Pedido de compra em aberto</div>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+          ${pedidos.map(p => `<div style="font-size:12px;display:flex;justify-content:space-between;gap:10px">
+            <span><b>#${p.id}</b> · ${p.forn || '—'}</span>
+            <span style="color:var(--text-muted);white-space:nowrap">${fmtQtd(p.qtd,0)} un · ${p.data ? fmtData(p.data) : '—'}${p.prev ? ` → prev. ${fmtData(p.prev)}` : ''}</span>
+          </div>`).join('')}
+        </div>
+        ${pedidos.length > 1 ? `<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">${pedidos.length} pedidos · ${fmtQtd(totalQtd,0)} un a caminho</div>` : ''}
+      </div>`;
+  } catch (_) { box.innerHTML = ''; }
 }
 
 async function loadDrawerGiro(idProduto) {
@@ -1643,9 +1702,11 @@ function atualizarQtdCart(idx, val) {
 function removerItemCart(idx) { cartItems.splice(idx, 1); atualizarCarrinho(); renderAlertas(); }
 function abrirCarrinho() { const el = document.getElementById('cart-panel'); if (el) el.classList.add('open'); }
 function toggleCarrinho() {
-  const body = document.getElementById('cart-body'), chev = document.getElementById('cart-chevron');
+  const body = document.getElementById('cart-body'), foot = document.getElementById('cart-foot'), chev = document.getElementById('cart-chevron');
   const isOpen = body?.style.display !== 'none';
-  if (body) body.style.display = isOpen ? 'none' : '';
+  const next = isOpen ? 'none' : '';
+  if (body) body.style.display = next;
+  if (foot) foot.style.display = next;
   if (chev) chev.textContent = isOpen ? '▼' : '▲';
 }
 function adicionarSelecionados() { document.querySelectorAll('.row-check:checked').forEach(cb => { const id = parseInt(cb.dataset.id); if (!cartItems.find(c => c.id_produto === id)) adicionarAoCarrinho(id); }); }
@@ -1668,16 +1729,23 @@ function exportarPedido() {
   URL.revokeObjectURL(url);
 }
 
-// Baixar pedido no layout de importação do ERP: uma linha por item "codigo;qtd"
-// codigo = referência (Código do Produto, ex.: 000003) · separador ";" · qtd inteira
-function baixarPedidoTxt() {
+// Gera .xls (planilha) no layout que o ERP importa: SEM cabeçalho, coluna A = código, coluna B = qtd.
+// código = referência (Código do Produto, ex.: 000003), forçado como TEXTO p/ preservar zeros à esquerda.
+function baixarXlsCodigoQtd(linhas, nomeBase) {
+  const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const trs = linhas.map(l => `<tr><td style="mso-number-format:'\\@'">${esc(l.codigo)}</td><td>${Number(l.qtd) || 0}</td></tr>`).join('');
+  const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Pedido</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table>${trs}</table></body></html>`;
+  const blob = new Blob(['\ufeff' + html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = `${nomeBase}_${new Date().toISOString().slice(0, 10)}.xls`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Baixar o carrinho atual como .xls (codigo;qtd) para importar no ERP
+function baixarPedidoXls() {
   const itens = cartItems.filter(c => (c.qtd_pedido || 0) > 0 && (c.referencia || '').toString().trim());
   if (!itens.length) { alert('Nenhum item com quantidade e código para baixar.'); return; }
-  const linhas = itens.map(c => `${c.referencia};${Math.round(c.qtd_pedido || 0)}`);
-  const blob = new Blob([linhas.join('\r\n') + '\r\n'], { type: 'text/plain;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = `pedido_compra_${new Date().toISOString().slice(0, 10)}.txt`; a.click();
-  URL.revokeObjectURL(url);
+  baixarXlsCodigoQtd(itens.map(c => ({ codigo: c.referencia, qtd: Math.round(c.qtd_pedido || 0) })), 'pedido_compra');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1736,11 +1804,15 @@ async function salvarPedidoCompra() {
     const itens = cartItems.map(c => ({ pedido_id: pedidoId, id_produto: c.id_produto, referencia: c.referencia, nome: c.nome_produto, qtd: c.qtd_pedido, preco_unit: c.vl_unit || 0, id_fornecedor: c.id_fornecedor || null, nome_fornecedor: c.nome_fornecedor || null }));
     if (itens.length) { const { error: e2 } = await sb.from('comp_pedido_itens').insert(itens); if (e2) throw e2; }
     const novo = !pedidoAtualId;
-    pedidoAtualId = pedidoId;
-    cartSnapshotSalvo = JSON.stringify(cartItems);   // marca como salvo (some o aviso "não salvo")
     fecharModalSalvarPedido();
+    // Depois de salvo, o pedido SAI do carrinho inferior — fica guardado na tela Pedidos
+    cartItems = [];
+    pedidoAtualId = null;
+    pedidoAtualCriadoEm = null;
+    cartSnapshotSalvo = '';
     atualizarCarrinho();
-    showToast(novo ? `Pedido #${pedidoId} salvo.` : `Pedido #${pedidoId} atualizado.`);
+    showToast(novo ? `Pedido #${pedidoId} salvo. Está na aba Pedidos.` : `Pedido #${pedidoId} atualizado.`);
+    if (document.getElementById('pedidos-body')) loadPedidos();   // atualiza a lista se estiver aberta
     try { auditLog?.('pedido_salvo', { pedido_id: pedidoId, empresa, total_itens: totalItens }); } catch (e) {}
   } catch (e) { showToast('Erro ao salvar: ' + (e.message || e), 'error'); }
 }
@@ -1777,26 +1849,79 @@ function renderPedidos() {
     <td class="right mono">${fmt(p.total_valor || 0)}</td>
     <td>${p.status === 'finalizado' ? '<span class="badge badge-green">finalizado</span>' : '<span class="badge badge-gray">rascunho</span>'}</td>
     <td style="font-size:12px;color:var(--text-muted)">${fmtDataHora(p.criado_em)}${p.atualizado_em && p.atualizado_em !== p.criado_em ? `<br><span style="font-size:10px">✏️ ${fmtDataHora(p.atualizado_em)}</span>` : ''}</td>
-    <td style="white-space:nowrap"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="abrirPedidoParaEditar(${p.id})">Abrir</button>${p.status !== 'finalizado' ? `<button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px;color:var(--red);margin-left:4px" onclick="excluirPedido(${p.id})" title="Excluir rascunho">🗑</button>` : ''}</td>
+    <td style="white-space:nowrap"><button class="btn btn-outline" style="height:26px;padding:0 8px;font-size:11px" onclick="abrirPedidoDrawer(${p.id})">Abrir</button>${p.status !== 'finalizado' ? `<button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px;color:var(--red);margin-left:4px" onclick="excluirPedido(${p.id})" title="Excluir rascunho">🗑</button>` : ''}</td>
   </tr>`).join('');
 }
 
-async function abrirPedidoParaEditar(id) {
+// Abre o pedido salvo num drawer maior (só leitura + opção de continuar editando)
+let pedidoDrawerCache = null;
+async function abrirPedidoDrawer(id) {
   try {
     const [{ data: ped }, { data: itens }] = await Promise.all([
       sb.from('comp_pedidos').select('*').eq('id', id).single(),
       sb.from('comp_pedido_itens').select('*').eq('pedido_id', id)
     ]);
     if (!ped) { showToast('Pedido não encontrado.', 'error'); return; }
-    cartItems = (itens || []).map(it => ({ id_produto: it.id_produto, nome_produto: it.nome, referencia: it.referencia, id_fornecedor: it.id_fornecedor, nome_fornecedor: it.nome_fornecedor, qtd_sugerida: Number(it.qtd) || 0, qtd_pedido: Number(it.qtd) || 0, vl_unit: Number(it.preco_unit) || 0 }));
-    pedidoAtualId = id;
-    pedidoAtualCriadoEm = ped.criado_em || null;
-    cartSnapshotSalvo = JSON.stringify(cartItems);   // recém-aberto = salvo (sem alterações ainda)
-    window.navegarPara?.('cmp-alertas');
-    atualizarCarrinho();
-    document.getElementById('cart-panel')?.classList.add('open');
-    showToast(`Pedido #${id} aberto para edição.`);
+    pedidoDrawerCache = { ped, itens: itens || [] };
+    const set = (elid, v) => { const el = document.getElementById(elid); if (el) el.innerHTML = v; };
+    set('peddr-titulo', `Pedido #${ped.id}`);
+    set('peddr-sub', `${ped.empresa || '—'} · ${ped.status === 'finalizado' ? 'finalizado' : 'rascunho'}`);
+    const totalValor = (itens || []).reduce((a, it) => a + (Number(it.qtd) || 0) * (Number(it.preco_unit) || 0), 0);
+    set('peddr-cabecalho', `
+      <div class="cards-grid cards-grid-4" style="gap:10px">
+        <div class="card" style="padding:10px 14px"><div class="card-label">Empresa</div><div style="font-weight:700;font-size:14px">${ped.empresa || '—'}</div></div>
+        <div class="card" style="padding:10px 14px"><div class="card-label">Responsável</div><div style="font-weight:600;font-size:13px">${ped.criado_por || '—'}</div></div>
+        <div class="card" style="padding:10px 14px"><div class="card-label">Itens / Valor</div><div style="font-weight:600;font-size:13px">${fmtQtd(ped.total_itens || (itens||[]).length, 0)} · ${fmt(totalValor)}</div></div>
+        <div class="card" style="padding:10px 14px"><div class="card-label">Criado</div><div style="font-weight:600;font-size:12px">${fmtDataHora(ped.criado_em)}</div>${ped.atualizado_em && ped.atualizado_em !== ped.criado_em ? `<div style="font-size:11px;color:var(--text-muted)">✏️ ${fmtDataHora(ped.atualizado_em)}</div>` : ''}</div>
+      </div>${ped.observacao ? `<div style="margin-top:8px;font-size:12px;color:var(--text-muted)"><b>Obs:</b> ${ped.observacao}</div>` : ''}`);
+    const tb = document.getElementById('peddr-itens');
+    if (tb) tb.innerHTML = (itens || []).length ? (itens).map(it => `<tr>
+      <td style="font-weight:500;font-size:13px">${it.nome || '—'}<br><span style="font-size:11px;color:var(--text-muted)">${it.referencia || ''}</span></td>
+      <td style="font-size:12px;color:var(--text-secondary)">${it.nome_fornecedor || '—'}</td>
+      <td class="right mono">${fmtQtd(it.qtd, 0)}</td>
+      <td class="right mono">${it.preco_unit ? fmt(it.preco_unit) : '—'}</td>
+      <td class="right mono" style="font-weight:600">${it.preco_unit ? fmt((Number(it.qtd)||0) * (Number(it.preco_unit)||0)) : '—'}</td>
+    </tr>`).join('') : '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)">Pedido sem itens</td></tr>';
+    // Finalizado não permite continuar editando
+    const btnEd = document.getElementById('peddr-btn-editar');
+    if (btnEd) btnEd.style.display = ped.status === 'finalizado' ? 'none' : '';
+    document.getElementById('pedido-drawer')?.classList.add('open');
+    document.getElementById('pedido-drawer-overlay')?.classList.add('open');
   } catch (e) { showToast('Erro ao abrir pedido: ' + (e.message || e), 'error'); }
+}
+
+function fecharPedidoDrawer() {
+  document.getElementById('pedido-drawer')?.classList.remove('open');
+  document.getElementById('pedido-drawer-overlay')?.classList.remove('open');
+}
+
+// Carrega o pedido do drawer no carrinho para continuar editando
+function continuarEditandoPedido() {
+  if (!pedidoDrawerCache) return;
+  if (carrinhoNaoSalvo() && !confirm('Há um pedido não salvo no carrinho. Abrir este vai substituí-lo. Continuar?')) return;
+  const { ped, itens } = pedidoDrawerCache;
+  cartItems = (itens || []).map(it => ({ id_produto: it.id_produto, nome_produto: it.nome, referencia: it.referencia, id_fornecedor: it.id_fornecedor, nome_fornecedor: it.nome_fornecedor, qtd_sugerida: Number(it.qtd) || 0, qtd_pedido: Number(it.qtd) || 0, vl_unit: Number(it.preco_unit) || 0 }));
+  pedidoAtualId = ped.id;
+  pedidoAtualCriadoEm = ped.criado_em || null;
+  cartSnapshotSalvo = JSON.stringify(cartItems);   // recém-aberto = salvo (sem alterações ainda)
+  fecharPedidoDrawer();
+  window.navegarPara?.('cmp-alertas');
+  atualizarCarrinho();
+  document.getElementById('cart-panel')?.classList.add('open');
+  showToast(`Pedido #${ped.id} aberto para edição.`);
+}
+
+// Compat: chamadas antigas caem no drawer
+function abrirPedidoParaEditar(id) { return abrirPedidoDrawer(id); }
+
+// Baixar planilha (.xls) do pedido aberto no drawer
+function baixarPedidoXlsDrawer() {
+  if (!pedidoDrawerCache) return;
+  const { ped, itens } = pedidoDrawerCache;
+  const linhas = (itens || []).filter(it => (Number(it.qtd) || 0) > 0 && (it.referencia || '').toString().trim())
+    .map(it => ({ codigo: it.referencia, qtd: Math.round(Number(it.qtd) || 0) }));
+  if (!linhas.length) { showToast('Pedido sem itens com código/quantidade.', 'error'); return; }
+  baixarXlsCodigoQtd(linhas, `pedido_${ped.id}`);
 }
 
 async function excluirPedido(id) {
@@ -4034,7 +4159,8 @@ window.toggleFornHist         = toggleFornHist;
 window.abrirCarrinho          = abrirCarrinho;
 window.toggleCarrinho         = toggleCarrinho;
 window.exportarPedido         = exportarPedido;
-window.baixarPedidoTxt        = baixarPedidoTxt;
+window.baixarPedidoXls        = baixarPedidoXls;
+window.baixarPedidoXlsDrawer  = baixarPedidoXlsDrawer;
 window.incluirNoPedido        = incluirNoPedido;
 window.novoPedido             = novoPedido;
 window.abrirModalSalvarPedido = abrirModalSalvarPedido;
@@ -4043,6 +4169,9 @@ window.salvarPedidoCompra     = salvarPedidoCompra;
 window.loadPedidos            = loadPedidos;
 window.renderPedidos          = renderPedidos;
 window.abrirPedidoParaEditar  = abrirPedidoParaEditar;
+window.abrirPedidoDrawer      = abrirPedidoDrawer;
+window.fecharPedidoDrawer     = fecharPedidoDrawer;
+window.continuarEditandoPedido = continuarEditandoPedido;
 window.excluirPedido          = excluirPedido;
 window.adicionarSelecionados  = adicionarSelecionados;
 window.toggleCheckAll         = toggleCheckAll;
