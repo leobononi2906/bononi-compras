@@ -228,7 +228,7 @@ const PAGINAS_HTML = {
       <button class="btn btn-outline" style="height:36px" onclick="loadAjustes()" title="Recarregar">↻</button>
       <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="aj-resumo"></span>
     </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Ajustes de estoque lançados no ERP (tipo Ajuste, sem vínculo de venda/OS). O <b>% divergente</b> por balanço depende de replicar as tabelas de balanço do ERP (pendência TI).</div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Abre focado em <b>Balanço</b> — o único ajuste que representa perda/sobra real de estoque. Migração, estoque inicial, reclassificação e vínculo de venda/OS <b>não geram movimento financeiro</b> e ficam de fora (troque o motivo acima para vê-los). O <b>% divergente</b> por balanço depende de replicar as tabelas de balanço do ERP (pendência TI).</div>
     <div class="cards-grid cards-grid-4">
       <div class="card"><div class="card-label">Entrou (ajuste +)</div><div class="card-value" id="aj-kpi-entrada" style="color:var(--green)">—</div><div class="card-sub" id="aj-kpi-entrada-qtd">—</div></div>
       <div class="card"><div class="card-label">Saiu (ajuste −)</div><div class="card-value" id="aj-kpi-saida" style="color:var(--red)">—</div><div class="card-sub" id="aj-kpi-saida-qtd">—</div></div>
@@ -2161,7 +2161,7 @@ function setOrdemAjustes(col) {
 function categorizeMotivo(m) {
   const s = (m || '').toUpperCase();
   if (!s.trim()) return 'Sem motivo';
-  if (/BALAN[CÇ]/.test(s)) return 'Balanço';
+  if (/BALAN[CÇ]|CONTAGEM/.test(s)) return 'Balanço';
   if (/INICIAL|INIICAR|INIVIAL|INICIA/.test(s)) return 'Estoque inicial';
   if (/INVERTID|C[OÓ]DIGO/.test(s)) return 'Código invertido';
   if (/TRANSI|INTEGRA|MIGRA|\bM2\b|\bRP\b/.test(s)) return 'Transição de ERP';
@@ -2200,6 +2200,8 @@ async function loadAjustes() {
   if (motSel && motSel.options.length <= 1) {
     [...new Set(ajustesData.map(r => categorizeMotivo(r.motivo)))].sort()
       .forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; motSel.appendChild(o); });
+    // abre já focado em Balanço (é o único ajuste "real"; migração/reclassificação não geram financeiro)
+    if ([...motSel.options].some(o => o.value === 'Balanço')) motSel.value = 'Balanço';
   }
   renderAjustes();
 }
