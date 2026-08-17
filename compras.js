@@ -103,6 +103,11 @@ const PAGINAS_HTML = {
       <input type="text" id="busca-produto" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
       <select id="filtro-grupo" class="filter-select" onchange="onGrupoChange()"><option value="">Todos os grupos</option></select>
       <select id="filtro-subgrupo" class="filter-select" onchange="onFilterChange()"><option value="">Todos os subgrupos</option></select>
+      <div style="display:flex;align-items:center;gap:6px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-sm);height:34px" title="Horizonte de compra: por quantos dias você quer ter estoque. Sugestão = consumo/dia × dias − estoque − pedido em aberto.">
+        <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Comprar p/</span>
+        <input type="number" id="horizonte-compra" min="1" max="365" value="45" onchange="onHorizonteChange()" oninput="onHorizonteChange()" style="width:46px;height:26px;text-align:right;border:1px solid var(--border);border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" />
+        <span style="font-size:12px;color:var(--text-muted)">dias</span>
+      </div>
       <div style="position:relative" id="forn-filtro-wrap">
         <input id="filtro-fornecedor-busca" class="filter-select" style="width:180px" placeholder="Filtrar fornecedor..." 
           oninput="onFornBuscaInput(this.value)" onfocus="onFornBuscaInput(this.value)" autocomplete="off" />
@@ -742,6 +747,22 @@ function setOrdemAlertas(ordem, btn) {
   renderAlertas();
 }
 
+let horizonteCompra = 45;
+function onHorizonteChange() {
+  const v = parseInt(document.getElementById('horizonte-compra')?.value, 10);
+  horizonteCompra = Math.max(1, Math.min(365, isNaN(v) ? 45 : v));
+  paginaAtual = 1;
+  renderAlertas();
+}
+// Sugestão dinâmica pelo horizonte escolhido: consumo/dia (90d, base limpa) × dias − estoque − pedido em aberto.
+// Com horizonte = 45 reproduz o qtd_sugerida da view (retrocompatível). Estoque negativo conta como 0.
+function sugeridaCalc(r) {
+  const consumoDia = Number(r.consumo_diario_total) || 0;
+  const est = Math.max(0, Number(r.estoque_total) || 0);
+  const ped = Number(r.pedido_aberto_total) || 0;
+  return Math.max(0, consumoDia * horizonteCompra - est - ped);
+}
+
 function renderAlertas() {
   const sit = filtroSituacaoAtivo;
   // KPIs do semáforo refletem o mesmo recorte (grupo/subgrupo/fornecedor/busca) da tabela
@@ -760,7 +781,7 @@ function renderAlertas() {
     });
   } else if (ordemAlertas === 'cobertura') { dados.sort((a, b) => dir * ((a.cobertura_dias ?? 99999) - (b.cobertura_dias ?? 99999))); }
   else if (ordemAlertas === 'abc') { dados.sort((a, b) => dir * ((abcMap[a.curva_abc_valor] || 9) - (abcMap[b.curva_abc_valor] || 9))); }
-  else if (ordemAlertas === 'qtd_sugerida') { dados.sort((a, b) => dir * ((a.qtd_sugerida || 0) - (b.qtd_sugerida || 0))); }
+  else if (ordemAlertas === 'qtd_sugerida') { dados.sort((a, b) => dir * (sugeridaCalc(a) - sugeridaCalc(b))); }
   else if (ordemAlertas === 'estoque') { dados.sort((a, b) => dir * ((a.estoque_total || 0) - (b.estoque_total || 0))); }
   else if (ordemAlertas === 'pedido_aberto') { dados.sort((a, b) => dir * ((a.pedido_aberto_total || 0) - (b.pedido_aberto_total || 0))); }
   else if (ordemAlertas === 'nome') { dados.sort((a, b) => dir * (a.nome || '').localeCompare(b.nome || '')); }
@@ -784,18 +805,19 @@ function renderAlertas() {
     const cobTxt = cobDias === null ? '∞' : (cobDias > 999 ? '999+' : fmtQtd(cobDias)) + 'd';
     const cobColor = cobDias === null ? 'var(--text-muted)' : cobDias < 15 ? 'var(--red)' : cobDias < 30 ? 'var(--orange)' : 'var(--green)';
     const noCarrinho = cartItems.some(c => c.id_produto === r.id_produto);
+    const sug = sugeridaCalc(r);
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
       <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${demandaReprimida(r) ? '<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${(r.estoque_total || 0) < 0 ? `0 <span title="Estoque negativo no sistema (${fmtQtd(r.estoque_total, 0)}) — erro de contagem herdado da migração. Tratado como 0 para compras." style="color:var(--orange);font-weight:700;cursor:help">!</span>` : fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
-      <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
+      <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(sug, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
       <td>${(itemCoberto(r) && (r.situacao_estoque === 'RUPTURA' || r.situacao_estoque === 'CRITICO')) ? '<span class="badge badge-blue" title="Sem ação: reposição já pedida e a caminho">🚚 a caminho</span>' : badgeSituacao(r.situacao_estoque)}</td>
       <td onclick="event.stopPropagation()">
         <div style="display:flex;gap:4px;align-items:center;justify-content:flex-end">
-          <input type="number" min="0" value="${noCarrinho ? Math.round((cartItems.find(c => c.id_produto === r.id_produto)?.qtd_pedido) || 0) : Math.max(0, Math.ceil(r.qtd_sugerida || 0))}" id="qtd-in-${r.id_produto}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();incluirNoPedido(${r.id_produto})}" style="width:52px;height:26px;text-align:right;border:1px solid ${noCarrinho ? 'var(--green)' : 'var(--border)'};border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" title="Quantidade a pedir" />
+          <input type="number" min="0" value="${noCarrinho ? Math.round((cartItems.find(c => c.id_produto === r.id_produto)?.qtd_pedido) || 0) : Math.max(0, Math.ceil(sug))}" id="qtd-in-${r.id_produto}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter'){event.preventDefault();incluirNoPedido(${r.id_produto})}" style="width:52px;height:26px;text-align:right;border:1px solid ${noCarrinho ? 'var(--green)' : 'var(--border)'};border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" title="Quantidade a pedir" />
           ${noCarrinho
             ? `<button class="btn btn-primary" style="height:26px;padding:0 7px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Atualizar quantidade no pedido">Atualizar</button><button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px" onclick="removerDoCarrinho(${r.id_produto})" title="Remover do pedido">✕</button>`
             : `<button class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Incluir no pedido">Incluir</button>`}
@@ -4355,6 +4377,7 @@ async function cfgToggleResolvido(id, atual, el) {
 window.onGrupoChange          = onGrupoChange;
 window.onFilterChange         = onFilterChange;
 window.onSearch               = onSearch;
+window.onHorizonteChange      = onHorizonteChange;
 window.filtrarSituacao        = filtrarSituacao;
 window.setOrdemAlertas        = setOrdemAlertas;
 window.irPagina               = irPagina;
