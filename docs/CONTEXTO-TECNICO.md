@@ -1,6 +1,6 @@
 # Contexto Técnico — Bononi Compras
 
-**Atualizado:** 26/07/2026
+**Atualizado:** 16/08/2026
 **Substitui:** todos os contextos de compras dispersos em outras sessões.
 **Base:** commit `794c7e4` (`main`) + mapeamento completo do `compras.js`.
 **Status:** produção, uso diário.
@@ -147,3 +147,30 @@ Login via Supabase Auth + `user_metadata`. Acesso ao módulo: `admin === true` *
 ## 8. Pendências abertas
 
 Ver [DIVIDA-TECNICA.md](DIVIDA-TECNICA.md) — layout, robustez, simplificação de UX e pendências de negócio consolidadas.
+
+---
+
+## 9. Armadilhas da tela de Ajustes de Estoque (`cmp-ajustes`)
+
+**Atualizado 16/08/2026.** Fonte: `vw_fb_mov_estoque` (origem Firebird `TBL_MOV_PROD` + `TBL_ITENS_MOV_PROD`). Filtro fixo da tela: `tipo_mov='A'` (Ajuste), `cancelada='N'`, sem vínculo `id_venda/id_os/id_consumo`.
+
+### Por que abre filtrada em "Balanço"
+O `motivo` do ajuste é **texto livre e muito sujo** (não há campo de "tipo de operação" limpo como o `tipo_entrada` dos fornecedores). Ao agregar todos os ajustes, o número não representa perda/ganho real: **~R$ 3,8 mi é só estoque inicial da migração do RP**, mais reclassificações (desmonte de kit, transferência de centro, correção de código) e movimentos cujo financeiro pertence a uma venda/OS/NF. **Só "Balanço" e "Acerto" são ajuste financeiro real.** Por isso `loadAjustes` seta `aj-motivo = 'Balanço'` por padrão (o dropdown mantém os outros pra investigação).
+
+### `categorizeMotivo(m)` — regras (ordem importa!)
+Classifica por regex sobre o motivo em MAIÚSCULAS, **na ordem**:
+1. `BALAN[CÇ]` ou `CONTAGEM` → **Balanço** (checado 1º de propósito: "AJUSTE REF.BALANCO" tem "AJUSTE" mas deve cair em Balanço, não em Acerto).
+2. `INICIAL|INICIA|...` → Estoque inicial.
+3. `INVERTID|CÓDIGO` → Código invertido.
+4. `TRANSI|INTEGRA|MIGRA|M2|RP` → Transição de ERP.
+5. `ACERTO|AJUSTE|CORRE|CONFER|SOBRA|FALTA` → Acerto/ajuste.
+6. resto → Outros/não classificado.
+
+O balde **"Outros/não classificado"** guarda ~R$ 1 mi de motivos ilegíveis (ex.: `AENKEAJ HSKAHG DKAL` = +R$ 784 mil, que pela cara é estoque inicial digitado errado). **Não dá pra classificar por regra** — precisa de revisão manual no ERP ou de um campo de tipo limpo.
+
+### Um único lançamento de balanço pode ser gigante (não é bug)
+Ex. real: **GELADEIRA STONNI ST 30L (ref 011488)** → uma baixa de **−1.141 un / −R$ 830 mil** (01/06/26, `AJUSTE REF.BALANCO DIA 30/05`, BONONI SC / EMP 8). É o balanço **acertando estoque fantasma da migração do RP** (o sistema tinha 1.141 geladeiras a mais que o físico). O ranking mostra isso corretamente; o valor é grande porque a divergência era grande.
+
+### Pendências de dado (dependem da TI — ver memória `erp-firebird-schema-local`)
+- **% divergente correto** (quanto do contado bateu com o sistema): exige replicar `TBL_BALANCO` + `TBL_ITENS_BALANCO` do Firebird → colunas **`QTD_ANTIGA` (saldo sistema) × `QTD_CONTADA` × `QTD_LANCADA` (ajuste efetivado)**. Hoje o ajuste no Supabase só tem o item divergente, **sem o denominador** (total contado), então o % não é calculável.
+- **Autor do ajuste**: existe em `TBL_MOV_PROD.CHUSUARIO`, mas **não está exposto** em `vw_fb_mov_estoque`. Pedir à TI incluir.

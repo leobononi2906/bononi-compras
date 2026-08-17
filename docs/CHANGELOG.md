@@ -4,6 +4,38 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 16/08/2026 — Ajustes de Estoque abre focado em "Balanço" (o único ajuste financeiro real)
+
+**Contexto (o PORQUÊ):** o Leo bateu o olho no painel e notou que o "líquido" de R$ 2,85 mi não fazia sentido como perda/ganho de estoque. Investigando os motivos reais (texto livre, muito sujo), descobrimos que a maioria dos "ajustes" **não representa perda/ganho financeiro** — é resíduo da **troca de RP** (migração) ou reclassificação.
+
+**Decomposição dos ajustes (01/08/25 → 10/08/26, tipo `A`, sem venda/OS):**
+
+| Categoria | Lçtos | Valor líq. | Gera financeiro? |
+|---|--:|--:|:--:|
+| Migração / estoque inicial | 37 | +R$ 3,83 mi | ❌ semeadura da migração |
+| Transição de ERP | 34 | −R$ 0,35 mi | ❌ migração |
+| Desmonte / kit / produção | 105 | +R$ 0,03 mi | ❌ transforma produto em peça (valor se conserva) |
+| Transf. centro / garantia | 21 | +R$ 0,03 mi | ❌ muda de depósito |
+| Correção cadastro / código invertido | 16 | −R$ 0,28 mi | ❌ entra ~2.238 / sai ~2.175 un, quase anula |
+| Vínculo venda / OS / encomenda | 54 | +R$ 0,02 mi | ❌ financeiro é da venda/OS |
+| Entrada de NF / compra | 19 | +R$ 0,01 mi | ❌ financeiro é a NF |
+| **Balanço / contagem** | **64** | **−R$ 1,16 mi** | ✅ **perda/sobra real** |
+| Acerto / ajuste real | 382 | −R$ 0,31 mi | ✅ acerto real |
+| Outros / ilegível | 244 | +R$ 1,04 mi | ⚠️ garrancho (ex.: `AENKEAJ HSKAHG DKAL` = +R$ 784 mil, pela cara é estoque inicial) — **não dá pra classificar por regra** |
+
+**Decisão do Leo:** seguir **só na parte de balanço**. A tela agora:
+- **Abre já filtrada em "Balanço"** (`aj-motivo` default = `Balanço` em `loadAjustes`). O dropdown continua com todos os motivos pra investigar o resto.
+- `categorizeMotivo` passou a classificar **"CONTAGEM"** como Balanço (além de `BALAN[CÇ]`).
+- Texto de ajuda explica que migração/reclassificação/vínculo **não geram financeiro** e ficam de fora.
+
+**Armadilha confirmada (não é bug):** um único lançamento de balanço pode ser gigante. Ex.: **GELADEIRA STONNI ST 30L (ref 011488)** teve **−1.141 un / −R$ 830 mil** numa só baixa (`AJUSTE REF.BALANCO DIA 30/05`, BONONI SC / EMP 8). É o balanço **acertando o estoque fantasma que a migração do RP deixou** — o sistema achava que tinha 1.141 geladeiras a mais do que existiam. O número é enorme porque a divergência era enorme. **Ver [CONTEXTO-TECNICO.md](CONTEXTO-TECNICO.md) §Armadilhas da tela de Ajustes.**
+
+**Ainda pendente (TI):** o **% divergente correto** (contado ÷ saldo do sistema) exige replicar `TBL_BALANCO` + `TBL_ITENS_BALANCO` do Firebird (colunas `QTD_ANTIGA` × `QTD_CONTADA` × `QTD_LANCADA`). Hoje o ajuste só grava o item divergente, sem o denominador.
+
+Commits: classificação/balanço default.
+
+---
+
 ## 07/08/2026 — nova aba "Ajustes de Estoque"
 
 - Nova tela **🩹 Ajustes de Estoque** (fonte `vw_fb_mov_estoque`, tipo `A`, sem vínculo de venda/OS): ~957 ajustes/12 meses.
