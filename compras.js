@@ -1223,18 +1223,16 @@ async function loadDrawerGiro(idProduto) {
     const inicio180 = new Date(hoje); inicio180.setDate(hoje.getDate() - 180);
     const inicio180Str = inicio180.toISOString().slice(0, 10);
 
-    const [rVendas, rOs, rCompras] = await Promise.all([
-      sb.from('vw_giro_saidas_unificado')
-        .select('data_faturamento, qtd')
+    const [rSaidas, rCompras] = await Promise.all([
+      // Saídas LIMPAS: M2 (histórico) + sistema deduplicado (mesma base da tela/sugestão em comp_consumo_limpo).
+      // Antes somava vw_giro_saidas_unificado + vw_os_pecas_faturadas → contava OS 2x e herdava fan-out.
+      sb.from('comp_saidas_limpo')
+        .select('data_faturamento:data_saida, qtd')
         .eq('id_produto', idProduto)
-        .gte('data_faturamento', inicio365Str)
+        .gte('data_saida', inicio365Str)
         .range(0, 9999),
-      sb.from('vw_os_pecas_faturadas')
-        .select('data_faturamento, qtd')
-        .eq('id_produto', idProduto)
-        .gte('data_faturamento', inicio365Str)
-        .range(0, 9999),
-      sb.from('vw_fb_historico_compras')
+      // Compras LIMPAS: deduplicadas por (id_compra, id_item_compra) — mata o fan-out da view do ERP.
+      sb.from('comp_compras_hist_limpo')
         .select('data_compra,qtd,tipo_entrada,cfop,id_fornecedor,mov_estoque')
         .eq('id_produto', idProduto)
         .eq('mov_estoque', 'S')
@@ -1242,7 +1240,7 @@ async function loadDrawerGiro(idProduto) {
         .range(0, 9999),
     ]);
 
-    const todasSaidas = [...(rVendas.data||[]), ...(rOs.data||[])];
+    const todasSaidas = (rSaidas.data || []);
     const vendidosPeriodo = (dias) => {
       const limite = new Date(hoje); limite.setDate(hoje.getDate() - dias);
       const limStr = limite.toISOString().slice(0,10);
