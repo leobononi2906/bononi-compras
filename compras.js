@@ -617,7 +617,7 @@ function onFornBuscaInput(valor) {
     }
   });
   const resultados = [...fornSet.entries()]
-    .filter(([id, nome]) => !v || nome.toLowerCase().includes(v))
+    .filter(([id, nome]) => !v || nome.toLowerCase().includes(v) || String(id).includes(v))
     .sort((a,b) => a[1].localeCompare(b[1]))
     .slice(0, 30);
   if (!resultados.length) { drop.style.display = 'none'; return; }
@@ -626,8 +626,9 @@ function onFornBuscaInput(valor) {
     const sel = fornSelecionados.has(id);
     return `<div onclick="toggleFornSelecionado(${id},'${nome.replace(/'/g,"\\'")}')"
       style="padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;${sel?'background:var(--blue-pale)':''}"
-      onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='${sel?'var(--blue-pale)':''}'">  
+      onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='${sel?'var(--blue-pale)':''}'">
       <span style="font-size:14px">${sel?'\xe2\x9c\x93':'◡'}</span>
+      <span style="font-family:'DM Mono',monospace;color:var(--blue-mid);font-size:11px;min-width:48px;text-align:right;font-weight:600">${id}</span>
       <span>${nome}</span>
     </div>`;
   }).join('');
@@ -651,8 +652,8 @@ function renderFornChips() {
   if (!el) return;
   if (!fornSelecionados.size) { el.innerHTML = ''; return; }
   el.innerHTML = [...fornSelecionados.entries()].map(([id, nome]) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:20px;padding:2px 8px 2px 10px;font-size:11px;font-weight:600;color:var(--blue-dark)">
-      ${nome.length > 20 ? nome.slice(0,20)+'...' : nome}
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:20px;padding:2px 8px 2px 10px;font-size:11px;font-weight:600;color:var(--blue-dark)" title="${id} · ${nome}">
+      <span style="font-family:'DM Mono',monospace">${id}</span> ${nome.length > 18 ? nome.slice(0,18)+'...' : nome}
       <button onclick="toggleFornSelecionado(${id},'${nome.replace(/'/g,"\\'")}')"
         style="background:none;border:none;cursor:pointer;color:var(--blue-mid);font-size:13px;padding:0;line-height:1">×</button>
     </span>`
@@ -823,7 +824,7 @@ function renderAlertas() {
             : `<button class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Incluir no pedido">Incluir</button>`}
         </div>
       </td>
-      <td style="font-size:12px;color:var(--text-secondary);max-width:160px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome_fornecedor}">${f.nome_fornecedor}</div>`).join('') || '—'}</td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:180px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.id_fornecedor} · ${f.nome_fornecedor}"><span style="font-family:'DM Mono',monospace;color:var(--blue-mid);font-size:10px">${f.id_fornecedor}</span> ${f.nome_fornecedor}</div>`).join('') || '—'}</td>
     </tr>`;
   }).join('');
   renderPaginacao(paginaAtual, totalPaginas, total);
