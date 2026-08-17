@@ -788,7 +788,7 @@ function renderAlertas() {
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
       <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${demandaReprimida(r) ? '<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
-      <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
+      <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${(r.estoque_total || 0) < 0 ? `0 <span title="Estoque negativo no sistema (${fmtQtd(r.estoque_total, 0)}) — erro de contagem herdado da migração. Tratado como 0 para compras." style="color:var(--orange);font-weight:700;cursor:help">!</span>` : fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(r.qtd_sugerida, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
@@ -1538,7 +1538,8 @@ async function loadDrawerHistorico(idProduto) {
 
   try {
     const [rVendas, rOsPecas, rCompras, rMov, rOsBase] = await Promise.all([
-      sb.from('vw_comercial_itens_faturados').select('id_doc,tipo_saida,data_faturamento,empresa,qtd,vl_unit').eq('id_produto', idProduto).order('data_faturamento', { ascending: false }).range(0, 9999),
+      // O.S. sai daqui: já vem por vw_os_pecas_faturadas (e a parte de O.S. desta view é instável/fan-out no ERP)
+      sb.from('vw_comercial_itens_faturados').select('id_doc,tipo_saida,data_faturamento,empresa,qtd,vl_unit').eq('id_produto', idProduto).neq('tipo_saida', 'O.S.').order('data_faturamento', { ascending: false }).range(0, 9999),
       sb.from('vw_os_pecas_faturadas').select('id_os,data_faturamento,empresa,qtd,vl_unit').eq('id_produto', idProduto).order('data_faturamento', { ascending: false }).range(0, 9999),
       sb.from('vw_fb_historico_compras')
         .select('data_compra,nome_fornecedor,num_nf,qtd,vl_unit,valor_total,lead_time_dias,tipo_entrada,cfop,mov_estoque')
@@ -1580,8 +1581,16 @@ async function loadDrawerHistorico(idProduto) {
       itens.push({ data: r.data_mov, tipo_es: r.tipo_es, icon, label, origem: label, empresa: r.empresa, qtd: Math.abs(r.qtd || 0) });
     });
 
-    itens.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
-    let dados = itens;
+    // Dedup defensivo — as views de OS/comercial do ERP fazem fan-out de JOIN (duplicam linhas).
+    // A chave inclui o nº do doc/OS (dentro de `origem`), então 2 vendas diferentes NÃO colapsam;
+    // só some a duplicata exata (mesmo doc/OS, mesma data/empresa/qtd) = o bug, não um 2º movimento real.
+    const _vistos = new Set();
+    const itensUnicos = itens.filter(r => {
+      const k = `${r.data}|${r.tipo_es}|${r.origem}|${r.empresa}|${r.qtd}`;
+      if (_vistos.has(k)) return false; _vistos.add(k); return true;
+    });
+    itensUnicos.sort((a, b) => (b.data || '').localeCompare(a.data || ''));
+    let dados = itensUnicos;
     if (histFiltro === 'entradas') dados = itens.filter(r => r.tipo_es === 'E');
     if (histFiltro === 'saidas')   dados = itens.filter(r => r.tipo_es === 'S');
     if (!dados.length) { if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Sem movimenta\u00e7\u00f5es</td></tr>'; return; }
