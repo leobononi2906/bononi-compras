@@ -1198,12 +1198,13 @@ async function loadDrawerResumo(prod) {
 }
 
 // Pedido de compra em aberto (a caminho) — mesmo filtro da view: cancelado=N, gerou_nf=N, status=F
+/* pedidos: sempre via comp_pedidos_compra_limpo (dedup do fan-out da view do ERP) */
 async function loadDrawerPedidoAberto(idProduto) {
   const box = document.getElementById('dr-pedido-aberto-info');
   if (!box) return;
   box.innerHTML = ''; box.style.display = 'none';
   try {
-    const { data } = await sb.from('vw_fb_pedidos_compra')
+    const { data } = await sb.from('comp_pedidos_compra_limpo')
       .select('id_pedido,data_pedido,data_prev_recebimento,nome_fornecedor,qtd_solicitada')
       .eq('id_produto', idProduto).eq('pedido_cancelado', 'N').eq('gerou_nf', 'N').eq('status_pedido', 'F')
       .order('data_pedido', { ascending: false });
@@ -1661,8 +1662,11 @@ async function loadDrawerEstoque(idProduto) {
   const tbody = document.getElementById('dr-estoque-body');
   if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Carregando...</td></tr>';
   try {
-    const { data } = await sb.from('vw_fb_estoque_centro').select('empresa,centro_estoque,estoque,preco_compra,centro_padrao,centro_situacao').eq('id_produto', idProduto).order('empresa').range(0, 199);
-    if (!data?.length) { if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Sem dados de estoque</td></tr>'; return; }
+    const { data: raw } = await sb.from('vw_fb_estoque_centro').select('id_empresa,id_centro_estoque,empresa,centro_estoque,estoque,preco_compra,centro_padrao,centro_situacao').eq('id_produto', idProduto).order('empresa').range(0, 199);
+    // dedup do fan-out da view do ERP: 1 linha por (empresa, centro)
+    const _seenCentro = new Set();
+    const data = (raw || []).filter(r => { const k = `${r.id_empresa}|${r.id_centro_estoque}`; if (_seenCentro.has(k)) return false; _seenCentro.add(k); return true; });
+    if (!data.length) { if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Sem dados de estoque</td></tr>'; return; }
     if (tbody) tbody.innerHTML = data.map(r => {
       const est = r.estoque || 0;
       const cor = est < 0 ? 'var(--orange)' : est === 0 ? 'var(--text-muted)' : 'var(--text-primary)';
@@ -3035,7 +3039,7 @@ async function loadImpProdutos() {
     pedidosVinc.forEach(pv => { pedidoParaProcesso[pv.numero_pedido] = pv.processo_id; });
 
     // Busca produtos dos pedidos
-    const { data: prods } = await sb.from('vw_fb_pedidos_compra')
+    const { data: prods } = await sb.from('comp_pedidos_compra_limpo')
       .select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,empresa')
       .in('id_pedido', numerosUnicos)
       .range(0, 9999);
@@ -3291,13 +3295,13 @@ async function loadImpTabInfo(p) {
     const {data:pedidos} = await sb.from('import_pedidos').select('*').eq('processo_id',p.id).order('criado_em');
     const numPedidos = (pedidos||[]).map(x => x.numero_pedido);
     if (numPedidos.length > 0) {
-      const {data:prods} = await sb.from('vw_fb_pedidos_compra').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,id_fornecedor').in('id_pedido', numPedidos).range(0,999);
+      const {data:prods} = await sb.from('comp_pedidos_compra_limpo').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,id_fornecedor').in('id_pedido', numPedidos).range(0,999);
       // Extrai fornecedor único — tenta dos prods, senão usa o do processo
       if (prods?.length) {
         fornPedido = { nome: prods[0].nome_fornecedor||'—', id: prods[0].id_fornecedor||'—' };
       } else if (numPedidos.length > 0) {
         // prods veio vazio mas tem pedido — busca direto sem filtro de produto
-        const {data:pedForn} = await sb.from('vw_fb_pedidos_compra')
+        const {data:pedForn} = await sb.from('comp_pedidos_compra_limpo')
           .select('id_pedido,nome_fornecedor,id_fornecedor')
           .in('id_pedido', numPedidos).limit(1);
         if (pedForn?.length) fornPedido = { nome: pedForn[0].nome_fornecedor||'—', id: pedForn[0].id_fornecedor||'—' };
@@ -3671,11 +3675,11 @@ async function buscarPedidoERP(valor, processoId) {
       // Busca numérica: traz TODOS os itens do pedido pelo id (sem limite de 100)
       // Busca por referência: limit 200 para não travar
       const { data } = isNumerico
-        ? await sb.from('vw_fb_pedidos_compra')
+        ? await sb.from('comp_pedidos_compra_limpo')
             .select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,empresa,status_pedido')
             .eq('id_pedido', valorNum)
             .range(0, 9999)
-        : await sb.from('vw_fb_pedidos_compra')
+        : await sb.from('comp_pedidos_compra_limpo')
             .select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,empresa,status_pedido')
             .ilike('referencia', `%${valor.trim()}%`)
             .range(0, 199);
