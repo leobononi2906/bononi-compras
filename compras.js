@@ -192,7 +192,7 @@ const PAGINAS_HTML = {
   <div class="cart-panel" id="cart-panel">
     <div class="cart-header" onclick="toggleCarrinho()" title="Clique para expandir/recolher"><div class="cart-title">🛒 Pedido em Andamento <span class="cart-count" id="cart-count">0</span></div><div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace" id="cart-total-valor">R$ 0</span><span id="cart-chevron" style="font-size:12px;color:var(--text-muted)">▼</span></div></div>
     <div id="cart-body" style="flex:1;overflow-y:auto;display:none"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Sugerido</th><th class="right">Pedido</th><th class="right">Vl Unit</th><th class="right">Total</th><th></th></tr></thead><tbody id="cart-items-body"></tbody></table></div></div>
-    <div class="cart-footer" id="cart-foot" style="display:none"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-primary" onclick="baixarPedidoXls()" title="Planilha .xls (codigo/quantidade) que o ERP importa">↓ .xls (ERP)</button><button class="btn btn-outline" onclick="exportarPedido()" title="Relatório completo em CSV">↓ Relatório</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
+    <div class="cart-footer" id="cart-foot" style="display:none"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-primary" onclick="baixarPedidoXls()" title="Planilha .xls (codigo/quantidade) que o ERP importa">↓ .xls (ERP)</button><button class="btn btn-outline" onclick="exportarPedido()" title="Relatório completo em CSV">↓ Relatório</button><button class="btn btn-outline" onclick="cancelarPedido()" title="Descartar o pedido em andamento (não salva nada)" style="color:var(--red);border-color:var(--red)">🗑️ Cancelar</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
   </div>
   <div id="modal-salvar-pedido" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1200;align-items:center;justify-content:center">
     <div style="background:var(--surface);border-radius:10px;max-width:440px;width:92%;box-shadow:var(--shadow-lg);overflow:hidden">
@@ -1251,7 +1251,7 @@ async function loadDrawerGiro(idProduto) {
       sb.from('comp_saidas_limpo')
         .select('data_faturamento:data_saida, qtd')
         .eq('id_produto', idProduto)
-        .gte('data_saida', inicio365Str)
+        .gte('data_saida', '2024-11-01')
         .range(0, 9999),
       // Compras LIMPAS: deduplicadas por (id_compra, id_item_compra) — mata o fan-out da view do ERP.
       sb.from('comp_compras_hist_limpo')
@@ -1324,6 +1324,38 @@ async function loadDrawerGiro(idProduto) {
       { label: '1 mês',    total: v30,             media: v30,     cor: 'var(--red)' },
     ];
 
+    // Sazonalidade: vendas por mês do ano, uma cor por ano (compara o mesmo mês entre anos).
+    // Usa todo o histórico disponível (M2 desde nov/24 + sistema limpo).
+    const mesLabelsSaz = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const porAno = {};
+    todasSaidas.forEach(r => {
+      const d = r.data_faturamento || '';
+      if (d.length < 7) return;
+      const y = +d.slice(0, 4), mi = (+d.slice(5, 7)) - 1;
+      if (!porAno[y]) porAno[y] = new Array(12).fill(0);
+      porAno[y][mi] += Math.abs(parseFloat(r.qtd) || 0);
+    });
+    const anosSaz = Object.keys(porAno).map(Number).sort();
+    const maxSaz = Math.max(1, ...anosSaz.flatMap(y => porAno[y]));
+    const paletaSaz = ['#94A3B8', '#0077CC', '#16A34A', '#F59E0B', '#8B5CF6'];
+    const corAno = {}; anosSaz.forEach((y, i) => corAno[y] = paletaSaz[i % paletaSaz.length]);
+    const chartSazonalHTML = anosSaz.length ? `
+      <div class="chart-card" style="margin-top:12px">
+        <div class="chart-header"><span class="chart-title">Vendas por mês — comparando anos</span>
+          <span style="font-size:11px;color:var(--text-muted)">${anosSaz.map(y => `<span style="color:${corAno[y]};font-weight:700">■</span> ${y}`).join('&nbsp;&nbsp;')}</span>
+        </div>
+        <div style="display:flex;gap:5px;align-items:flex-end;padding:10px 4px 0">
+          ${mesLabelsSaz.map((ml, mi) => `
+            <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+              <div style="display:flex;align-items:flex-end;gap:2px;height:96px">
+                ${anosSaz.map(y => { const v = porAno[y][mi]; const h = Math.round(v / maxSaz * 92); return `<div title="${ml}/${y}: ${fmtQtd(v, 0)}" style="width:7px;height:${Math.max(v > 0 ? 3 : 0, h)}px;background:${corAno[y]};border-radius:2px 2px 0 0"></div>`; }).join('')}
+              </div>
+              <div style="font-size:9px;color:var(--text-muted)">${ml}</div>
+            </div>`).join('')}
+        </div>
+        <div style="font-size:10px;color:var(--text-muted);text-align:center;margin-top:6px">passe o mouse nas barras pra ver o número · histórico desde nov/24</div>
+      </div>` : '';
+
     container.innerHTML = `
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px">
         ${periodos.map(p => `
@@ -1372,7 +1404,8 @@ async function loadDrawerGiro(idProduto) {
             </tbody>
           </table>
         </div>
-      </div>`;
+      </div>
+      ${chartSazonalHTML}`;
   } catch(e) {
     const c = document.getElementById('dtab-giro-inner');
     if (c) c.innerHTML = '<div style="text-align:center;padding:20px;color:var(--red)">Erro ao carregar giro</div>';
@@ -1835,6 +1868,19 @@ function novoPedido() {
   atualizarCarrinho();
   renderAlertas();
   showToast('Novo pedido iniciado.');
+}
+
+// Cancelar = descartar o pedido em andamento sem salvar nada (a pedido do Leo).
+function cancelarPedido() {
+  if (!cartItems.length) { showToast('Não há pedido em andamento.'); return; }
+  if (!confirm('Cancelar o pedido em andamento? Os itens serão descartados (não salva nada).')) return;
+  cartItems = [];
+  pedidoAtualId = null;
+  pedidoAtualCriadoEm = null;
+  cartSnapshotSalvo = '';
+  atualizarCarrinho();
+  renderAlertas();
+  showToast('Pedido cancelado.');
 }
 
 function abrirModalSalvarPedido() {
@@ -4393,6 +4439,7 @@ window.baixarPedidoXls        = baixarPedidoXls;
 window.baixarPedidoXlsDrawer  = baixarPedidoXlsDrawer;
 window.incluirNoPedido        = incluirNoPedido;
 window.novoPedido             = novoPedido;
+window.cancelarPedido         = cancelarPedido;
 window.abrirModalSalvarPedido = abrirModalSalvarPedido;
 window.fecharModalSalvarPedido = fecharModalSalvarPedido;
 window.salvarPedidoCompra     = salvarPedidoCompra;
