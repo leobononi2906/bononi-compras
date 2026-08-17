@@ -4,6 +4,32 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 17/08/2026 — 🚨 Consumo/sugestão estava inflado ~3× (fan-out das views do ERP) — CORRIGIDO
+
+**Descoberta (o Charles reportou dup na compra; investigando achamos algo bem maior):** as views de saída/compra do ERP fazem **fan-out de JOIN** — multiplicam linhas na consulta. Não é linha duplicada na tabela base (por isso "tirar duplicatas" na origem **não resolve**; é o JOIN da view). É **não-determinístico** (a mesma peça deu 8×, 3×, 4× em consultas seguidas).
+
+**Impacto medido:** o consumo que alimenta a **sugestão de compra** vinha ~3× inflado. No catálogo: sugestão **antes R$ 376.992 / 18.036 un** → **depois R$ 118.824 / 5.823 un**. Ou seja, o sistema mandava comprar **~R$ 258 mil a mais** que a demanda real (mesmos itens, 3× a quantidade). Peça 016738: consumo/dia 0,40→**0,167**, saídas 12m 142→**66**, compras 12m 80→**40**.
+
+**Chaves de dedup descobertas (a linha real):**
+- `vw_os_pecas_faturadas` e `vw_comercial_itens_faturados`: dedup por **`id_item`** (o `id` é sequencial por linha de saída, NÃO deduplica). E a **O.S. sai do comercial** (já vem por os_pecas — senão conta 2×).
+- `vw_fb_historico_compras`: dedup por **(`id_compra`, `id_item_compra`)**.
+
+**Views novas/alteradas (produção):**
+- `comp_consumo_limpo` (nova) — consumo deduplicado: M2 (histórico limpo, até out/25) + sistema nov/25+ deduplicado, O.S. só via os_pecas.
+- `comp_produtos_consolidado` (alterada) — passou a ler `comp_consumo_limpo` no lugar de `vw_consumo_unificado`. **Frontend não mudou** (mesmas colunas). Motor de Alertas/sugestão.
+- `comp_saidas_limpo` (nova) — saídas nível-linha deduplicadas, pro gráfico/cards do drawer.
+- `comp_compras_hist_limpo` (nova) — `SELECT DISTINCT` de `vw_fb_historico_compras` por linha, pro drawer.
+
+**Frontend:** `loadDrawerGiro` lê `comp_saidas_limpo` + `comp_compras_hist_limpo` (antes 3 views cruas, contava OS 2×). `loadDrawerHistorico` já tinha dedup em JS (commit anterior). Só precisa **F5**.
+
+**De onde vem o "consumo" (pra o handoff):** saídas dos últimos 365/90 dias, costurando 2 épocas — **até out/25** vem da planilha mensal do ERP antigo (tabela `comp_historico_m2`, limpa) e **de nov/25 pra cá** vem ao vivo de *vendas faturadas* (`vw_comercial_itens_faturados`, loja/online/dist) + *peças de OS* (`vw_os_pecas_faturadas`). A inflação estava só na parte "ao vivo".
+
+**Pendências:**
+- **TI (origem):** corrigir o JOIN que multiplica em `vw_os_pecas_faturadas` e na parte O.S. da `vw_comercial_itens_faturados`, senão qualquer outro relatório que use elas direto continua inflado.
+- **App:** o ranking de **Fornecedores** (Totais) usa `comp_lead_time_forn`, que soma `vw_fb_historico_compras` cru → provavelmente inflado; repontar pra `comp_compras_hist_limpo`.
+
+---
+
 ## 16/08/2026 — Ajustes de Estoque abre focado em "Balanço" (o único ajuste financeiro real)
 
 **Contexto (o PORQUÊ):** o Leo bateu o olho no painel e notou que o "líquido" de R$ 2,85 mi não fazia sentido como perda/ganho de estoque. Investigando os motivos reais (texto livre, muito sujo), descobrimos que a maioria dos "ajustes" **não representa perda/ganho financeiro** — é resíduo da **troca de RP** (migração) ou reclassificação.
