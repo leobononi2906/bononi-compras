@@ -116,7 +116,16 @@ const PAGINAS_HTML = {
       <div id="forn-selecionados-chips" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
       <button class="btn" onclick="abrirChat()" style="margin-left:auto;background:linear-gradient(135deg,#1A3A8F,#0077CC);color:#fff;height:34px;padding:0 14px;gap:6px">✦ Assistente IA</button>
     </div>
-    <div class="section-title" style="margin-top:20px">Produtos — <span id="alertas-count">carregando...</span></div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary)">
+      <span style="font-weight:600;color:var(--text-muted)">Mostrar:</span>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Mostra todos os produtos, sem filtrar por status."><input type="checkbox" id="st-todos" checked onchange="marcarTodosStatus()" style="cursor:pointer"> Todos</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Sem estoque (ou estoque negativo) e com giro — comprar já."><input type="checkbox" class="st-check" value="RUPTURA" onchange="onStatusCheck(this)" style="cursor:pointer"> 🔴 Ruptura</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Cobertura abaixo de 15 dias — o estoque acaba logo, comprar com urgência."><input type="checkbox" class="st-check" value="CRITICO" onchange="onStatusCheck(this)" style="cursor:pointer"> 🟠 Crítico</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Cobertura entre 15 e 30 dias — começar a planejar a compra."><input type="checkbox" class="st-check" value="BAIXO" onchange="onStatusCheck(this)" style="cursor:pointer"> 🟡 Baixo</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Cobertura acima de 30 dias — estoque saudável, sem necessidade de compra."><input type="checkbox" class="st-check" value="OK" onchange="onStatusCheck(this)" style="cursor:pointer"> 🟢 OK</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Não vende há mais de 90 dias. Pode ter estoque parado (tem produto mas não gira — dinheiro parado) ou nunca ter girado (só cadastro)."><input type="checkbox" class="st-check" value="SEM_MOVIMENTO" onchange="onStatusCheck(this)" style="cursor:pointer"> ⚪ Sem movimento</label>
+    </div>
+    <div class="section-title" style="margin-top:16px">Produtos — <span id="alertas-count">carregando...</span></div>
     <div class="table-card">
       <div class="table-card-header">
         <span style="font-size:12px;color:var(--text-muted)">↕ Clique nas colunas para ordenar</span>
@@ -422,7 +431,7 @@ let alertasData = [];
 let alertasFiltrados = [];
 let ordemAlertas = 'prioridade';
 let ordemDir = 'desc';
-let filtroSituacaoAtivo = '';
+let filtroStatus = new Set(); // vazio = mostra Todos; senão, só os status marcados
 let cartItems = [];
 let pedidoAtualId = null;   // pedido de compra em edição (null = pedido novo)
 let pedidoAtualCriadoEm = null;  // data de criação do pedido em edição
@@ -726,12 +735,30 @@ function onSearch() { paginaAtual = 1; renderAlertas(); }
 const SEMAFORO_CLASSE = { RUPTURA: 'ruptura', CRITICO: 'critico', BAIXO: 'baixo', OK: 'ok', SEM_MOVIMENTO: 'sem_mov' };
 // Sincroniza o destaque dos cards a partir do estado (fonte única) — evita desync que travava o "desmarcar"
 function sincronizarSemaforo() {
-  document.querySelectorAll('.semaforo-card').forEach(c => c.classList.remove('active'));
-  const cls = SEMAFORO_CLASSE[filtroSituacaoAtivo];
-  if (cls) document.querySelector('.semaforo-card.' + cls)?.classList.add('active');
+  document.querySelectorAll('.semaforo-card').forEach(c => {
+    const st = Object.keys(SEMAFORO_CLASSE).find(k => SEMAFORO_CLASSE[k] === [...c.classList].find(cl => Object.values(SEMAFORO_CLASSE).includes(cl)));
+    c.classList.toggle('active', !!st && filtroStatus.has(st));
+  });
+  // mantém os checkboxes em sincronia com o estado
+  document.querySelectorAll('.st-check').forEach(cb => { cb.checked = filtroStatus.has(cb.value); });
+  const todos = document.getElementById('st-todos'); if (todos) todos.checked = filtroStatus.size === 0;
 }
+// Clique no card do semáforo = seleção única daquele status (toggle). Fonte única = filtroStatus.
 function filtrarSituacao(sit) {
-  filtroSituacaoAtivo = (filtroSituacaoAtivo === sit) ? '' : sit;
+  if (filtroStatus.size === 1 && filtroStatus.has(sit)) filtroStatus.clear();
+  else { filtroStatus.clear(); filtroStatus.add(sit); }
+  paginaAtual = 1;
+  renderAlertas();
+}
+// Checkbox individual de status
+function onStatusCheck(cb) {
+  if (cb.checked) filtroStatus.add(cb.value); else filtroStatus.delete(cb.value);
+  paginaAtual = 1;
+  renderAlertas();
+}
+// "Todos" limpa o filtro (mostra tudo)
+function marcarTodosStatus() {
+  filtroStatus.clear();
   paginaAtual = 1;
   renderAlertas();
 }
@@ -765,12 +792,11 @@ function sugeridaCalc(r) {
 }
 
 function renderAlertas() {
-  const sit = filtroSituacaoAtivo;
   // KPIs do semáforo refletem o mesmo recorte (grupo/subgrupo/fornecedor/busca) da tabela
   atualizarKPIs();
   sincronizarSemaforo();
   let dados = baseFiltradaAlertas();
-  if (sit) dados = dados.filter(r => r.situacao_estoque === sit);
+  if (filtroStatus.size) dados = dados.filter(r => filtroStatus.has(r.situacao_estoque));
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
   const abcMap  = { A: 1, B: 2, C: 3 };
   const dir = ordemDir === 'asc' ? 1 : -1;
@@ -1233,6 +1259,20 @@ async function loadDrawerPedidoAberto(idProduto) {
   } catch (_) { box.innerHTML = ''; }
 }
 
+// Um bloco (6 meses) da tabela Saídas×Compras — usado 2x pra caber no drawer sem rolar.
+function renderGiroBloco(arr) {
+  return `<table style="border-collapse:collapse;font-size:12px;width:100%;table-layout:fixed;margin-bottom:6px">
+    <thead><tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.3px">
+      <th style="text-align:left;padding:4px 6px;width:52px"></th>
+      ${arr.map(m => `<th style="text-align:right;padding:4px 6px;font-weight:600">${m.label}</th>`).join('')}
+    </tr></thead>
+    <tbody>
+      <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color:var(--blue-dark)">Saídas</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}</tr>
+      <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color:var(--green)">Compras</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>`).join('')}</tr>
+    </tbody>
+  </table>`;
+}
+
 async function loadDrawerGiro(idProduto) {
   const container = document.getElementById('dtab-giro-inner');
   if (!container) return;
@@ -1386,25 +1426,9 @@ async function loadDrawerGiro(idProduto) {
 
       <div class="chart-card">
         <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span><span style="font-size:11px;color:var(--text-muted)">Σ Saídas <b style="color:var(--blue-dark)">${fmtQtd(totalVendido12m,0)}</b> · Compras <b style="color:var(--green)">${fmtQtd(totalComprado,0)}</b></span></div>
-        <div style="overflow-x:auto">
-          <table style="border-collapse:collapse;font-size:12px;white-space:nowrap">
-            <thead>
-              <tr style="color:var(--text-muted);font-size:10px;text-transform:uppercase;letter-spacing:.3px">
-                <th style="text-align:left;padding:4px 8px;font-weight:600;position:sticky;left:0;background:var(--surface)"></th>
-                ${meses.map(m => `<th style="text-align:right;padding:4px 8px;font-weight:600">${m.label}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              <tr style="border-top:1px solid var(--border)">
-                <td style="text-align:left;padding:5px 8px;font-weight:600;color:var(--blue-dark);position:sticky;left:0;background:var(--surface)">Saídas</td>
-                ${meses.map(m => `<td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}
-              </tr>
-              <tr style="border-top:1px solid var(--border)">
-                <td style="text-align:left;padding:5px 8px;font-weight:600;color:var(--green);position:sticky;left:0;background:var(--surface)">Compras</td>
-                ${meses.map(m => `<td class="mono" style="text-align:right;padding:5px 8px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>`).join('')}
-              </tr>
-            </tbody>
-          </table>
+        <div>
+          ${renderGiroBloco(meses.slice(0, 6))}
+          ${renderGiroBloco(meses.slice(6))}
         </div>
       </div>
       ${chartSazonalHTML}`;
@@ -4430,6 +4454,8 @@ window.onFilterChange         = onFilterChange;
 window.onSearch               = onSearch;
 window.onHorizonteChange      = onHorizonteChange;
 window.filtrarSituacao        = filtrarSituacao;
+window.onStatusCheck          = onStatusCheck;
+window.marcarTodosStatus      = marcarTodosStatus;
 window.setOrdemAlertas        = setOrdemAlertas;
 window.irPagina               = irPagina;
 window.abrirProduto           = abrirProduto;
