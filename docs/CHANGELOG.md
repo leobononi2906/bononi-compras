@@ -4,6 +4,51 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 17/08/2026 (2ª rodada) — estoque/pedido também estavam fanados (5×); status por checkbox; sazonalidade; fornecedor principal
+
+Continuação da investigação do fan-out (ver seção abaixo). Depois de corrigir consumo/saída/compra, o Charles reportou que a **quantidade do pedido** também duplicava (print do app: pedido 2102 aparecendo 5×) — e junto o **estoque** também estava errado (print do ERP: `Estoque Produto` mostrando os mesmos campos repetidos).
+
+**Achado — estoque estava 5× inflado no catálogo inteiro (o mais grave de todos):**
+- `vw_fb_produtos_compras` devolvia **15 linhas** para um produto que só existe em **3 empresas** (5 cópias cada). Catálogo inteiro: view crua somava **3.544.005 un**, real (deduplicado por `produto+empresa`) = **708.801 un**.
+- **Efeito perverso:** estoque inflado ⇒ o motor achava que tinha *mais* estoque do que existe ⇒ **sugeria comprar de menos** — o oposto do bug de consumo (que sugeria comprar demais). Os dois erros se mascaravam parcialmente.
+- **Pedido de compra também 5×:** `vw_fb_pedidos_compra` devolvia 5 linhas por item de pedido (pedido 2102: real 100 un, view crua somava 500 un). Isso inflava o "pedido em aberto" e subtraía demais da sugestão.
+
+**Views novas (produção):**
+- `comp_pedidos_compra_limpo` — dedup por (`id_pedido`, `id_item_pedido`).
+- `comp_produtos_consolidado` (recriada) — estoque agora deduplicado por `DISTINCT ON (id_produto, id_empresa)` antes de somar; pedido em aberto via `comp_pedidos_compra_limpo`.
+- Frontend: aba Estoque do drawer deduplicada por (empresa, centro); todas as leituras de pedido apontam para a view limpa.
+
+**Sugestão do catálogo — evolução conforme cada camada foi limpa (horizonte 45d):**
+| Estado | Sugestão |
+|---|--:|
+| Tudo fanado (consumo 3× + estoque 5×) | ~R$ 377k |
+| Só consumo limpo (estoque ainda 5×) | R$ 119k *(estoque fantasma segurava a compra)* |
+| **Consumo + estoque + pedido limpos** | **R$ 264k** ✅ número real |
+
+**Nova carga do ERP (mesmo dia, à tarde) corrigiu PARCIALMENTE na origem:** reconferimos e **estoque e pedido pararam de multiplicar** (fanado = limpo agora). Só a view de **saída/OS continua fanando** (piorou: 8× numa amostra). As views limpas do app permanecem — funcionam como blindagem permanente contra o fan-out voltar (já foi instável: 3×→4×→5×→8× em consultas seguidas do mesmo dia).
+
+**UI — pedidos explícitos do Leo, entregues:**
+- **Filtro de status por checkbox** (multi-seleção): Todos / 🔴 Ruptura / 🟠 Crítico / 🟡 Baixo / 🟢 OK / ⚪ Sem movimento — cada um com **tooltip explicando o critério** (equipe de Compras não é técnica, tudo precisa ser auto-explicativo). Unificado com os cards do semáforo (mesma fonte de estado, `filtroStatus`).
+- **Horizonte "Comprar p/ X dias"** (já existia no topo) confirmado dinâmico: muda os dias → recalcula a Qtd Sugerida na hora (`sugeridaCalc`), sem precisar de F5.
+- **Gráfico "Vendas por mês — comparando anos"** no drawer: barras por mês do ano, 1 cor por ano (nov/24→hoje, todo o histórico disponível), pra enxergar sazonalidade no olho. Hover mostra o número.
+- **Tabela Saídas×Compras do drawer quebrada em 2 blocos de 6 meses** (empilhados) — não precisa mais rolar de lado.
+- **Fornecedor principal marcável no app:** nova tabela `comp_fornecedor_principal` (id_produto, id_fornecedor, quem marcou). Na aba Fornecedores do drawer, clique na ⭐ ao lado do nome marca/desmarca (1 clique, com badge "PRINCIPAL"). Sem marcação → cai no 1º fornecedor externo (fallback). A tabela de Compras mostra o principal em 1º com ⭐; o pedido já usa o principal marcado ao incluir.
+- **Código do fornecedor visível** junto do nome (filtro de fornecedor, chips, coluna da tabela, cabeçalho do card) — pedido do Charles: vários fornecedores com nome quase idêntico (ex. 4 "CONTINENTAL..." diferentes), o código é o que desambigua.
+- Botão **🗑️ Cancelar** no carrinho (descarta o pedido em andamento sem salvar, com confirmação).
+
+**Combinados/decisões do Leo (17/08):**
+- "Quem comprou" (cliente) — **não vamos construir**, não é útil pro comprador.
+- Peça cara/ABC — **tratar tudo igual** na sugestão (sem regra diferente por curva).
+- Estoque negativo — mostrar **0 com "!"** em vez do número negativo (já implementado; tooltip explica que é erro de contagem herdado da migração).
+- **Regra de ouro do projeto (guardada em memória):** equipe de Compras não é técnica → toda tela precisa ser **auto-explicativa e simples** (tooltip em tudo, sem jargão, erro de dado amigável).
+
+**Pendente:**
+- Re-split do "Sem movimento" (Estoque Parado × Morto × Erro de contagem) — **ficou pra conversar antes de construir**.
+- TI: a view de saída/OS (`vw_os_pecas_faturadas` e a parte O.S. de `vw_comercial_itens_faturados`) **continua fanando na origem** — mandar reforçar o alerta, o fator só cresceu ao longo do dia.
+- Ranking de Fornecedores (tela Totais) ainda lê `vw_fb_historico_compras` cru via `comp_lead_time_forn` — mesmo conserto, ainda não aplicado.
+
+---
+
 ## 17/08/2026 — 🚨 Consumo/sugestão estava inflado ~3× (fan-out das views do ERP) — CORRIGIDO
 
 **Descoberta (o Charles reportou dup na compra; investigando achamos algo bem maior):** as views de saída/compra do ERP fazem **fan-out de JOIN** — multiplicam linhas na consulta. Não é linha duplicada na tabela base (por isso "tirar duplicatas" na origem **não resolve**; é o JOIN da view). É **não-determinístico** (a mesma peça deu 8×, 3×, 4× em consultas seguidas).

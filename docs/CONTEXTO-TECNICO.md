@@ -1,6 +1,6 @@
 # Contexto Técnico — Bononi Compras
 
-**Atualizado:** 16/08/2026
+**Atualizado:** 17/08/2026
 **Substitui:** todos os contextos de compras dispersos em outras sessões.
 **Base:** commit `794c7e4` (`main`) + mapeamento completo do `compras.js`.
 **Status:** produção, uso diário.
@@ -98,6 +98,8 @@
 | `import_documentos` | Anexos (Supabase Storage) |
 | `balanco_sessoes` / `balanco_sessao_filtros` / `balanco_itens` | Balanço físico |
 | `app_logs` | Erros JS (legado; migrar p/ `comp_logs` no futuro) |
+| `comp_fornecedor_principal` | Marcação manual (⭐) do fornecedor principal por produto — `id_produto` PK, `id_fornecedor`, `nome_fornecedor`, `marcado_por`. Sem marcação = fallback pro 1º fornecedor externo (`fornPrincipalDe()`). Adicionada 17/08/2026. |
+| `comp_consumo_limpo` / `comp_saidas_limpo` / `comp_compras_hist_limpo` / `comp_pedidos_compra_limpo` | Views **nossas** que deduplicam o fan-out das views do ERP (ver §9). Adicionadas 17/08/2026 — ver detalhe completo lá. |
 
 **Tipos de pagamento da importação:**
 ```
@@ -174,3 +176,30 @@ Ex. real: **GELADEIRA STONNI ST 30L (ref 011488)** → uma baixa de **−1.141 u
 ### Pendências de dado (dependem da TI — ver memória `erp-firebird-schema-local`)
 - **% divergente correto** (quanto do contado bateu com o sistema): exige replicar `TBL_BALANCO` + `TBL_ITENS_BALANCO` do Firebird → colunas **`QTD_ANTIGA` (saldo sistema) × `QTD_CONTADA` × `QTD_LANCADA` (ajuste efetivado)**. Hoje o ajuste no Supabase só tem o item divergente, **sem o denominador** (total contado), então o % não é calculável.
 - **Autor do ajuste**: existe em `TBL_MOV_PROD.CHUSUARIO`, mas **não está exposto** em `vw_fb_mov_estoque`. Pedir à TI incluir.
+
+---
+
+## 10. 🚨 Fan-out nas views do ERP — a armadilha mais cara já encontrada (17/08/2026)
+
+**O que é:** várias views que replicam dado do Firebird pro Supabase multiplicam linhas na consulta — cada linha real vira N linhas idênticas (fan-out de JOIN, provavelmente um `JOIN` 1:N sem `DISTINCT` na view do ERP). **Não é linha duplicada na tabela base** — é o `JOIN` da própria view — por isso rodar dedup na tabela de origem não resolve, e o fator é **instável** (mudou 3×→4×→5×→8× ao longo do mesmo dia, em consultas seguidas na mesma peça).
+
+**Como foi descoberto:** o Charles reportou (17/08) que a "quantidade comprada" duplicava no histórico do drawer. Investigando achamos que o problema ia muito além da UI — contaminava o **motor de sugestão de compra**.
+
+**Views afetadas e o dano medido (peça-teste: ref 016738 / 012591, catálogo inteiro):**
+
+| View crua | Efeito | Fator visto | Chave real p/ deduplicar |
+|---|---|---|---|
+| `vw_comercial_itens_faturados` (parte O.S.) + `vw_os_pecas_faturadas` | Consumo/saída inflado — sugestão de compra **para mais** | ~3× (chegou a 8×) | `id_item` (não usar `id`, que é sequencial de linha e nunca repete) |
+| `vw_fb_historico_compras` | Histórico de compra duplicado na UI | 3×–4× | (`id_compra`, `id_item_compra`) |
+| `vw_fb_pedidos_compra` | Pedido em aberto inflado — sugestão **para menos** (mascarava o erro acima) | 5× (pedido 2102: real 100un, view somava 500un) | (`id_pedido`, `id_item_pedido`) |
+| `vw_fb_produtos_compras` | **Estoque 5× inflado no catálogo inteiro** (3.544.005un vs 708.801un reais) — o mais grave: motor achava que tinha mais estoque do que existe, sugeria comprar **de menos** | 5× | `DISTINCT ON (id_produto, id_empresa)` — o grão real da view é por empresa |
+
+**Os dois erros (consumo pra mais + estoque pra menos) se mascaravam parcialmente** — corrigir só um sem o outro dava um número tão errado quanto não corrigir nada. A sugestão do catálogo (horizonte 45d) evoluiu assim: **R$ 377k (tudo fanado) → R$ 119k (só consumo limpo, estoque ainda inflado) → R$ 264k (tudo limpo, número real)**.
+
+**Correção — 2 camadas:**
+1. **Views novas no Supabase** (`comp_consumo_limpo`, `comp_saidas_limpo`, `comp_compras_hist_limpo`, `comp_pedidos_compra_limpo`) que leem a view crua do ERP e deduplicam pela chave real antes de agregar. `comp_produtos_consolidado` foi recriada pra ler essas fontes limpas em vez das `vw_fb_*` cruas (mesmas colunas de saída — frontend não muda).
+2. **Frontend blindado onde ainda lê view crua direto:** histórico do drawer (dedup em JS por `data|tipo|origem|empresa|qtd`), aba Estoque do drawer (dedup por `empresa+centro`).
+
+**Nova carga do ERP corrigiu PARCIALMENTE na origem (mesmo dia, à tarde):** reconferimos e **estoque e pedido pararam de fanar** (view crua = view limpa agora). A **saída/O.S. continua fanando** (e piorou, 8× numa amostra). **Não remover as views `comp_*_limpo`** mesmo se a origem parecer corrigida — o fator já mudou várias vezes no mesmo dia, tratar como instável até a TI confirmar a causa raiz definitivamente corrigida.
+
+**Regra pro handoff:** antes de ler qualquer `vw_fb_*` ou `vw_*` (Firebird replicado) direto numa tela nova, **checar se tem fan-out** (`count(*)` vs `count(distinct <chave de linha>)` numa peça de teste). Nunca assumir que `id` deduplica — geralmente é sequencial de linha, não da entidade. Preferir sempre as views `comp_*_limpo` já existentes quando o dado for saída/compra/pedido/estoque de produto.

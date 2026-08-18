@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-08-11
+> Atualizado: 2026-08-17
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -19,24 +19,32 @@ HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`
 Telas: **Compras** (ex-"Alertas e Reposição": semáforo/cobertura físicos, ordenação por coluna, cabeçalho fixo, badge "🚚 a caminho", "📉 demanda reprimida"), **Comprar Agora** (worklist por fornecedor — fora do menu, página viva no código), **Estoque Parado** (encalhe por capital parado), **Totais de Estoque** (incorporou KPIs+ranking de Fornecedores), **📋 Pedidos** (persistente: `comp_pedidos`+`comp_pedido_itens`, carrinho salva em localStorage), **Importação** (com histórico auditado via `comp_audit_log`).
 
 Regras que o Leo fixou:
-- **Cobertura/semáforo = FÍSICOS** (não consolidar estoque+comprado). Só `qtd_sugerida` já subtrai pedido aberto (`consumo×45 − estoque − pedido_aberto`).
+- **Cobertura/semáforo = FÍSICOS** (não consolidar estoque+comprado). `qtd_sugerida` subtrai pedido aberto e usa horizonte **configurável** no topo (`consumo/dia × dias − estoque − pedido_aberto`; abre em 45d).
 - **ABC exibida por `curva_abc_valor`** (o `curva_abc_qtd` cru do ERP mente).
 - **Export do pedido = .xls layout ERP:** coluna A = código do produto (texto, zeros à esquerda), coluna B = qtd, sem cabeçalho.
+- **Estoque negativo (erro de contagem) exibe "0 !"** em vez do número negativo, com tooltip explicando — nunca mostrar o negativo cru pro comprador.
+- **Fornecedor principal é marcação manual** (⭐ na aba Fornecedores do drawer, `comp_fornecedor_principal`) — sem marcação, cai no 1º fornecedor externo.
+- **Equipe de Compras não é técnica** — toda tela precisa ser auto-explicativa (tooltip em tudo, sem jargão). Ver memória `compras-ux-equipe-simples`.
+- **"Quem comprou" (cliente) não é útil** pro comprador — decidido não construir. Sugestão trata ABC/curva "tudo igual" (sem regra diferente pra peça cara).
 
 ## Pendências / próximos passos
+- [ ] **Re-split do "Sem movimento"** em Estoque Parado × Morto × Erro de contagem — proposta feita, aguardando o Leo validar critério antes de construir.
+- [ ] **TI: fan-out em `vw_os_pecas_faturadas`** (e a parte O.S. de `vw_comercial_itens_faturados`) ainda multiplica linhas na origem — estoque e pedido já foram corrigidos pela TI em 17/08, falta essa. Ver `CONTEXTO-TECNICO.md` §9/§10.
+- [ ] **Ranking de Fornecedores** (tela Totais) ainda lê `vw_fb_historico_compras` cru via `comp_lead_time_forn` — repontar pra `comp_compras_hist_limpo` (mesmo conserto já aplicado no resto do app).
 - [ ] **Cotação/RFQ entre Sugestão e Pedido** — decidido construir no **ERP** (não aqui): fornecedor sai da sugestão, cota antes de virar pedido. Backend já existe; front feito, aguardando deploy. Ver memória `erp-compras-cotacao-fluxo`.
 - [ ] **Pedido Fase 2:** finalizar (trava) + imprimir + anexar arquivo.
 - [ ] **Fix stockout de verdade:** consumo por dias **com** estoque (reconstruir de `vw_fb_mov_estoque`) — hoje a média de calendário subestima quem rompeu.
 - [ ] **Lead time real / estoque de segurança** — SQL pronta (`sql/comp_produtos_consolidado__lead_time_e_demanda_efetiva.sql`) mas **não aplicada**: a base de lead ainda é inerte (~15d p/ quase tudo), moveria 0 itens. Depende da TI melhorar a base.
-- [ ] Simplificar UX (equipe acha "excesso de informação").
 
 ## Dívidas e armadilhas conhecidas
+- **🚨 Fan-out nas views do ERP (Firebird replicado) — a armadilha mais cara já encontrada.** Várias views (`vw_comercial_itens_faturados`, `vw_os_pecas_faturadas`, `vw_fb_historico_compras`, `vw_fb_pedidos_compra`, `vw_fb_produtos_compras`) já multiplicaram linhas por JOIN, de forma **não-determinística** (fator mudou 3×→4×→5×→8× no mesmo dia). Chegou a inflar a sugestão de compra em ~3× (consumo) e a subestimar em 5× o estoque, ao mesmo tempo — os dois erros se mascaravam. **Toda leitura nova dessas views precisa deduplicar** pela chave de linha real (nunca o `id` sequencial — ex.: `id_item`, `id_item_pedido`, `(id_produto,id_empresa)`). Use as views `comp_*_limpo` já existentes; não leia as `vw_fb_*`/`vw_*` cruas direto no frontend sem checar fan-out antes. Detalhe completo: `CONTEXTO-TECNICO.md` §9/§10 e `CHANGELOG.md` (17/08/2026).
 - **CSS de shell antigo injetado** por `compras.js` (linha ~8) por cima do `index.html` atual → regras conflitantes, raiz de bugs de layout. Limpar **gradual** (não refazer o monolito de uma vez).
 - **Cache-bust só no js, não no index:** aba aberta durante deploy roda shell velho + js novo → tela em branco ("Comprar Agora não aparece"). Corrige com **Ctrl+Shift+R**. Considerar versionar o index.
 - **Falsos fornecedores** no ranking (notas de retorno / empresas do grupo). Existe `IDS_INTERGRUPO_FORN`; falta levantar os ids dos falsos.
 - Monolito grande — quebra gradual ao mexer.
 
 ## Dev-log
+- 2026-08-17 — 🚨 Fan-out do ERP inflando consumo (~3×), depois estoque e pedido (~5×) — descoberto e corrigido (views `comp_consumo_limpo`, `comp_saidas_limpo`, `comp_compras_hist_limpo`, `comp_pedidos_compra_limpo`; `comp_produtos_consolidado` recriada 2×). Sugestão do catálogo: R$377k (fanado) → R$264k (real). Nova carga do ERP corrigiu estoque/pedido na origem à tarde; saída/OS continua fanando. Junto: filtro de status por checkbox c/ tooltip, gráfico "vendas por mês comparando anos" (sazonalidade), tabela de giro em 2 linhas, fornecedor principal marcável (⭐), código do fornecedor visível, botão cancelar pedido, histórico sem duplicar, "Ajustes de Estoque" focado em Balanço.
 - 2026-08-07 — Ajustes finos (commit 37baedc): drawer com fornecedor sugerido no topo + bloco de pedido aberto (`vw_fb_pedidos_compra`), carrinho recolhido, salvar tira do carrinho. Export .xls padronizado.
 - 2026-08-06 — Pedido persistente Fase 1 (`comp_pedidos`), auditoria da Importação (`comp_audit_log`), Fornecedores recriado company-safe e incorporado em Totais (commit 7371cca / 0df2132).
 - 2026-07-28 — Tela "Estoque Parado" (commit 338dace); hambúrguer tablet corrigido; todos os P0 concluídos.
