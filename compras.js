@@ -466,6 +466,7 @@ let chartSituacao = null;
 let chartFornTop10 = null;
 let produtoAtual = null;
 let fornProdMap = {};
+let fornPrincipalMap = {}; // id_produto -> {id_fornecedor, nome_fornecedor} marcado pelo comprador no app
 let alertasConsolidado = [];
 
 // ═══════════════════════════════════════════════════════════
@@ -543,7 +544,43 @@ async function loadFornProdCache() {
       pagina++;
       if (pagina > 50) break; // segurança: máx 50.000 registros
     }
+    // marcação manual de "fornecedor principal" feita no app pelo comprador
+    fornPrincipalMap = {};
+    const { data: fp } = await sb.from('comp_fornecedor_principal').select('id_produto,id_fornecedor,nome_fornecedor').range(0, 99999);
+    (fp || []).forEach(r => { fornPrincipalMap[r.id_produto] = { id_fornecedor: r.id_fornecedor, nome_fornecedor: r.nome_fornecedor }; });
   } catch(e) { console.error('Erro ao carregar fornecedores:', e); }
+}
+
+// Fornecedor principal do produto: o marcado no app; se não houver, cai no 1º fornecedor externo (fallback).
+function fornPrincipalDe(idProduto) {
+  const externos = (fornProdMap[idProduto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
+  const marc = fornPrincipalMap[idProduto];
+  if (marc) {
+    const full = externos.find(f => f.id_fornecedor === marc.id_fornecedor);
+    return { ...(full || {}), id_fornecedor: marc.id_fornecedor, nome_fornecedor: marc.nome_fornecedor || full?.nome_fornecedor || '', marcado: true };
+  }
+  return externos[0] ? { ...externos[0], marcado: false } : null;
+}
+
+// Marcar/desmarcar fornecedor principal (1 clique). Guarda em comp_fornecedor_principal.
+async function marcarFornecedorPrincipal(idProduto, idForn, nome) {
+  try {
+    const jaEra = fornPrincipalMap[idProduto] && fornPrincipalMap[idProduto].id_fornecedor === idForn;
+    if (jaEra) {
+      await sb.from('comp_fornecedor_principal').delete().eq('id_produto', idProduto);
+      delete fornPrincipalMap[idProduto];
+      showToast('Fornecedor principal removido.');
+    } else {
+      const u = (window.getUsuario && window.getUsuario()) || {};
+      const { error } = await sb.from('comp_fornecedor_principal')
+        .upsert({ id_produto: idProduto, id_fornecedor: idForn, nome_fornecedor: nome, marcado_por: u.nome || u.email || null }, { onConflict: 'id_produto' });
+      if (error) throw error;
+      fornPrincipalMap[idProduto] = { id_fornecedor: idForn, nome_fornecedor: nome };
+      showToast('⭐ Fornecedor principal definido.');
+    }
+    if (produtoAtual && produtoAtual.id_produto === idProduto) loadDrawerFornecedores(idProduto);
+    renderAlertas();
+  } catch(e) { showToast('Erro ao salvar: ' + (e.message || e)); }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -850,7 +887,12 @@ function renderAlertas() {
             : `<button class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px" onclick="incluirNoPedido(${r.id_produto})" title="Incluir no pedido">Incluir</button>`}
         </div>
       </td>
-      <td style="font-size:12px;color:var(--text-secondary);max-width:180px">${fornExterno.map(f => `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.id_fornecedor} · ${f.nome_fornecedor}"><span style="font-family:'DM Mono',monospace;color:var(--blue-mid);font-size:10px">${f.id_fornecedor}</span> ${f.nome_fornecedor}</div>`).join('') || '—'}</td>
+      <td style="font-size:12px;color:var(--text-secondary);max-width:180px">${(() => {
+        const marc = fornPrincipalMap[r.id_produto];
+        const lista = [...fornExterno];
+        if (marc) lista.sort((a, b) => (b.id_fornecedor === marc.id_fornecedor ? 1 : 0) - (a.id_fornecedor === marc.id_fornecedor ? 1 : 0));
+        return lista.map(f => { const p = marc && marc.id_fornecedor === f.id_fornecedor; return `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap${p ? ';font-weight:700' : ''}" title="${f.id_fornecedor} · ${f.nome_fornecedor}${p ? ' (principal)' : ''}">${p ? '⭐ ' : ''}<span style="font-family:'DM Mono',monospace;color:var(--blue-mid);font-size:10px">${f.id_fornecedor}</span> ${f.nome_fornecedor}</div>`; }).join('') || '—';
+      })()}</td>
     </tr>`;
   }).join('');
   renderPaginacao(paginaAtual, totalPaginas, total);
@@ -1501,14 +1543,20 @@ async function loadDrawerFornecedores(idProduto) {
       const fornId = f.id_fornecedor;
       const leadPedido = leadPedidoMap[fornId];
       const ultimas3 = hm.compras.slice(0, 3);
+      const ehPrincipal = fornPrincipalMap[idProduto] && fornPrincipalMap[idProduto].id_fornecedor === fornId;
 
       return `
       <div class="table-card" style="margin-bottom:12px">
         <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:var(--surface2);border-radius:var(--radius) var(--radius) 0 0"
              onclick="toggleFornHist(${fornId})">
-          <div>
-            <div style="font-weight:600;font-size:14px">${f.nome_fornecedor || '—'}</div>
-            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Ref forn: ${f.referencia_fornecedor || '—'}</div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button onclick="event.stopPropagation();marcarFornecedorPrincipal(${idProduto},${fornId},'${(f.nome_fornecedor||'').replace(/'/g,"\\'")}')"
+              title="${ehPrincipal ? 'É o fornecedor principal — clique para tirar' : 'Clique para marcar como fornecedor principal'}"
+              style="background:none;border:none;cursor:pointer;font-size:24px;line-height:1;padding:0;${ehPrincipal ? '' : 'filter:grayscale(1);opacity:.35'}">⭐</button>
+            <div>
+              <div style="font-weight:600;font-size:14px">${f.nome_fornecedor || '—'} ${ehPrincipal ? '<span style="font-size:10px;color:#8a6d00;font-weight:700;background:#FFF3C4;padding:1px 7px;border-radius:10px;vertical-align:middle">PRINCIPAL</span>' : ''}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Cód: <b>${fornId}</b> · Ref forn: ${f.referencia_fornecedor || '—'}</div>
+            </div>
           </div>
           <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap">
             <div style="text-align:right">
@@ -1763,7 +1811,7 @@ function toggleItemPedido(idProduto, idFornecedor, nomeFornecedor, vlUnit) {
 function adicionarAoCarrinho(idProduto) {
   const prod = alertasConsolidado.find(r => r.id_produto === idProduto);
   if (!prod || cartItems.find(c => c.id_produto === idProduto)) return;
-  cartItems.push({ id_produto: idProduto, nome_produto: prod.nome, referencia: prod.referencia, id_fornecedor: null, nome_fornecedor: prod.fornecedor_principal || 'A definir', qtd_sugerida: prod.qtd_sugerida, qtd_pedido: Math.max(0, Math.ceil(prod.qtd_sugerida || 0)), vl_unit: prod.preco_compra || 0 });
+  cartItems.push({ id_produto: idProduto, nome_produto: prod.nome, referencia: prod.referencia, id_fornecedor: (fornPrincipalDe(idProduto) && fornPrincipalDe(idProduto).id_fornecedor) || null, nome_fornecedor: (fornPrincipalDe(idProduto) && fornPrincipalDe(idProduto).nome_fornecedor) || 'A definir', qtd_sugerida: prod.qtd_sugerida, qtd_pedido: Math.max(0, Math.ceil(prod.qtd_sugerida || 0)), vl_unit: prod.preco_compra || 0 });
   atualizarCarrinho(); renderAlertas();
 }
 
@@ -1777,7 +1825,7 @@ function incluirNoPedido(idProduto) {
   const existente = cartItems.find(c => c.id_produto === idProduto);
   if (existente) { existente.qtd_pedido = qtd; showToast('Quantidade atualizada no pedido.'); }
   else {
-    cartItems.push({ id_produto: idProduto, nome_produto: prod.nome, referencia: prod.referencia, id_fornecedor: null, nome_fornecedor: prod.fornecedor_principal || 'A definir', qtd_sugerida: prod.qtd_sugerida, qtd_pedido: qtd, vl_unit: prod.preco_compra || 0 });
+    cartItems.push({ id_produto: idProduto, nome_produto: prod.nome, referencia: prod.referencia, id_fornecedor: (fornPrincipalDe(idProduto) && fornPrincipalDe(idProduto).id_fornecedor) || null, nome_fornecedor: (fornPrincipalDe(idProduto) && fornPrincipalDe(idProduto).nome_fornecedor) || 'A definir', qtd_sugerida: prod.qtd_sugerida, qtd_pedido: qtd, vl_unit: prod.preco_compra || 0 });
     showToast('Incluído no pedido.');
   }
   atualizarCarrinho(); renderAlertas();
@@ -4456,6 +4504,7 @@ window.onHorizonteChange      = onHorizonteChange;
 window.filtrarSituacao        = filtrarSituacao;
 window.onStatusCheck          = onStatusCheck;
 window.marcarTodosStatus      = marcarTodosStatus;
+window.marcarFornecedorPrincipal = marcarFornecedorPrincipal;
 window.setOrdemAlertas        = setOrdemAlertas;
 window.irPagina               = irPagina;
 window.abrirProduto           = abrirProduto;
