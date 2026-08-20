@@ -181,6 +181,11 @@ Est.Anterior  = Est.Atual − mov_periodo
 
 **Paginação:** `comp_estoque_mov` tem ~130k linhas e `vw_fb_estoque_centro` ~22k — ambas acima do limite de uma página (`.range` de 1000, até 30 páginas). Filtrar por empresa/centro/período reduz bastante o volume; sem filtro de empresa num período longo, pode custar várias idas ao banco.
 
+**Ajustes 20/08 (2ª rodada, feedback do Leo comparando com o print do ERP):**
+- **Período padrão = últimos 30 dias** (rolling, não mês corrente) — `mvPeriodoDefault()`.
+- **Filtro de Centro de Estoque** (`#mv-centro`): Principal (padrão) / Todos os centros / centro específico (populado dinamicamente a partir de `vw_fb_estoque_centro`, agrupando por nome sem o sufixo `(EMP:n)` via `mvCentroBase()` — ex. "GARANTIA (EMP:2)" e "GARANTIA (EMP:8)" viram uma única opção "GARANTIA", filtrando com `ilike('centro_estoque', base+'%')`). Susbtituiu o antigo checkbox "incluir todos os centros".
+- **Layout da tabela reorganizado pra bater com o relatório do ERP**: cabeçalho em 2 linhas (banda de grupo — "ESTOQUE {centro}" / "ENTRADAS NO PERÍODO" / "SAÍDAS NO PERÍODO" / "SALDOS" — sobre a linha de nomes de coluna), colunas Empresa/Ref./Produto separadas (antes eram uma célula só), e Est.Anterior/Total Entrada/Total Saída/Est.Atual movidos pro final (grupo "SALDOS"), não mais intercalados entre entrada e saída. Rodapé `TOTAL GERAL` soma cada coluna do recorte filtrado (`mv-tfoot-row`).
+
 <details>
 <summary>Histórico — versão antiga "Ajustes de Estoque" (`vw_fb_mov_estoque` + `categorizeMotivo`), substituída em 20/08/2026</summary>
 
