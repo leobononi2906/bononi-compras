@@ -1,6 +1,6 @@
 # Contexto Técnico — Bononi Compras
 
-**Atualizado:** 17/08/2026
+**Atualizado:** 20/08/2026
 **Substitui:** todos os contextos de compras dispersos em outras sessões.
 **Base:** commit `794c7e4` (`main`) + mapeamento completo do `compras.js`.
 **Status:** produção, uso diário.
@@ -26,6 +26,8 @@
 ---
 
 ## 2. Mapa do código (`compras.js`, por faixa de linha)
+
+> ⚠️ Faixas de linha abaixo são de antes de 20/08/2026 (split Estoque Morto/Sem Giro + tela Movimentações de Estoque somaram ~250 linhas) — nomes de função e ordem das seções continuam certos, só os números deslocaram um pouco pra baixo a partir da seção de Alertas em diante.
 
 | Faixa | Seção |
 |---|---|
@@ -99,7 +101,9 @@
 | `balanco_sessoes` / `balanco_sessao_filtros` / `balanco_itens` | Balanço físico |
 | `app_logs` | Erros JS (legado; migrar p/ `comp_logs` no futuro) |
 | `comp_fornecedor_principal` | Marcação manual (⭐) do fornecedor principal por produto — `id_produto` PK, `id_fornecedor`, `nome_fornecedor`, `marcado_por`. Sem marcação = fallback pro 1º fornecedor externo (`fornPrincipalDe()`). Adicionada 17/08/2026. |
-| `comp_consumo_limpo` / `comp_saidas_limpo` / `comp_compras_hist_limpo` / `comp_pedidos_compra_limpo` | Views **nossas** que deduplicam o fan-out das views do ERP (ver §9). Adicionadas 17/08/2026 — ver detalhe completo lá. |
+| `comp_consumo_limpo` / `comp_saidas_limpo` / `comp_compras_hist_limpo` / `comp_pedidos_compra_limpo` | Views **nossas** que deduplicam o fan-out das views do ERP (ver §10). Adicionadas 17/08/2026 — ver detalhe completo lá. |
+| `comp_estoque_mov` | View **nossa** — movimentação de estoque linha a linha normalizada (categoria limpa + `is_principal`), sem fan-out, sem dupla contagem. Motor da tela Movimentações de Estoque (§9). Adicionada 20/08/2026. |
+| `vw_fb_saidas_estoque` | Tabela de **landing** nova (venda de todo tipo + peça de O.S. que baixa estoque), lida direto de tabelas-base do Firebird sem fan-out. Fonte de Venda/O.S. de `comp_estoque_mov` — entra no job diário do replicador (`refresh-all.js`). Adicionada 20/08/2026. |
 
 **Tipos de pagamento da importação:**
 ```
@@ -118,9 +122,10 @@ Fórmula do resumo: `subtotal = normais + RECEBIDO − TRANSFERIDO` → `+10% cu
 | `vw_fb_produtos_compras` | Base de produto (estoque, preço, giro, fornecedor) |
 | `vw_fb_historico_compras` | Histórico de entradas (`lead_time_dias` sempre 0) |
 | `vw_fb_pedidos_compra` | Pedidos de compra |
-| `vw_fb_mov_estoque` | Movimentações de O.S. |
+| `vw_fb_mov_estoque` | Movimentações de estoque cru do Firebird (`TBL_MOV_PROD`+`TBL_ITENS_MOV_PROD`). Usada hoje só como fonte de `comp_estoque_mov` (movimento avulso, sem venda/O.S. vinculado) — não ler direto no front, ver §9. |
+| `vw_fb_estoque_centro` | Saldo **atual** (hoje) por produto×centro×empresa. Colunas-chave: `estoque`, `custo_real`, `centro_padrao` ('S'=Principal), `centro_estoque` (nome, ex. "GARANTIA (EMP:2)"). Usada na tela Movimentações de Estoque (§9) pra Est.Atual e a tabela Principal/Garantia/Consolidado. |
 | `vw_giro_saidas_unificado` | Saídas M2 (nov/24–out/25) + Firebird (nov/25→hoje) |
-| `comp_produtos_consolidado` | View **nossa** (não-Firebird, pode evoluir) — motor de Alertas/Comprar Agora. Colunas: estoque/reserva/pedido em aberto, saída e consumo 90d **e 365d**, cobertura, `qtd_sugerida` (meta 45d − estoque − pedido), `situacao_estoque`, `curva_abc_qtd`/`curva_abc_valor` e flag `esporadico` (vende ≤12/ano). Aditivo de 28/07: +`saida_365d_total`, +`consumo_diario_365d_total`, +`esporadico`. Frontend: helpers `itemEsporadico` e `itemCoberto`. |
+| `comp_produtos_consolidado` | View **nossa** (não-Firebird, pode evoluir) — motor de Alertas/Comprar Agora. Colunas: estoque/reserva/pedido em aberto, saída e consumo 90d **e 365d**, cobertura, `qtd_sugerida` (meta 45d − estoque − pedido), `situacao_estoque` (`RUPTURA/CRITICO/BAIXO/OK/ESTOQUE_MORTO/SEM_GIRO`), `curva_abc_qtd`/`curva_abc_valor` e flag `esporadico` (vende ≤12/ano). Aditivo de 28/07: +`saida_365d_total`, +`consumo_diario_365d_total`, +`esporadico`. Aditivo de 20/08: `SEM_MOVIMENTO` splitado em `ESTOQUE_MORTO`/`SEM_GIRO` via saldo reconstruído de `vw_fb_mov_estoque` (`min_saldo_3m`, coluna interna do `calc`, não exposta) — ver `sql/comp_produtos_consolidado__split_sem_movimento.sql`. Frontend: helpers `itemEsporadico` e `itemCoberto`. |
 
 **Empresas na `vw_fb_produtos_compras`:** BATTOGO, BONONI PR, BONONI SC, BONONI UMUARAMA, MLB PR, MLB SC, MLB SP, OPERADOR LOGISTICO, SANTA TEREZA, TRUCKPREST.
 
@@ -152,12 +157,37 @@ Ver [DIVIDA-TECNICA.md](DIVIDA-TECNICA.md) — layout, robustez, simplificação
 
 ---
 
-## 9. Armadilhas da tela de Ajustes de Estoque (`cmp-ajustes`)
+## 9. Tela de Movimentações de Estoque (`cmp-ajustes`)
 
-**Atualizado 16/08/2026.** Fonte: `vw_fb_mov_estoque` (origem Firebird `TBL_MOV_PROD` + `TBL_ITENS_MOV_PROD`). Filtro fixo da tela: `tipo_mov='A'` (Ajuste), `cancelada='N'`, sem vínculo `id_venda/id_os/id_consumo`.
+**Atualizado 20/08/2026 — tela trocada de "Ajustes de Estoque" pra "Movimentações de Estoque".** A versão antiga (histórico abaixo, mantido como referência) lia `vw_fb_mov_estoque` filtrado em `tipo_mov='A'` e classificava o `motivo` texto-livre via `categorizeMotivo()`. Isso **saiu de uso** — a tela hoje é uma conferência estilo relatório do ERP (entradas/saídas por categoria, por empresa×produto, período configurável), lendo:
 
-### Por que abre filtrada em "Balanço"
-O `motivo` do ajuste é **texto livre e muito sujo** (não há campo de "tipo de operação" limpo como o `tipo_entrada` dos fornecedores). Ao agregar todos os ajustes, o número não representa perda/ganho real: **~R$ 3,8 mi é só estoque inicial da migração do RP**, mais reclassificações (desmonte de kit, transferência de centro, correção de código) e movimentos cujo financeiro pertence a uma venda/OS/NF. **Só "Balanço" e "Acerto" são ajuste financeiro real.** Por isso `loadAjustes` seta `aj-motivo = 'Balanço'` por padrão (o dropdown mantém os outros pra investigação).
+- **`comp_estoque_mov`** (view nossa, não-Firebird) — movimentação linha a linha normalizada, com coluna `categoria` já limpa (`COMPRA/BALANCO/ESTORNO/DEVOLUCAO/AJUSTE/TROCA` na entrada; `OS/VENDA/REQUISICAO/CONSUMO/AJUSTE/BALANCO/TROCA` na saída) e `is_principal` pra filtrar centro padrão. **Anti-dupla-contagem:** Venda/O.S. vêm só de `vw_fb_saidas_estoque` (tabela de landing nova, sem fan-out); de `vw_fb_mov_estoque` só entram movimentos avulsos (`id_venda IS NULL AND id_os IS NULL`) — senão a baixa da venda contaria 2×. Balanço usa o **delta** lançado (não a contagem bruta) pra fechar a conta com o saldo real — pode divergir do print do ERP de propósito.
+- **`vw_fb_estoque_centro`** — saldo atual (hoje) por produto×centro×empresa. `centro_padrao='S'` = Principal; `centro_estoque ILIKE 'GARANTIA%'` = Garantia; soma de tudo = Consolidado.
+- **`vw_fb_saidas_estoque`** — tabela de landing nova (venda + peça de O.S. que baixa estoque), entra no job diário do replicador (`refresh-all.js`). Fonte de dados, não é lida direto pelo front.
+
+Modelagem de dados feita em outra sessão (cérebro/dashboards) e validada contra o relatório do ERP (query de conferência em `comp_estoque_mov` por `categoria`/`tipo_es`, ver commit da tela). Frontend (`loadMovEstoque`/`renderMovEstoque`/`montarMatrizMov` em compras.js) construído nesta sessão.
+
+**Cálculo de Est.Anterior/Est.Atual** (reconcilia por construção, validado por SQL):
+```
+saldo_agora   = Σ estoque em vw_fb_estoque_centro (no recorte de centro escolhido) por produto×empresa
+mov_depois    = Σ (sinal·qtd) em comp_estoque_mov onde data_mov > período_fim  (sinal: E=+1, S=−1)
+Est.Atual     = saldo_agora − mov_depois
+mov_periodo   = Σ (sinal·qtd) dentro do período
+Est.Anterior  = Est.Atual − mov_periodo
+```
+`mov_depois` só é buscado quando "até" é uma data passada (se "até" = hoje, é sempre 0 e a query nem roda — economiza uma busca na maioria dos casos).
+
+**Fonte de "Estorno" ainda não mapeada** — a coluna existe no relatório mas fica sempre zerada até a TI indicar de onde vem esse dado no ERP.
+
+**Paginação:** `comp_estoque_mov` tem ~130k linhas e `vw_fb_estoque_centro` ~22k — ambas acima do limite de uma página (`.range` de 1000, até 30 páginas). Filtrar por empresa/centro/período reduz bastante o volume; sem filtro de empresa num período longo, pode custar várias idas ao banco.
+
+<details>
+<summary>Histórico — versão antiga "Ajustes de Estoque" (`vw_fb_mov_estoque` + `categorizeMotivo`), substituída em 20/08/2026</summary>
+
+Fonte: `vw_fb_mov_estoque` (origem Firebird `TBL_MOV_PROD` + `TBL_ITENS_MOV_PROD`). Filtro fixo da tela: `tipo_mov='A'` (Ajuste), `cancelada='N'`, sem vínculo `id_venda/id_os/id_consumo`.
+
+### Por que abria filtrada em "Balanço"
+O `motivo` do ajuste é **texto livre e muito sujo** (não há campo de "tipo de operação" limpo como o `tipo_entrada` dos fornecedores). Ao agregar todos os ajustes, o número não representa perda/ganho real: **~R$ 3,8 mi é só estoque inicial da migração do RP**, mais reclassificações (desmonte de kit, transferência de centro, correção de código) e movimentos cujo financeiro pertence a uma venda/OS/NF. **Só "Balanço" e "Acerto" são ajuste financeiro real.**
 
 ### `categorizeMotivo(m)` — regras (ordem importa!)
 Classifica por regex sobre o motivo em MAIÚSCULAS, **na ordem**:
@@ -168,14 +198,16 @@ Classifica por regex sobre o motivo em MAIÚSCULAS, **na ordem**:
 5. `ACERTO|AJUSTE|CORRE|CONFER|SOBRA|FALTA` → Acerto/ajuste.
 6. resto → Outros/não classificado.
 
-O balde **"Outros/não classificado"** guarda ~R$ 1 mi de motivos ilegíveis (ex.: `AENKEAJ HSKAHG DKAL` = +R$ 784 mil, que pela cara é estoque inicial digitado errado). **Não dá pra classificar por regra** — precisa de revisão manual no ERP ou de um campo de tipo limpo.
+O balde **"Outros/não classificado"** guardava ~R$ 1 mi de motivos ilegíveis (ex.: `AENKEAJ HSKAHG DKAL` = +R$ 784 mil, que pela cara é estoque inicial digitado errado).
 
 ### Um único lançamento de balanço pode ser gigante (não é bug)
-Ex. real: **GELADEIRA STONNI ST 30L (ref 011488)** → uma baixa de **−1.141 un / −R$ 830 mil** (01/06/26, `AJUSTE REF.BALANCO DIA 30/05`, BONONI SC / EMP 8). É o balanço **acertando estoque fantasma da migração do RP** (o sistema tinha 1.141 geladeiras a mais que o físico). O ranking mostra isso corretamente; o valor é grande porque a divergência era grande.
+Ex. real: **GELADEIRA STONNI ST 30L (ref 011488)** → uma baixa de **−1.141 un / −R$ 830 mil** (01/06/26, `AJUSTE REF.BALANCO DIA 30/05`, BONONI SC / EMP 8). É o balanço **acertando estoque fantasma da migração do RP** (o sistema tinha 1.141 geladeiras a mais que o físico).
 
 ### Pendências de dado (dependem da TI — ver memória `erp-firebird-schema-local`)
-- **% divergente correto** (quanto do contado bateu com o sistema): exige replicar `TBL_BALANCO` + `TBL_ITENS_BALANCO` do Firebird → colunas **`QTD_ANTIGA` (saldo sistema) × `QTD_CONTADA` × `QTD_LANCADA` (ajuste efetivado)**. Hoje o ajuste no Supabase só tem o item divergente, **sem o denominador** (total contado), então o % não é calculável.
+- **% divergente correto**: exige replicar `TBL_BALANCO` + `TBL_ITENS_BALANCO` do Firebird → colunas **`QTD_ANTIGA` × `QTD_CONTADA` × `QTD_LANCADA`**. Ainda não replicado — segue valendo pra quem quiser esse detalhe no futuro.
 - **Autor do ajuste**: existe em `TBL_MOV_PROD.CHUSUARIO`, mas **não está exposto** em `vw_fb_mov_estoque`. Pedir à TI incluir.
+
+</details>
 
 ---
 

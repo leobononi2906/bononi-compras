@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-08-17
+> Atualizado: 2026-08-20
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -16,7 +16,7 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
 ## Estado atual (produção)
-Telas: **Compras** (ex-"Alertas e Reposição": semáforo/cobertura físicos, ordenação por coluna, cabeçalho fixo, badge "🚚 a caminho", "📉 demanda reprimida"), **Comprar Agora** (worklist por fornecedor — fora do menu, página viva no código), **Estoque Parado** (encalhe por capital parado), **Totais de Estoque** (incorporou KPIs+ranking de Fornecedores), **📋 Pedidos** (persistente: `comp_pedidos`+`comp_pedido_itens`, carrinho salva em localStorage), **Importação** (com histórico auditado via `comp_audit_log`).
+Telas: **Compras** (ex-"Alertas e Reposição": semáforo agora com 6 situações — Ruptura/Crítico/Baixo/OK/⚫Estoque Morto/⚪Sem Giro —, ordenação por coluna, cabeçalho fixo, badge "🚚 a caminho", "📉 demanda reprimida"), **Comprar Agora** (worklist por fornecedor — fora do menu, página viva no código), **Estoque Parado** (encalhe por capital parado), **Totais de Estoque** (incorporou KPIs+ranking de Fornecedores), **📋 Pedidos** (persistente: `comp_pedidos`+`comp_pedido_itens`, carrinho salva em localStorage), **🔄 Movimentações de Estoque** (ex-"Ajustes de Estoque" — conferência estilo relatório do ERP: entradas/saídas por categoria, período e empresa configuráveis, drill-down por produto, saldo Principal/Garantia/Consolidado), **Importação** (com histórico auditado via `comp_audit_log`).
 
 Regras que o Leo fixou:
 - **Cobertura/semáforo = FÍSICOS** (não consolidar estoque+comprado). `qtd_sugerida` subtrai pedido aberto e usa horizonte **configurável** no topo (`consumo/dia × dias − estoque − pedido_aberto`; abre em 45d).
@@ -28,7 +28,7 @@ Regras que o Leo fixou:
 - **"Quem comprou" (cliente) não é útil** pro comprador — decidido não construir. Sugestão trata ABC/curva "tudo igual" (sem regra diferente pra peça cara).
 
 ## Pendências / próximos passos
-- [ ] **Re-split do "Sem movimento"** em Estoque Parado × Morto × Erro de contagem — proposta feita, aguardando o Leo validar critério antes de construir.
+- [x] **Re-split do "Sem movimento"** — feito 20/08/2026: virou `ESTOQUE_MORTO` (sem saída 90d e saldo reconstruído > 0 o período todo — tinha pra vender e não vendeu) × `SEM_GIRO` (sem saída 90d, mas ficou sem estoque em algum momento — sem evidência de perda de venda). "Erro de contagem" descartado como bucket (decisão do Leo). Reconstrução de saldo histórico via `vw_fb_mov_estoque` (só existe a partir de 02/09/2025 — não dá pra ir muito além de ~90d pra trás). Ver `sql/comp_produtos_consolidado__split_sem_movimento.sql`.
 - [ ] **TI: fan-out em `vw_os_pecas_faturadas`** (e a parte O.S. de `vw_comercial_itens_faturados`) ainda multiplica linhas na origem — estoque e pedido já foram corrigidos pela TI em 17/08, falta essa. Ver `CONTEXTO-TECNICO.md` §9/§10.
 - [ ] **Ranking de Fornecedores** (tela Totais) ainda lê `vw_fb_historico_compras` cru via `comp_lead_time_forn` — repontar pra `comp_compras_hist_limpo` (mesmo conserto já aplicado no resto do app).
 - [ ] **Cotação/RFQ entre Sugestão e Pedido** — decidido construir no **ERP** (não aqui): fornecedor sai da sugestão, cota antes de virar pedido. Backend já existe; front feito, aguardando deploy. Ver memória `erp-compras-cotacao-fluxo`.
@@ -44,6 +44,7 @@ Regras que o Leo fixou:
 - Monolito grande — quebra gradual ao mexer.
 
 ## Dev-log
+- 2026-08-20 — **Split Estoque Morto × Sem Giro** (view `comp_produtos_consolidado`, ver pendência acima). **"Ajustes de Estoque" virou "Movimentações de Estoque"** — tela de conferência que reproduz o relatório de movimentação do ERP (entradas/saídas por categoria, por empresa×produto, período configurável), lendo `comp_estoque_mov` (view nova, sem fan-out, sem dupla contagem — Venda/O.S. só de `vw_fb_saidas_estoque`) + `vw_fb_estoque_centro` (saldo atual, tabela Principal/Garantia/Consolidado). Modelagem de dados de outra sessão (cérebro/dashboards); front construído aqui. `categorizeMotivo`/`vw_fb_mov_estoque` filtrado por `motivo` texto-livre **saiu de uso nessa tela** (ficou só documentado como histórico em CONTEXTO-TECNICO.md §9).
 - 2026-08-17 — 🚨 Fan-out do ERP inflando consumo (~3×), depois estoque e pedido (~5×) — descoberto e corrigido (views `comp_consumo_limpo`, `comp_saidas_limpo`, `comp_compras_hist_limpo`, `comp_pedidos_compra_limpo`; `comp_produtos_consolidado` recriada 2×). Sugestão do catálogo: R$377k (fanado) → R$264k (real). Nova carga do ERP corrigiu estoque/pedido na origem à tarde; saída/OS continua fanando. Junto: filtro de status por checkbox c/ tooltip, gráfico "vendas por mês comparando anos" (sazonalidade), tabela de giro em 2 linhas, fornecedor principal marcável (⭐), código do fornecedor visível, botão cancelar pedido, histórico sem duplicar, "Ajustes de Estoque" focado em Balanço.
 - 2026-08-07 — Ajustes finos (commit 37baedc): drawer com fornecedor sugerido no topo + bloco de pedido aberto (`vw_fb_pedidos_compra`), carrinho recolhido, salvar tira do carrinho. Export .xls padronizado.
 - 2026-08-06 — Pedido persistente Fase 1 (`comp_pedidos`), auditoria da Importação (`comp_audit_log`), Fornecedores recriado company-safe e incorporado em Totais (commit 7371cca / 0df2132).

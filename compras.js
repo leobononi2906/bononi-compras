@@ -92,12 +92,13 @@ const PAGINAS_HTML = {
     </div>
   </div>`,
   'cmp-alertas': `<div class="page-content" id="page-cmp-alertas">
-    <div class="cards-grid cards-grid-5">
+    <div class="cards-grid cards-grid-6">
       <div class="semaforo-card ruptura" onclick="filtrarSituacao('RUPTURA', this)"><div class="card-label">🔴 Ruptura</div><div class="card-value red" id="kpi-ruptura">—</div><div class="card-sub">Estoque zerado com giro</div></div>
       <div class="semaforo-card critico" onclick="filtrarSituacao('CRITICO', this)"><div class="card-label">🟠 Crítico</div><div class="card-value orange" id="kpi-critico">—</div><div class="card-sub">Cobertura &lt; lead time</div></div>
       <div class="semaforo-card baixo" onclick="filtrarSituacao('BAIXO', this)"><div class="card-label">🟡 Baixo</div><div class="card-value" style="color:var(--yellow)" id="kpi-baixo">—</div><div class="card-sub">Cobertura &lt; 30 dias</div></div>
       <div class="semaforo-card ok" onclick="filtrarSituacao('OK', this)"><div class="card-label">🟢 OK</div><div class="card-value green" id="kpi-ok">—</div><div class="card-sub">Estoque adequado</div></div>
-      <div class="semaforo-card sem_mov" onclick="filtrarSituacao('SEM_MOVIMENTO', this)"><div class="card-label">⚪ Sem Movimento</div><div class="card-value" style="color:var(--text-muted)" id="kpi-sem_mov">—</div><div class="card-sub">Sem saída em 365 dias</div></div>
+      <div class="semaforo-card morto" onclick="filtrarSituacao('ESTOQUE_MORTO', this)"><div class="card-label">⚫ Estoque Morto</div><div class="card-value" style="color:#7C3AED" id="kpi-morto">—</div><div class="card-sub">Teve estoque os últimos 90d e não vendeu nada</div></div>
+      <div class="semaforo-card sem_mov" onclick="filtrarSituacao('SEM_GIRO', this)"><div class="card-label">⚪ Sem Giro</div><div class="card-value" style="color:var(--text-muted)" id="kpi-sem_mov">—</div><div class="card-sub">Sem venda, mas ficou sem estoque em algum momento</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap">
       <input type="text" id="busca-produto" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
@@ -123,7 +124,8 @@ const PAGINAS_HTML = {
       <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Cobertura abaixo de 15 dias — o estoque acaba logo, comprar com urgência."><input type="checkbox" class="st-check" value="CRITICO" onchange="onStatusCheck(this)" style="cursor:pointer"> 🟠 Crítico</label>
       <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Cobertura entre 15 e 30 dias — começar a planejar a compra."><input type="checkbox" class="st-check" value="BAIXO" onchange="onStatusCheck(this)" style="cursor:pointer"> 🟡 Baixo</label>
       <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Cobertura acima de 30 dias — estoque saudável, sem necessidade de compra."><input type="checkbox" class="st-check" value="OK" onchange="onStatusCheck(this)" style="cursor:pointer"> 🟢 OK</label>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Não vende há mais de 90 dias. Pode ter estoque parado (tem produto mas não gira — dinheiro parado) ou nunca ter girado (só cadastro)."><input type="checkbox" class="st-check" value="SEM_MOVIMENTO" onchange="onStatusCheck(this)" style="cursor:pointer"> ⚪ Sem movimento</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Não vende há mais de 90 dias e teve estoque disponível o tempo todo nesse período — tinha pra vender e não vendeu. Dinheiro parado de verdade."><input type="checkbox" class="st-check" value="ESTOQUE_MORTO" onchange="onStatusCheck(this)" style="cursor:pointer"> ⚫ Estoque morto</label>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer" title="Não vende há mais de 90 dias, mas ficou sem estoque disponível em algum momento desse período — não dá pra afirmar que teve chance de vender."><input type="checkbox" class="st-check" value="SEM_GIRO" onchange="onStatusCheck(this)" style="cursor:pointer"> ⚪ Sem giro</label>
     </div>
     <div class="section-title" style="margin-top:16px">Produtos — <span id="alertas-count">carregando...</span></div>
     <div class="table-card">
@@ -234,42 +236,63 @@ const PAGINAS_HTML = {
   'cmp-ajustes': `<div class="page-content" id="page-cmp-ajustes">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <span style="font-size:12px;color:var(--text-muted)">Período</span>
-      <input type="date" id="aj-de" class="filter-select" style="height:36px" onchange="renderAjustes()" />
+      <input type="date" id="mv-de" class="filter-select" style="height:36px" onchange="loadMovEstoque()" />
       <span style="font-size:12px;color:var(--text-muted)">a</span>
-      <input type="date" id="aj-ate" class="filter-select" style="height:36px" onchange="renderAjustes()" />
-      <select id="aj-empresa" class="filter-select" style="height:36px" onchange="renderAjustes()"><option value="">Todas as empresas</option></select>
-      <select id="aj-motivo" class="filter-select" style="height:36px" onchange="renderAjustes()"><option value="">Todos os motivos</option></select>
-      <button class="btn btn-outline" style="height:36px" onclick="loadAjustes()" title="Recarregar">↻</button>
-      <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="aj-resumo"></span>
+      <input type="date" id="mv-ate" class="filter-select" style="height:36px" onchange="loadMovEstoque()" />
+      <select id="mv-empresa" class="filter-select" style="height:36px" onchange="loadMovEstoque()"><option value="">Todas as empresas</option></select>
+      <input type="text" id="mv-busca" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="renderMovEstoque()" style="width:220px" />
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--text-secondary)" title="Por padrão só conta o centro Principal de cada empresa (é o que o relatório do ERP usa). Marque pra somar também Garantia e outros centros."><input type="checkbox" id="mv-todos-centros" onchange="loadMovEstoque()" style="cursor:pointer"> Incluir todos os centros</label>
+      <button class="btn btn-outline" style="height:36px" onclick="loadMovEstoque()" title="Recarregar">↻</button>
+      <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="mv-resumo"></span>
     </div>
-    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Abre focado em <b>Balanço</b> — o único ajuste que representa perda/sobra real de estoque. Migração, estoque inicial, reclassificação e vínculo de venda/OS <b>não geram movimento financeiro</b> e ficam de fora (troque o motivo acima para vê-los). O <b>% divergente</b> por balanço depende de replicar as tabelas de balanço do ERP (pendência TI).</div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary)">
+      <span style="font-weight:600;color:var(--text-muted)">Mostrar colunas:</span>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Entrada por nota fiscal de compra (inclui devolução de NF ao fornecedor)."><input type="checkbox" class="mv-col-check" value="COMPRA_E" checked onchange="renderMovEstoque()"> Compra</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Sobra (entrada) ou falta (saída) apurada em contagem/balanço de estoque."><input type="checkbox" class="mv-col-check" value="BALANCO_E,BALANCO_S" checked onchange="renderMovEstoque()"> Balanço</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Cliente devolveu o produto."><input type="checkbox" class="mv-col-check" value="DEVOLUCAO_E" checked onchange="renderMovEstoque()"> Devolução</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Lançamento manual de entrada ou saída direto no ERP."><input type="checkbox" class="mv-col-check" value="AJUSTE_E,AJUSTE_S" checked onchange="renderMovEstoque()"> Ajuste</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Produto trocado por outro (saiu um, voltou outro)."><input type="checkbox" class="mv-col-check" value="TROCA_E,TROCA_S" checked onchange="renderMovEstoque()"> Troca</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Peça usada em Ordem de Serviço (baixa de estoque na O.S.)."><input type="checkbox" class="mv-col-check" value="OS_S" checked onchange="renderMovEstoque()"> O.S.</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Saída por venda ao cliente (loja, atacado, e-commerce, distribuidor)."><input type="checkbox" class="mv-col-check" value="VENDA_S" checked onchange="renderMovEstoque()"> Venda</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Requisição interna de material (não é venda nem O.S.)."><input type="checkbox" class="mv-col-check" value="REQUISICAO_S" checked onchange="renderMovEstoque()"> Requis.</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Consumo interno do produto."><input type="checkbox" class="mv-col-check" value="CONSUMO_S" checked onchange="renderMovEstoque()"> Cons.</label>
+      <span style="font-size:11px;color:var(--text-muted)" title="Cancelamento de uma saída anterior. Ainda não existe fonte de dado mapeada pra essa categoria — fica sempre zerada até a TI validar de onde vem no ERP.">⚠️ Estorno: sem dado ainda</span>
+    </div>
+    <div style="font-size:12px;color:var(--text-muted);margin-bottom:14px" id="mv-nota-balanco">O <b>Balanço</b> aqui usa o saldo <b>já lançado</b> no ERP (diferença entre o que tinha e o que ficou), pra fechar a conta com o estoque real. Isso pode divergir do print do ERP, que mostra a contagem bruta.</div>
     <div class="cards-grid cards-grid-4">
-      <div class="card"><div class="card-label">Entrou (ajuste +)</div><div class="card-value" id="aj-kpi-entrada" style="color:var(--green)">—</div><div class="card-sub" id="aj-kpi-entrada-qtd">—</div></div>
-      <div class="card"><div class="card-label">Saiu (ajuste −)</div><div class="card-value" id="aj-kpi-saida" style="color:var(--red)">—</div><div class="card-sub" id="aj-kpi-saida-qtd">—</div></div>
-      <div class="card"><div class="card-label">Líquido</div><div class="card-value" id="aj-kpi-liquido">—</div><div class="card-sub">entrada − saída</div></div>
-      <div class="card"><div class="card-label">Nº de ajustes</div><div class="card-value blue" id="aj-kpi-num">—</div><div class="card-sub" id="aj-kpi-prod">—</div></div>
+      <div class="card"><div class="card-label">Total Entradas</div><div class="card-value" id="mv-kpi-entrada" style="color:var(--green)">—</div></div>
+      <div class="card"><div class="card-label">Total Saídas</div><div class="card-value" id="mv-kpi-saida" style="color:var(--red)">—</div></div>
+      <div class="card"><div class="card-label">Líquido (un.)</div><div class="card-value" id="mv-kpi-liquido">—</div><div class="card-sub">entrada − saída</div></div>
+      <div class="card"><div class="card-label">Produtos movimentados</div><div class="card-value blue" id="mv-kpi-num">—</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-top:18px">
-      <div class="table-card">
-        <div class="table-card-header"><span class="table-card-title">Ranking de produtos ajustados</span>
-          <div class="toggle-group"><button class="toggle-btn active" onclick="setAjusteMetric('valor',this)">Valor R$</button><button class="toggle-btn" onclick="setAjusteMetric('qtd',this)">Quantidade</button></div>
-        </div>
-        <div style="overflow-x:auto;max-height:520px;overflow-y:auto"><table class="data-table">
-          <thead><tr>
-            <th class="sortable" onclick="setOrdemAjustes('nome')">Produto <span class="sort-icon">↕</span></th>
-            <th class="right sortable" onclick="setOrdemAjustes('entrou')">Entrou <span class="sort-icon">↕</span></th>
-            <th class="right sortable" onclick="setOrdemAjustes('saiu')">Saiu <span class="sort-icon">↕</span></th>
-            <th class="right sortable" onclick="setOrdemAjustes('liq_val')">Líquido R$ <span class="sort-icon">↕</span></th>
-            <th class="right sortable" onclick="setOrdemAjustes('liq_qtd')">Líquido Qtd <span class="sort-icon">↕</span></th>
-            <th class="right sortable" onclick="setOrdemAjustes('n')">Nº <span class="sort-icon">↕</span></th>
-          </tr></thead>
-          <tbody id="aj-ranking-body"><tr class="loading-row"><td colspan="6">Carregando...</td></tr></tbody>
-        </table></div>
-      </div>
-      <div>
-        <div class="table-card"><div class="table-card-header"><span class="table-card-title">Por motivo</span></div><div style="overflow-x:auto;max-height:250px;overflow-y:auto"><table class="data-table"><thead><tr><th>Motivo</th><th class="right">Nº</th><th class="right">Líquido</th></tr></thead><tbody id="aj-motivo-body"></tbody></table></div></div>
-        <div class="table-card" style="margin-top:14px"><div class="table-card-header"><span class="table-card-title">Por mês</span></div><div style="overflow-x:auto;max-height:300px;overflow-y:auto"><table class="data-table"><thead><tr><th>Mês</th><th class="right">Entrou</th><th class="right">Saiu</th></tr></thead><tbody id="aj-mes-body"></tbody></table></div></div>
-      </div>
+    <div class="section-title" style="margin-top:20px">Movimentação por produto — <span id="mv-count">carregando...</span></div>
+    <div class="table-card">
+      <div class="table-card-header"><span style="font-size:12px;color:var(--text-muted)">↕ Clique nas colunas para ordenar · clique na linha pra ver o detalhe dos lançamentos</span></div>
+      <div style="overflow-x:auto;max-height:560px;overflow-y:auto"><table class="data-table" id="mv-tabela">
+        <thead><tr id="mv-thead-row">
+          <th class="sortable" onclick="setOrdemMov('nome')">Produto <span class="sort-icon">↕</span></th>
+          <th class="sortable" onclick="setOrdemMov('empresa')">Empresa <span class="sort-icon">↕</span></th>
+          <th class="right sortable" onclick="setOrdemMov('est_ant')">Est.Anterior <span class="sort-icon">↕</span></th>
+        </tr></thead>
+        <tbody id="mv-body"><tr class="loading-row"><td colspan="20">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+    <div class="section-title" style="margin-top:20px">Saldo por centro — <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--text-muted)">posição atual (hoje), não depende do período acima</span></div>
+    <div class="table-card">
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Empresa</th><th class="right" title="Estoque no centro de estoque padrão (o que o dia a dia usa pra vender).">Principal</th><th class="right" title="Estoque separado pra assistência técnica / garantia.">Garantia</th><th class="right" title="Soma de todos os centros da empresa, incluindo Principal, Garantia e outros (ex: gôndola, logística).">Consolidado</th></tr></thead>
+        <tbody id="mv-centro-body"><tr class="loading-row"><td colspan="4">Carregando...</td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+  <div class="drawer-overlay" id="mv-drawer-overlay" onclick="fecharMovDrawer()"></div>
+  <div class="drawer" id="mv-drawer" style="width:640px">
+    <div class="drawer-header"><div><div class="drawer-title" id="mv-drawer-titulo">—</div><div class="drawer-sub" id="mv-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharMovDrawer()">✕</button></div>
+    <div class="drawer-body">
+      <div style="overflow-x:auto"><table class="data-table">
+        <thead><tr><th>Data</th><th>Empresa</th><th>Centro</th><th>Categoria</th><th class="right">Qtd</th><th class="right">Custo un.</th></tr></thead>
+        <tbody id="mv-drawer-body"></tbody>
+      </table></div>
     </div>
   </div>`,
 
@@ -496,8 +519,8 @@ function fmtDataHora(d) {
 }
 
 function badgeSituacao(s) {
-  const map = { 'RUPTURA': 'badge-ruptura', 'CRITICO': 'badge-critico', 'BAIXO': 'badge-baixo', 'OK': 'badge-ok', 'SEM_MOVIMENTO': 'badge-sem_mov' };
-  const label = { 'RUPTURA': '🔴 Ruptura', 'CRITICO': '🟠 Crítico', 'BAIXO': '🟡 Baixo', 'OK': '🟢 OK', 'SEM_MOVIMENTO': '⚪ Sem Mov.' };
+  const map = { 'RUPTURA': 'badge-ruptura', 'CRITICO': 'badge-critico', 'BAIXO': 'badge-baixo', 'OK': 'badge-ok', 'ESTOQUE_MORTO': 'badge-morto', 'SEM_GIRO': 'badge-sem_mov' };
+  const label = { 'RUPTURA': '🔴 Ruptura', 'CRITICO': '🟠 Crítico', 'BAIXO': '🟡 Baixo', 'OK': '🟢 OK', 'ESTOQUE_MORTO': '⚫ Morto', 'SEM_GIRO': '⚪ Sem Giro' };
   return `<span class="badge ${map[s] || 'badge-sem_mov'}">${label[s] || s}</span>`;
 }
 
@@ -749,7 +772,8 @@ function atualizarKPIs() {
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = fmtQtd(v); };
   set('kpi-ruptura', count('RUPTURA')); set('kpi-critico', count('CRITICO'));
   set('kpi-baixo', count('BAIXO')); set('kpi-ok', count('OK'));
-  set('kpi-sem_mov', count('SEM_MOVIMENTO'));
+  set('kpi-morto', count('ESTOQUE_MORTO'));
+  set('kpi-sem_mov', count('SEM_GIRO'));
   const badge = document.getElementById('badge-ruptura');
   if (badge) badge.textContent = count('RUPTURA');
 }
@@ -769,7 +793,7 @@ function onFilterChange() {
 function onSearch() { paginaAtual = 1; renderAlertas(); }
 
 // Classe CSS de cada card do semáforo por situação
-const SEMAFORO_CLASSE = { RUPTURA: 'ruptura', CRITICO: 'critico', BAIXO: 'baixo', OK: 'ok', SEM_MOVIMENTO: 'sem_mov' };
+const SEMAFORO_CLASSE = { RUPTURA: 'ruptura', CRITICO: 'critico', BAIXO: 'baixo', OK: 'ok', ESTOQUE_MORTO: 'morto', SEM_GIRO: 'sem_mov' };
 // Sincroniza o destaque dos cards a partir do estado (fonte única) — evita desync que travava o "desmarcar"
 function sincronizarSemaforo() {
   document.querySelectorAll('.semaforo-card').forEach(c => {
@@ -834,7 +858,7 @@ function renderAlertas() {
   sincronizarSemaforo();
   let dados = baseFiltradaAlertas();
   if (filtroStatus.size) dados = dados.filter(r => filtroStatus.has(r.situacao_estoque));
-  const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
+  const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, ESTOQUE_MORTO: 5, SEM_GIRO: 6 };
   const abcMap  = { A: 1, B: 2, C: 3 };
   const dir = ordemDir === 'asc' ? 1 : -1;
   if (ordemAlertas === 'prioridade') {
@@ -978,7 +1002,7 @@ function renderComprarAgora() {
   const setTxt = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
   const busca = (document.getElementById('ca-busca')?.value || '').toLowerCase();
   const incluiEsp = !!document.getElementById('ca-inclui-esporadicos')?.checked;
-  const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, SEM_MOVIMENTO: 5 };
+  const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, ESTOQUE_MORTO: 5, SEM_GIRO: 6 };
   const qtdComprar = r => Math.ceil(Number(r.qtd_sugerida) || 0);
   const custoItem  = r => qtdComprar(r) * (Number(r.preco_compra) || 0);
   const ignorados = Array.isArray(compIgnorados) ? compIgnorados : [];
@@ -1079,7 +1103,7 @@ function renderEstoqueParado() {
     ? (Number(r.saida_90d_total) || 0) <= 0
     : (r.saida_365d_total !== undefined && r.saida_365d_total !== null
         ? (Number(r.saida_365d_total) || 0) <= 0
-        : r.situacao_estoque === 'SEM_MOVIMENTO');
+        : (r.situacao_estoque === 'ESTOQUE_MORTO' || r.situacao_estoque === 'SEM_GIRO'));
 
   let itens = (alertasConsolidado ?? []).filter(r =>
     (Number(r.estoque_total) || 0) > 0 && semVenda(r) && !itemIgnorado(r));
@@ -2148,7 +2172,7 @@ async function loadTotais() {
     const totalSkus = rows.length;
     const totalValor = rows.reduce((a, r) => a + (Math.max(0, r.estoque_total || 0) * (r.preco_compra || 0)), 0);
     const negativos = rows.filter(r => (r.estoque_total || 0) < 0).length;
-    const semMov = rows.filter(r => r.situacao_estoque === 'SEM_MOVIMENTO').length;
+    const semMov = rows.filter(r => r.situacao_estoque === 'ESTOQUE_MORTO' || r.situacao_estoque === 'SEM_GIRO').length;
     document.getElementById('tot-skus').textContent = fmtQtd(totalSkus);
     document.getElementById('tot-valor').textContent = fmt(totalValor);
     document.getElementById('tot-negativos').textContent = fmtQtd(negativos);
@@ -2176,10 +2200,10 @@ async function loadTotais() {
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 11 } } } } }
     });
     const sitCount = {};
-    rows.forEach(r => { const s = r.situacao_estoque || 'SEM_MOVIMENTO'; sitCount[s] = (sitCount[s] || 0) + 1; });
-    const sitLabels = ['RUPTURA', 'CRITICO', 'BAIXO', 'OK', 'SEM_MOVIMENTO'];
-    const sitColors = ['#D93025', '#E07B00', '#B45309', '#0F9D6E', '#9AA5B8'];
-    const sitNames = ['Ruptura', 'Crítico', 'Baixo', 'OK', 'Sem Movimento'];
+    rows.forEach(r => { const s = r.situacao_estoque || 'SEM_GIRO'; sitCount[s] = (sitCount[s] || 0) + 1; });
+    const sitLabels = ['RUPTURA', 'CRITICO', 'BAIXO', 'OK', 'ESTOQUE_MORTO', 'SEM_GIRO'];
+    const sitColors = ['#D93025', '#E07B00', '#B45309', '#0F9D6E', '#7C3AED', '#9AA5B8'];
+    const sitNames = ['Ruptura', 'Crítico', 'Baixo', 'OK', 'Estoque Morto', 'Sem Giro'];
     if (chartSituacao) chartSituacao.destroy();
     chartSituacao = new Chart(document.getElementById('chart-situacao').getContext('2d'), {
       type: 'doughnut',
@@ -2294,157 +2318,266 @@ function setFornOrdem(ordem, btn) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// AJUSTES DE ESTOQUE — ajustes lançados no ERP (tipo 'A', sem vínculo de venda/OS)
-// Fonte: vw_fb_mov_estoque (Firebird TBL_MOV_PROD + TBL_ITENS_MOV_PROD)
+// MOVIMENTAÇÕES DE ESTOQUE — conferência por empresa×produto
+// Fonte: comp_estoque_mov (view nossa, sem fan-out, sem dupla contagem — ver docs/CONTEXTO-TECNICO.md §9)
+//        + vw_fb_estoque_centro (saldo atual por centro, pra Est.Atual e a tabela de saldo por centro)
 // ═══════════════════════════════════════════════════════════
-let ajustesData = [];
-let ajusteMetric = 'valor';
-let ajusteOrd = { col: 'liq_val', dir: 'desc', abs: true };   // default = maior impacto em R$
+let movData = [];        // lançamentos de comp_estoque_mov no período filtrado
+let movDepoisData = [];  // lançamentos entre "até" e hoje (só quando "até" é passado) — reconcilia Est.Atual
+let movSaldoCentro = []; // vw_fb_estoque_centro — saldo de hoje, todos os centros (sempre carregado por completo)
+let movRows = [];        // matriz já agregada por produto×empresa, pronta pra tabela
+let movOrd = { col: 'liq', dir: 'desc' };
 
-function setOrdemAjustes(col) {
-  if (ajusteOrd.col === col && !ajusteOrd.abs) {
-    ajusteOrd.dir = ajusteOrd.dir === 'desc' ? 'asc' : 'desc';
-  } else {
-    ajusteOrd = { col, dir: col === 'nome' ? 'asc' : 'desc', abs: false };
-  }
-  renderAjustes();
-}
+const MV_CAT_ENTRADA = [
+  { key: 'COMPRA_E', cat: 'COMPRA', es: 'E', label: 'Compra' },
+  { key: 'BALANCO_E', cat: 'BALANCO', es: 'E', label: 'Balanço' },
+  { key: 'ESTORNO_E', cat: 'ESTORNO', es: 'E', label: 'Estorno' },
+  { key: 'DEVOLUCAO_E', cat: 'DEVOLUCAO', es: 'E', label: 'Devolução' },
+  { key: 'AJUSTE_E', cat: 'AJUSTE', es: 'E', label: 'Ajuste' },
+  { key: 'TROCA_E', cat: 'TROCA', es: 'E', label: 'Troca' },
+];
+const MV_CAT_SAIDA = [
+  { key: 'OS_S', cat: 'OS', es: 'S', label: 'O.S.' },
+  { key: 'VENDA_S', cat: 'VENDA', es: 'S', label: 'Venda' },
+  { key: 'REQUISICAO_S', cat: 'REQUISICAO', es: 'S', label: 'Requis.' },
+  { key: 'CONSUMO_S', cat: 'CONSUMO', es: 'S', label: 'Cons.' },
+  { key: 'AJUSTE_S', cat: 'AJUSTE', es: 'S', label: 'Ajuste' },
+  { key: 'BALANCO_S', cat: 'BALANCO', es: 'S', label: 'Balanço' },
+  { key: 'TROCA_S', cat: 'TROCA', es: 'S', label: 'Troca' },
+];
 
-function categorizeMotivo(m) {
-  const s = (m || '').toUpperCase();
-  if (!s.trim()) return 'Sem motivo';
-  if (/BALAN[CÇ]|CONTAGEM/.test(s)) return 'Balanço';
-  if (/INICIAL|INIICAR|INIVIAL|INICIA/.test(s)) return 'Estoque inicial';
-  if (/INVERTID|C[OÓ]DIGO/.test(s)) return 'Código invertido';
-  if (/TRANSI|INTEGRA|MIGRA|\bM2\b|\bRP\b/.test(s)) return 'Transição de ERP';
-  if (/ACERTO|AJUSTE|CORRE|CONFER|SOBRA|FALTA/.test(s)) return 'Acerto/ajuste';
-  return 'Outros/não classificado';
-}
-
-async function loadAjustes() {
-  const body = document.getElementById('aj-ranking-body');
-  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="5">Carregando...</td></tr>';
-  try {
-    const { data, error } = await sb.from('vw_fb_mov_estoque')
-      .select('data_mov,empresa,centro_estoque,id_produto,referencia,nome_produto,grupo,tipo_es,qtd,custo_unit,motivo')
-      .eq('tipo_mov', 'A').eq('cancelada', 'N')
-      .is('id_venda', null).is('id_os', null).is('id_consumo', null)
-      .order('data_mov', { ascending: false }).range(0, 9999);
+// Busca paginada genérica (.range de 1000 em 1000) — mesmo padrão de Alertas (§2 do CONTEXTO-TECNICO)
+async function fetchPaginado(build, maxPages = 15) {
+  let all = [];
+  for (let i = 0; i < maxPages; i++) {
+    const { data, error } = await build(sb).range(i * 1000, (i + 1) * 1000 - 1);
     if (error) throw error;
-    ajustesData = data || [];
+    all = all.concat(data || []);
+    if (!data || data.length < 1000) break;
+  }
+  return all;
+}
+
+function mvPeriodoDefault() {
+  const hoje = new Date();
+  const ini = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const f = d => d.toISOString().slice(0, 10);
+  return { de: f(ini), ate: f(hoje) };
+}
+
+function catKey(categoria, tipoEs) { return `${categoria}_${tipoEs}`; }
+
+async function loadMovEstoque() {
+  const deEl = document.getElementById('mv-de'), ateEl = document.getElementById('mv-ate');
+  if (deEl && !deEl.value) { const p = mvPeriodoDefault(); deEl.value = p.de; ateEl.value = p.ate; }
+  const de = deEl?.value || '', ate = ateEl?.value || '';
+  const empresa = document.getElementById('mv-empresa')?.value || '';
+  const todosCentros = document.getElementById('mv-todos-centros')?.checked || false;
+  const body = document.getElementById('mv-body');
+  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="20">Carregando...</td></tr>';
+  const hojeISO = new Date().toISOString().slice(0, 10);
+  try {
+    movData = await fetchPaginado(sbq => {
+      let q = sbq.from('comp_estoque_mov')
+        .select('id_empresa,empresa,id_produto,referencia,nome_produto,id_centro_estoque,centro_estoque,is_principal,data_mov,categoria,tipo_es,qtd,custo_unit')
+        .gte('data_mov', de).lte('data_mov', ate).order('data_mov').order('id_produto');
+      if (empresa) q = q.eq('empresa', empresa);
+      if (!todosCentros) q = q.eq('is_principal', true);
+      return q;
+    }, 30);
+    movDepoisData = [];
+    if (ate && ate < hojeISO) {
+      movDepoisData = await fetchPaginado(sbq => {
+        let q = sbq.from('comp_estoque_mov').select('id_empresa,empresa,id_produto,tipo_es,qtd')
+          .gt('data_mov', ate).lte('data_mov', hojeISO).order('data_mov').order('id_produto');
+        if (empresa) q = q.eq('empresa', empresa);
+        if (!todosCentros) q = q.eq('is_principal', true);
+        return q;
+      }, 30);
+    }
+    // saldo de hoje: SEMPRE todos os centros (a tabela de baixo precisa de Principal + Garantia + Consolidado juntos)
+    movSaldoCentro = await fetchPaginado(sbq => {
+      let q = sbq.from('vw_fb_estoque_centro')
+        .select('id_empresa,empresa,id_produto,referencia,nome,id_centro_estoque,centro_estoque,centro_padrao,estoque')
+        .order('id');
+      if (empresa) q = q.eq('empresa', empresa);
+      return q;
+    }, 30);
   } catch (e) {
-    ajustesData = [];
-    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="5" style="color:var(--red)">Erro ao carregar: ${e.message || e}</td></tr>`;
+    movData = []; movDepoisData = []; movSaldoCentro = []; movRows = [];
+    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="20" style="color:var(--red)">Erro ao carregar: ${e.message || e}</td></tr>`;
     return;
   }
-  // datas default = janela completa (só na 1ª carga)
-  const deEl = document.getElementById('aj-de'), ateEl = document.getElementById('aj-ate');
-  if (deEl && !deEl.value) {
-    const datas = ajustesData.map(r => r.data_mov).filter(Boolean).sort();
-    if (datas.length) { deEl.value = datas[0]; ateEl.value = datas[datas.length - 1]; }
-  }
-  const empSel = document.getElementById('aj-empresa');
+  const empSel = document.getElementById('mv-empresa');
   if (empSel && empSel.options.length <= 1) {
-    [...new Set(ajustesData.map(r => r.empresa).filter(Boolean))].sort()
+    [...new Set(movSaldoCentro.map(r => r.empresa).filter(Boolean))].sort()
       .forEach(e => { const o = document.createElement('option'); o.value = e; o.textContent = e; empSel.appendChild(o); });
   }
-  const motSel = document.getElementById('aj-motivo');
-  if (motSel && motSel.options.length <= 1) {
-    [...new Set(ajustesData.map(r => categorizeMotivo(r.motivo)))].sort()
-      .forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; motSel.appendChild(o); });
-    // abre já focado em Balanço (é o único ajuste "real"; migração/reclassificação não geram financeiro)
-    if ([...motSel.options].some(o => o.value === 'Balanço')) motSel.value = 'Balanço';
+  montarMatrizMov(todosCentros);
+  renderSaldoCentro();
+  renderMovEstoque();
+}
+
+function montarMatrizMov(todosCentros) {
+  // saldo de hoje por produto×empresa, no mesmo recorte de centro da tabela principal
+  const saldoAgora = {};
+  movSaldoCentro.forEach(r => {
+    if (!todosCentros && r.centro_padrao !== 'S') return;
+    const k = r.id_produto + '|' + r.empresa;
+    saldoAgora[k] = (saldoAgora[k] || 0) + (Number(r.estoque) || 0);
+  });
+  // movimento depois do fim do período (pra "voltar no tempo" a partir do saldo de hoje)
+  const movDepois = {};
+  movDepoisData.forEach(r => {
+    const k = r.id_produto + '|' + r.empresa;
+    const d = (r.tipo_es === 'E' ? 1 : -1) * (Number(r.qtd) || 0);
+    movDepois[k] = (movDepois[k] || 0) + d;
+  });
+  const map = {};
+  movData.forEach(r => {
+    const k = r.id_produto + '|' + r.empresa;
+    if (!map[k]) map[k] = { id_produto: r.id_produto, empresa: r.empresa, referencia: r.referencia, nome: r.nome_produto, ent: {}, sai: {}, totalEnt: 0, totalSai: 0 };
+    const row = map[k];
+    const ck = catKey(r.categoria, r.tipo_es);
+    const q = Number(r.qtd) || 0;
+    if (r.tipo_es === 'E') { row.ent[ck] = (row.ent[ck] || 0) + q; row.totalEnt += q; }
+    else { row.sai[ck] = (row.sai[ck] || 0) + q; row.totalSai += q; }
+  });
+  movRows = Object.entries(map).map(([k, row]) => {
+    const atual = (saldoAgora[k] || 0) - (movDepois[k] || 0);
+    const anterior = atual - (row.totalEnt - row.totalSai);
+    return { ...row, estAtual: atual, estAnterior: anterior, liq: row.totalEnt - row.totalSai };
+  });
+}
+
+function mvColKeys() {
+  const map = {};
+  document.querySelectorAll('.mv-col-check').forEach(b => b.value.split(',').forEach(k => { map[k] = b.checked; }));
+  return map;
+}
+function mvColVisible(map, key) { return key in map ? map[key] : true; } // sem checkbox (ex: Estorno) = sempre visível
+
+function setOrdemMov(col) {
+  if (movOrd.col === col) movOrd.dir = movOrd.dir === 'desc' ? 'asc' : 'desc';
+  else movOrd = { col, dir: (col === 'nome' || col === 'empresa') ? 'asc' : 'desc' };
+  renderMovEstoque();
+}
+
+function renderMovEstoque() {
+  const busca = (document.getElementById('mv-busca')?.value || '').toLowerCase();
+  const map = mvColKeys();
+  const colsEnt = MV_CAT_ENTRADA.filter(c => mvColVisible(map, c.key));
+  const colsSai = MV_CAT_SAIDA.filter(c => mvColVisible(map, c.key));
+
+  const thead = document.getElementById('mv-thead-row');
+  if (thead) {
+    thead.innerHTML = `
+      <th class="sortable" onclick="setOrdemMov('nome')">Produto <span class="sort-icon">↕</span></th>
+      <th class="sortable" onclick="setOrdemMov('empresa')">Empresa <span class="sort-icon">↕</span></th>
+      <th class="right sortable" onclick="setOrdemMov('est_ant')">Est.Anterior <span class="sort-icon">↕</span></th>
+      ${colsEnt.map(c => `<th class="right" title="${c.label}">${c.label}</th>`).join('')}
+      <th class="right sortable" style="background:#EAF7EF" onclick="setOrdemMov('tot_ent')">Total Entrada <span class="sort-icon">↕</span></th>
+      ${colsSai.map(c => `<th class="right" title="${c.label}">${c.label}</th>`).join('')}
+      <th class="right sortable" style="background:#FDECEC" onclick="setOrdemMov('tot_sai')">Total Saída <span class="sort-icon">↕</span></th>
+      <th class="right sortable" onclick="setOrdemMov('est_atu')">Est.Atual <span class="sort-icon">↕</span></th>`;
   }
-  renderAjustes();
-}
 
-function setAjusteMetric(m, btn) {
-  ajusteMetric = m;
-  btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderAjustes();
-}
+  let rows = movRows;
+  if (busca) rows = rows.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
 
-function renderAjustes() {
-  const de = document.getElementById('aj-de')?.value || '';
-  const ate = document.getElementById('aj-ate')?.value || '';
-  const emp = document.getElementById('aj-empresa')?.value || '';
-  const motCat = document.getElementById('aj-motivo')?.value || '';
-  const rows = ajustesData.filter(r => {
-    if (de && (r.data_mov || '') < de) return false;
-    if (ate && (r.data_mov || '') > ate) return false;
-    if (emp && r.empresa !== emp) return false;
-    if (motCat && categorizeMotivo(r.motivo) !== motCat) return false;
-    return true;
-  });
-  const isVal = ajusteMetric === 'valor';
-  const val = r => Math.abs((r.qtd || 0) * (r.custo_unit || 0));
-  const qty = r => Math.abs(r.qtd || 0);
-  let entVal = 0, saiVal = 0, entQtd = 0, saiQtd = 0;
-  const prodMap = {}, motMap = {}, mesMap = {};
-  rows.forEach(r => {
-    const isE = r.tipo_es === 'E';
-    const v = val(r), q = qty(r);
-    if (isE) { entVal += v; entQtd += q; } else { saiVal += v; saiQtd += q; }
-    const p = prodMap[r.id_produto] || (prodMap[r.id_produto] = { ref: r.referencia, nome: r.nome_produto, entV: 0, saiV: 0, entQ: 0, saiQ: 0, n: 0 });
-    if (isE) { p.entV += v; p.entQ += q; } else { p.saiV += v; p.saiQ += q; } p.n++;
-    const c = categorizeMotivo(r.motivo);
-    const mm = motMap[c] || (motMap[c] = { n: 0, v: 0 }); mm.n++; mm.v += (isE ? v : -v);
-    const mk = (r.data_mov || '').slice(0, 7);
-    if (mk) { const me = mesMap[mk] || (mesMap[mk] = { entV: 0, saiV: 0, entQ: 0, saiQ: 0 }); if (isE) { me.entV += v; me.entQ += q; } else { me.saiV += v; me.saiQ += q; } }
-  });
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  set('aj-kpi-entrada', fmt(entVal)); set('aj-kpi-entrada-qtd', fmtQtd(entQtd, 0) + ' un');
-  set('aj-kpi-saida', fmt(saiVal)); set('aj-kpi-saida-qtd', fmtQtd(saiQtd, 0) + ' un');
-  const liqEl = document.getElementById('aj-kpi-liquido');
-  if (liqEl) { liqEl.textContent = fmt(entVal - saiVal); liqEl.style.color = (entVal - saiVal) < 0 ? 'var(--red)' : 'var(--green)'; }
-  set('aj-kpi-num', fmtQtd(rows.length, 0)); set('aj-kpi-prod', Object.keys(prodMap).length + ' produtos');
-  set('aj-resumo', `${fmtQtd(rows.length, 0)} ajustes · ${Object.keys(prodMap).length} produtos`);
-  // Ranking — ordenação por coluna (default = maior impacto no líquido)
-  const arr = Object.entries(prodMap).map(([id, p]) => ({ id, ...p, liqV: p.entV - p.saiV, liqQ: p.entQ - p.saiQ }));
-  const colVal = p => {
-    switch (ajusteOrd.col) {
-      case 'nome': return (p.nome || '').toLowerCase();
-      case 'entrou': return isVal ? p.entV : p.entQ;
-      case 'saiu': return isVal ? p.saiV : p.saiQ;
-      case 'liq_qtd': return p.liqQ;
-      case 'n': return p.n;
-      default: return p.liqV;   // liq_val
+  const colVal = r => {
+    switch (movOrd.col) {
+      case 'nome': return (r.nome || '').toLowerCase();
+      case 'empresa': return (r.empresa || '').toLowerCase();
+      case 'est_ant': return r.estAnterior;
+      case 'tot_ent': return r.totalEnt;
+      case 'tot_sai': return r.totalSai;
+      case 'est_atu': return r.estAtual;
+      default: return r.liq;
     }
   };
-  arr.sort((a, b) => {
-    let av = colVal(a), bv = colVal(b);
-    if (ajusteOrd.col === 'nome') return ajusteOrd.dir === 'asc' ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
-    if (ajusteOrd.abs) { av = Math.abs(av); bv = Math.abs(bv); }
-    return ajusteOrd.dir === 'asc' ? av - bv : bv - av;
+  rows = [...rows].sort((a, b) => {
+    const av = colVal(a), bv = colVal(b);
+    if (typeof av === 'string') return movOrd.dir === 'asc' ? (av < bv ? -1 : av > bv ? 1 : 0) : (av > bv ? -1 : av < bv ? 1 : 0);
+    return movOrd.dir === 'asc' ? av - bv : bv - av;
   });
-  // marca a seta na coluna ativa
+
   document.querySelectorAll('#page-cmp-ajustes thead .sort-icon').forEach(s => s.textContent = '↕');
-  const thAtivo = document.querySelector(`#page-cmp-ajustes thead th.sortable[onclick*="'${ajusteOrd.col}'"] .sort-icon`);
-  if (thAtivo) thAtivo.textContent = ajusteOrd.dir === 'asc' ? '↑' : '↓';
-  const rb = document.getElementById('aj-ranking-body');
-  if (rb) rb.innerHTML = arr.length ? arr.slice(0, 100).map(p => {
-    const corV = p.liqV < 0 ? 'var(--red)' : p.liqV > 0 ? 'var(--green)' : 'var(--text-muted)';
-    const corQ = p.liqQ < 0 ? 'var(--red)' : p.liqQ > 0 ? 'var(--green)' : 'var(--text-muted)';
-    const entTxt = (isVal ? p.entV : p.entQ) > 0 ? (isVal ? fmt(p.entV) : fmtQtd(p.entQ, 0)) : '—';
-    const saiTxt = (isVal ? p.saiV : p.saiQ) > 0 ? (isVal ? fmt(p.saiV) : fmtQtd(p.saiQ, 0)) : '—';
-    return `<tr><td style="font-weight:500;font-size:13px;max-width:260px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${p.nome || ''}">${p.nome || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${p.ref || ''}</div></td>
-      <td class="right mono" style="color:var(--green)">${entTxt}</td>
-      <td class="right mono" style="color:var(--red)">${saiTxt}</td>
-      <td class="right mono" style="font-weight:700;color:${corV}">${fmt(p.liqV)}</td>
-      <td class="right mono" style="font-weight:700;color:${corQ}">${fmtQtd(p.liqQ, 0)}</td>
-      <td class="right mono" style="color:var(--text-muted)">${p.n}</td></tr>`;
-  }).join('') : '<tr class="loading-row"><td colspan="6">Nenhum ajuste no período</td></tr>';
-  // Por motivo
-  const mb = document.getElementById('aj-motivo-body');
-  if (mb) mb.innerHTML = Object.entries(motMap).sort((a, b) => Math.abs(b[1].v) - Math.abs(a[1].v)).map(([c, m]) =>
-    `<tr><td style="font-size:12px">${c}</td><td class="right mono">${m.n}</td><td class="right mono" style="color:${m.v < 0 ? 'var(--red)' : 'var(--green)'}">${fmt(m.v)}</td></tr>`).join('') || '<tr><td colspan="3" style="color:var(--text-muted)">—</td></tr>';
-  // Por mês (desc)
-  const meb = document.getElementById('aj-mes-body');
-  if (meb) meb.innerHTML = Object.entries(mesMap).sort((a, b) => b[0].localeCompare(a[0])).map(([mk, me]) => {
-    const [y, mo] = mk.split('-');
-    return `<tr><td class="mono">${mo}/${y.slice(2)}</td><td class="right mono" style="color:var(--green)">${me.entV > 0 ? fmt(me.entV) : '—'}</td><td class="right mono" style="color:var(--red)">${me.saiV > 0 ? fmt(me.saiV) : '—'}</td></tr>`;
-  }).join('') || '<tr><td colspan="3" style="color:var(--text-muted)">—</td></tr>';
+  const thAtivo = document.querySelector(`#page-cmp-ajustes thead th.sortable[onclick*="'${movOrd.col}'"] .sort-icon`);
+  if (thAtivo) thAtivo.textContent = movOrd.dir === 'asc' ? '↑' : '↓';
+
+  const totalCols = 3 + colsEnt.length + 1 + colsSai.length + 2;
+  const body = document.getElementById('mv-body');
+  if (body) body.innerHTML = rows.length ? rows.map(r => {
+    const cell = v => v ? `<td class="right mono">${fmtQtd(v, 0)}</td>` : `<td class="right mono" style="color:var(--text-muted)">—</td>`;
+    const emp = (r.empresa || '').replace(/'/g, "\\'");
+    return `<tr style="cursor:pointer" onclick="abrirMovDrawer(${r.id_produto}, '${emp}')">
+      <td style="font-weight:500;font-size:13px;max-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
+      <td style="font-size:12px">${r.empresa || '—'}</td>
+      <td class="right mono">${fmtQtd(r.estAnterior, 0)}</td>
+      ${colsEnt.map(c => cell(r.ent[c.key])).join('')}
+      <td class="right mono" style="font-weight:700;background:#F3FBF5">${fmtQtd(r.totalEnt, 0)}</td>
+      ${colsSai.map(c => cell(r.sai[c.key])).join('')}
+      <td class="right mono" style="font-weight:700;background:#FEF5F5">${fmtQtd(r.totalSai, 0)}</td>
+      <td class="right mono" style="font-weight:700">${fmtQtd(r.estAtual, 0)}</td>
+    </tr>`;
+  }).join('') : `<tr class="loading-row"><td colspan="${totalCols}">Nenhuma movimentação no período</td></tr>`;
+
+  const totEnt = rows.reduce((s, r) => s + r.totalEnt, 0);
+  const totSai = rows.reduce((s, r) => s + r.totalSai, 0);
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('mv-kpi-entrada', fmtQtd(totEnt, 0));
+  set('mv-kpi-saida', fmtQtd(totSai, 0));
+  const liqEl = document.getElementById('mv-kpi-liquido');
+  if (liqEl) { const liq = totEnt - totSai; liqEl.textContent = fmtQtd(liq, 0); liqEl.style.color = liq < 0 ? 'var(--red)' : 'var(--green)'; }
+  set('mv-kpi-num', fmtQtd(rows.length, 0));
+  set('mv-count', `${fmtQtd(rows.length, 0)} linhas (produto × empresa)`);
+  set('mv-resumo', `${fmtQtd(movData.length, 0)} lançamentos no período`);
+}
+
+function renderSaldoCentro() {
+  const byEmpresa = {};
+  movSaldoCentro.forEach(r => {
+    const e = byEmpresa[r.empresa] || (byEmpresa[r.empresa] = { principal: 0, garantia: 0, consolidado: 0 });
+    const q = Number(r.estoque) || 0;
+    e.consolidado += q;
+    if (r.centro_padrao === 'S') e.principal += q;
+    else if ((r.centro_estoque || '').toUpperCase().startsWith('GARANTIA')) e.garantia += q;
+  });
+  const linhas = Object.entries(byEmpresa).sort((a, b) => a[0].localeCompare(b[0]));
+  const body = document.getElementById('mv-centro-body');
+  if (body) body.innerHTML = linhas.length ? linhas.map(([emp, v]) =>
+    `<tr><td style="font-weight:500">${emp}</td><td class="right mono">${fmtQtd(v.principal, 0)}</td><td class="right mono">${fmtQtd(v.garantia, 0)}</td><td class="right mono" style="font-weight:700">${fmtQtd(v.consolidado, 0)}</td></tr>`
+  ).join('') : '<tr><td colspan="4" style="color:var(--text-muted)">—</td></tr>';
+}
+
+function mvCatLabel(categoria, tipoEs) {
+  const f = [...MV_CAT_ENTRADA, ...MV_CAT_SAIDA].find(c => c.cat === categoria && c.es === tipoEs);
+  return f ? f.label : (categoria || '—');
+}
+
+function abrirMovDrawer(idProduto, empresa) {
+  const linhas = movData.filter(r => r.id_produto === idProduto && r.empresa === empresa)
+    .sort((a, b) => (a.data_mov || '').localeCompare(b.data_mov || ''));
+  if (!linhas.length) return;
+  document.getElementById('mv-drawer-titulo').textContent = linhas[0].nome_produto || '—';
+  document.getElementById('mv-drawer-sub').textContent = `${linhas[0].referencia || ''} · ${empresa} · ${linhas.length} lançamento(s) no período`;
+  const body = document.getElementById('mv-drawer-body');
+  if (body) body.innerHTML = linhas.map(r => `<tr>
+      <td class="mono">${fmtDate ? fmtDate(r.data_mov) : (r.data_mov || '—')}</td>
+      <td style="font-size:12px">${r.empresa || '—'}</td>
+      <td style="font-size:12px">${r.centro_estoque || '—'}</td>
+      <td style="font-size:12px">${mvCatLabel(r.categoria, r.tipo_es)} <span style="color:${r.tipo_es === 'E' ? 'var(--green)' : 'var(--red)'}">${r.tipo_es === 'E' ? '↑' : '↓'}</span></td>
+      <td class="right mono">${fmtQtd(r.qtd, 0)}</td>
+      <td class="right mono">${r.custo_unit ? fmt(r.custo_unit) : '—'}</td>
+    </tr>`).join('');
+  document.getElementById('mv-drawer').classList.add('open');
+  document.getElementById('mv-drawer-overlay').classList.add('open');
+}
+
+function fecharMovDrawer() {
+  document.getElementById('mv-drawer').classList.remove('open');
+  document.getElementById('mv-drawer-overlay').classList.remove('open');
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -4224,7 +4357,7 @@ const CMP_PAGE_LOADERS = {
   'cmp-parado':       () => loadEstoqueParado(),
   'cmp-alertas':      () => loadAll(),
   'cmp-totais':       () => loadTotais(),
-  'cmp-ajustes':      () => loadAjustes(),
+  'cmp-ajustes':      () => loadMovEstoque(),
   'cmp-balanco':      () => loadBalanco(),
   'cmp-importacao':   () => loadImportacao(),
   'cmp-config':       () => loadConfiguracoes(),
@@ -4536,10 +4669,11 @@ window.onRowCheck             = onRowCheck;
 window.toggleGrupo            = toggleGrupo;
 window.setTotOrdem            = setTotOrdem;
 window.setFornOrdem           = setFornOrdem;
-window.loadAjustes            = loadAjustes;
-window.renderAjustes          = renderAjustes;
-window.setAjusteMetric        = setAjusteMetric;
-window.setOrdemAjustes        = setOrdemAjustes;
+window.loadMovEstoque         = loadMovEstoque;
+window.renderMovEstoque       = renderMovEstoque;
+window.setOrdemMov            = setOrdemMov;
+window.abrirMovDrawer         = abrirMovDrawer;
+window.fecharMovDrawer        = fecharMovDrawer;
 window.abrirFornDrawer        = abrirFornDrawer;
 window.fecharFornDrawer       = fecharFornDrawer;
 window.switchFornTab          = switchFornTab;
