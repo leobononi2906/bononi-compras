@@ -244,7 +244,7 @@ const PAGINAS_HTML = {
         <option value="PRINCIPAL">Centro: Principal</option>
         <option value="TODOS">Centro: Todos</option>
       </select>
-      <input type="text" id="mv-busca" class="search-input" placeholder="🔍 Buscar produto, referência ou código..." oninput="renderMovEstoque()" style="width:240px" />
+      <input type="text" id="mv-busca" class="search-input" placeholder="🔍 Buscar produto, referência ou código..." oninput="onMvBusca()" style="width:240px" />
       <button class="btn btn-outline" style="height:36px" onclick="loadMovEstoque()" title="Recarregar">↻</button>
       <span style="margin-left:auto;font-size:12px;color:var(--text-muted)" id="mv-resumo"></span>
     </div>
@@ -283,6 +283,7 @@ const PAGINAS_HTML = {
         <tbody id="mv-body"><tr class="loading-row"><td colspan="20">Carregando...</td></tr></tbody>
         <tfoot><tr id="mv-tfoot-row"></tr></tfoot>
       </table></div>
+      <div id="mv-paginacao" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"></div>
     </div>
     <div class="section-title" style="margin-top:20px">Saldo por centro — <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--text-muted)">posição atual (hoje), não depende do período acima</span></div>
     <div class="table-card">
@@ -2334,6 +2335,8 @@ let movDepoisData = [];  // lançamentos entre "até" e hoje (só quando "até" 
 let movSaldoCentro = []; // vw_fb_estoque_centro — saldo de hoje, todos os centros (sempre carregado por completo)
 let movRows = [];        // matriz já agregada por produto×empresa, pronta pra tabela
 let movOrd = { col: 'liq', dir: 'desc' };
+let mvPagina = 1;
+const MV_POR_PAGINA = 50;
 
 const MV_CAT_ENTRADA = [
   { key: 'COMPRA_E', cat: 'COMPRA', es: 'E', label: 'Compra' },
@@ -2442,6 +2445,7 @@ async function loadMovEstoque() {
   }
   montarMatrizMov(centro);
   renderSaldoCentro();
+  mvPagina = 1;
   renderMovEstoque();
 }
 
@@ -2488,7 +2492,23 @@ function mvColVisible(map, key) { return key in map ? map[key] : true; } // sem 
 function setOrdemMov(col) {
   if (movOrd.col === col) movOrd.dir = movOrd.dir === 'desc' ? 'asc' : 'desc';
   else movOrd = { col, dir: (col === 'nome' || col === 'empresa') ? 'asc' : 'desc' };
+  mvPagina = 1;
   renderMovEstoque();
+}
+
+function onMvBusca() { mvPagina = 1; renderMovEstoque(); }
+
+function irPaginaMov(p) { mvPagina = p; renderMovEstoque(); document.getElementById('mv-tabela')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+
+function renderPaginacaoMov(pagina, totalPags, total) {
+  const el = document.getElementById('mv-paginacao');
+  if (!el) return;
+  if (totalPags <= 1) { el.innerHTML = ''; el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const range = new Set([1, totalPags, pagina - 1, pagina, pagina + 1].filter(p => p >= 1 && p <= totalPags));
+  const pages = []; let last = 0;
+  [...range].sort((a, b) => a - b).forEach(p => { if (last && p - last > 1) pages.push('...'); pages.push(p); last = p; });
+  el.innerHTML = `<button class="btn btn-outline" style="height:28px;font-size:12px" ${pagina === 1 ? 'disabled' : ''} onclick="irPaginaMov(${pagina - 1})">← Anterior</button>${pages.map(p => p === '...' ? '<span style="color:var(--text-muted);padding:0 4px">…</span>' : `<button class="btn ${p === pagina ? 'btn-primary' : 'btn-outline'}" style="height:28px;min-width:32px;font-size:12px" onclick="irPaginaMov(${p})">${p}</button>`).join('')}<button class="btn btn-outline" style="height:28px;font-size:12px" ${pagina === totalPags ? 'disabled' : ''} onclick="irPaginaMov(${pagina + 1})">Próxima →</button><span style="font-size:12px;color:var(--text-muted);margin-left:8px">${total} linhas</span>`;
 }
 
 function renderMovEstoque() {
@@ -2544,9 +2564,16 @@ function renderMovEstoque() {
   const thAtivo = document.querySelector(`#page-cmp-ajustes thead th.sortable[onclick*="'${movOrd.col}'"] .sort-icon`);
   if (thAtivo) thAtivo.textContent = movOrd.dir === 'asc' ? '↑' : '↓';
 
+  // Paginação — KPIs/rodapé somam TODO o recorte filtrado (`rows`); só a tabela mostra 1 página por vez
+  const totalItens = rows.length;
+  const totalPaginas = Math.max(1, Math.ceil(totalItens / MV_POR_PAGINA));
+  if (mvPagina > totalPaginas) mvPagina = 1;
+  const inicioPag = (mvPagina - 1) * MV_POR_PAGINA;
+  const dadosPagina = rows.slice(inicioPag, inicioPag + MV_POR_PAGINA);
+
   const totalCols = 3 + colsEnt.length + colsSai.length + 4;
   const body = document.getElementById('mv-body');
-  if (body) body.innerHTML = rows.length ? rows.map(r => {
+  if (body) body.innerHTML = dadosPagina.length ? dadosPagina.map(r => {
     const cell = v => v ? `<td class="right mono">${fmtQtd(v, 0)}</td>` : `<td class="right mono" style="color:var(--text-muted)">—</td>`;
     const emp = (r.empresa || '').replace(/'/g, "\\'");
     return `<tr style="cursor:pointer" onclick="abrirMovDrawer(${r.id_produto}, '${emp}')">
@@ -2593,6 +2620,7 @@ function renderMovEstoque() {
   set('mv-kpi-num', fmtQtd(rows.length, 0));
   set('mv-count', `${fmtQtd(rows.length, 0)} linhas (produto × empresa)`);
   set('mv-resumo', `${fmtQtd(movData.length, 0)} lançamentos no período`);
+  renderPaginacaoMov(mvPagina, totalPaginas, totalItens);
 }
 
 function renderSaldoCentro() {
@@ -4734,6 +4762,8 @@ window.renderMovEstoque       = renderMovEstoque;
 window.setOrdemMov            = setOrdemMov;
 window.abrirMovDrawer         = abrirMovDrawer;
 window.fecharMovDrawer        = fecharMovDrawer;
+window.onMvBusca              = onMvBusca;
+window.irPaginaMov            = irPaginaMov;
 window.abrirFornDrawer        = abrirFornDrawer;
 window.fecharFornDrawer       = fecharFornDrawer;
 window.switchFornTab          = switchFornTab;
