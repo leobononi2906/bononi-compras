@@ -762,6 +762,7 @@ function baseFiltradaAlertas() {
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
   let dados = alertasConsolidado.filter(r => {
+    if (r.fora_linha === 'S') return false; // produto descontinuado no ERP — não sugerir reposição
     if (compIgnorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
     if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
     if (compIgnorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
@@ -787,7 +788,7 @@ function atualizarKPIs() {
 }
 
 function atualizarBadgeSidebar() {
-  const rupturas = alertasConsolidado.filter(r => r.situacao_estoque === 'RUPTURA').length;
+  const rupturas = alertasConsolidado.filter(r => r.situacao_estoque === 'RUPTURA' && r.fora_linha !== 'S').length;
   const el = document.getElementById('badge-ruptura');
   if (el) el.textContent = rupturas;
 }
