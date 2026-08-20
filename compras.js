@@ -279,7 +279,6 @@ const PAGINAS_HTML = {
         <thead>
           <tr id="mv-thead-grupos"></tr>
           <tr id="mv-thead-row">
-            <th class="sortable" onclick="setOrdemMov('empresa')">Empresa <span class="sort-icon">↕</span></th>
             <th class="sortable" onclick="setOrdemMov('referencia')">Ref. <span class="sort-icon">↕</span></th>
             <th class="sortable" onclick="setOrdemMov('nome')">Produto <span class="sort-icon">↕</span></th>
           </tr>
@@ -289,22 +288,32 @@ const PAGINAS_HTML = {
       </table></div>
       <div id="mv-paginacao" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"></div>
     </div>
-    <div class="section-title" style="margin-top:20px">Saldo por centro — <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--text-muted)">posição atual (hoje), não depende do período acima</span></div>
-    <div class="table-card">
-      <div style="overflow-x:auto"><table class="data-table">
-        <thead><tr><th>Empresa</th><th class="right" title="Estoque no centro de estoque padrão (o que o dia a dia usa pra vender).">Principal</th><th class="right" title="Estoque separado pra assistência técnica / garantia.">Garantia</th><th class="right" title="Soma de todos os centros da empresa, incluindo Principal, Garantia e outros (ex: gôndola, logística).">Consolidado</th></tr></thead>
-        <tbody id="mv-centro-body"><tr class="loading-row"><td colspan="4">Carregando...</td></tr></tbody>
-      </table></div>
-    </div>
   </div>
   <div class="drawer-overlay" id="mv-drawer-overlay" onclick="fecharMovDrawer()"></div>
-  <div class="drawer" id="mv-drawer" style="width:640px">
+  <div class="drawer" id="mv-drawer" style="width:720px">
     <div class="drawer-header"><div><div class="drawer-title" id="mv-drawer-titulo">—</div><div class="drawer-sub" id="mv-drawer-sub">—</div></div><button class="drawer-close" onclick="fecharMovDrawer()">✕</button></div>
     <div class="drawer-body">
-      <div style="overflow-x:auto"><table class="data-table">
-        <thead><tr><th>Data</th><th>Empresa</th><th>Centro</th><th>Categoria</th><th class="right">Qtd</th><th class="right">Custo un.</th></tr></thead>
-        <tbody id="mv-drawer-body"></tbody>
-      </table></div>
+      <div class="section-title" style="margin-top:0">Saldos por empresa — período selecionado</div>
+      <div class="table-card" style="margin-bottom:16px">
+        <div style="overflow-x:auto"><table class="data-table">
+          <thead><tr><th>Empresa</th><th class="right">Est.Anterior</th><th class="right">Entradas</th><th class="right">Saídas</th><th class="right">Est.Atual</th></tr></thead>
+          <tbody id="mv-drawer-empresa-body"></tbody>
+        </table></div>
+      </div>
+      <div class="section-title">Saldo por centro — <span style="font-weight:400;text-transform:none;letter-spacing:normal;color:var(--text-muted)">posição atual (hoje)</span></div>
+      <div class="table-card" style="margin-bottom:16px">
+        <div style="overflow-x:auto"><table class="data-table">
+          <thead><tr><th>Empresa</th><th class="right" title="Estoque no centro de estoque padrão (o que o dia a dia usa pra vender).">Principal</th><th class="right" title="Estoque separado pra assistência técnica / garantia.">Garantia</th><th class="right" title="Soma de todos os centros da empresa, incluindo Principal, Garantia e outros (ex: gôndola, logística).">Consolidado</th></tr></thead>
+          <tbody id="mv-drawer-centro-body"></tbody>
+        </table></div>
+      </div>
+      <div class="section-title">Lançamentos no período</div>
+      <div class="table-card">
+        <div style="overflow-x:auto"><table class="data-table">
+          <thead><tr><th>Data</th><th>Empresa</th><th>Centro</th><th>Categoria</th><th class="right">Qtd</th><th class="right">Custo un.</th></tr></thead>
+          <tbody id="mv-drawer-body"></tbody>
+        </table></div>
+      </div>
     </div>
   </div>`,
 
@@ -2452,11 +2461,12 @@ async function loadMovEstoque() {
     [...bases].sort().forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = 'Centro: ' + b; centroSel.appendChild(o); });
   }
   montarMatrizMov(centro);
-  renderSaldoCentro();
   mvPagina = 1;
   renderMovEstoque();
 }
 
+// Matriz consolidada por PRODUTO (soma todas as empresas) — o detalhe por empresa
+// e o saldo por centro de cada produto só aparecem ao abrir o drawer (abrirMovDrawer).
 function montarMatrizMov(centro) {
   // saldo de hoje por produto×empresa, no mesmo recorte de centro escolhido no filtro
   const saldoAgora = {};
@@ -2473,21 +2483,35 @@ function montarMatrizMov(centro) {
     const d = (r.tipo_es === 'E' ? 1 : -1) * (Number(r.qtd) || 0);
     movDepois[k] = (movDepois[k] || 0) + d;
   });
-  const map = {};
+  // 1ª passada: agrega por produto×empresa (pra fechar Est.Anterior/Atual certinho por empresa)
+  const porProdEmp = {};
   movData.forEach(r => {
     const k = r.id_produto + '|' + r.empresa;
-    if (!map[k]) map[k] = { id_produto: r.id_produto, empresa: r.empresa, referencia: r.referencia, nome: r.nome_produto, ent: {}, sai: {}, totalEnt: 0, totalSai: 0 };
-    const row = map[k];
+    if (!porProdEmp[k]) porProdEmp[k] = { id_produto: r.id_produto, empresa: r.empresa, referencia: r.referencia, nome: r.nome_produto, ent: {}, sai: {}, totalEnt: 0, totalSai: 0 };
+    const row = porProdEmp[k];
     const ck = catKey(r.categoria, r.tipo_es);
     const q = Number(r.qtd) || 0;
     if (r.tipo_es === 'E') { row.ent[ck] = (row.ent[ck] || 0) + q; row.totalEnt += q; }
     else { row.sai[ck] = (row.sai[ck] || 0) + q; row.totalSai += q; }
   });
-  movRows = Object.entries(map).map(([k, row]) => {
+  // 2ª passada: consolida por produto, guardando o detalhe por empresa em `empresas` (pro drawer)
+  const porProduto = {};
+  Object.entries(porProdEmp).forEach(([k, row]) => {
     const atual = (saldoAgora[k] || 0) - (movDepois[k] || 0);
     const anterior = atual - (row.totalEnt - row.totalSai);
-    return { ...row, estAtual: atual, estAnterior: anterior, liq: row.totalEnt - row.totalSai };
+    if (!porProduto[row.id_produto]) {
+      porProduto[row.id_produto] = { id_produto: row.id_produto, referencia: row.referencia, nome: row.nome, ent: {}, sai: {}, totalEnt: 0, totalSai: 0, estAnterior: 0, estAtual: 0, empresas: {} };
+    }
+    const p = porProduto[row.id_produto];
+    Object.entries(row.ent).forEach(([ck, q]) => { p.ent[ck] = (p.ent[ck] || 0) + q; });
+    Object.entries(row.sai).forEach(([ck, q]) => { p.sai[ck] = (p.sai[ck] || 0) + q; });
+    p.totalEnt += row.totalEnt;
+    p.totalSai += row.totalSai;
+    p.estAnterior += anterior;
+    p.estAtual += atual;
+    p.empresas[row.empresa] = { ...row, estAtual: atual, estAnterior: anterior };
   });
+  movRows = Object.values(porProduto).map(p => ({ ...p, liq: p.totalEnt - p.totalSai }));
 }
 
 function mvColKeys() {
@@ -2528,7 +2552,7 @@ function renderMovEstoque() {
   const theadGrupos = document.getElementById('mv-thead-grupos');
   if (theadGrupos) {
     theadGrupos.innerHTML = `
-      <th colspan="3">${mvCentroLabel()}</th>
+      <th colspan="2">${mvCentroLabel()}</th>
       <th colspan="${colsEnt.length}" style="background:#EAF7EF;text-align:center">ENTRADAS NO PERÍODO</th>
       <th colspan="${colsSai.length}" style="background:#FDECEC;text-align:center">SAÍDAS NO PERÍODO</th>
       <th colspan="4" style="text-align:center">SALDOS</th>`;
@@ -2536,7 +2560,6 @@ function renderMovEstoque() {
   const thead = document.getElementById('mv-thead-row');
   if (thead) {
     thead.innerHTML = `
-      <th class="sortable" onclick="setOrdemMov('empresa')">Empresa <span class="sort-icon">↕</span></th>
       <th class="sortable" onclick="setOrdemMov('referencia')">Ref. <span class="sort-icon">↕</span></th>
       <th class="sortable" onclick="setOrdemMov('nome')">Produto <span class="sort-icon">↕</span></th>
       ${colsEnt.map(c => `<th class="right" style="background:#F6FBF7" title="${c.label}">${c.label}</th>`).join('')}
@@ -2553,7 +2576,6 @@ function renderMovEstoque() {
   const colVal = r => {
     switch (movOrd.col) {
       case 'nome': return (r.nome || '').toLowerCase();
-      case 'empresa': return (r.empresa || '').toLowerCase();
       case 'referencia': return (r.referencia || '').toLowerCase();
       case 'est_ant': return r.estAnterior;
       case 'tot_ent': return r.totalEnt;
@@ -2579,15 +2601,13 @@ function renderMovEstoque() {
   const inicioPag = (mvPagina - 1) * MV_POR_PAGINA;
   const dadosPagina = rows.slice(inicioPag, inicioPag + MV_POR_PAGINA);
 
-  const totalCols = 3 + colsEnt.length + colsSai.length + 4;
+  const totalCols = 2 + colsEnt.length + colsSai.length + 4;
   const body = document.getElementById('mv-body');
   if (body) body.innerHTML = dadosPagina.length ? dadosPagina.map(r => {
     const cell = v => v ? `<td class="right mono">${fmtQtd(v, 0)}</td>` : `<td class="right mono" style="color:var(--text-muted)">—</td>`;
-    const emp = (r.empresa || '').replace(/'/g, "\\'");
-    return `<tr style="cursor:pointer" onclick="abrirMovDrawer(${r.id_produto}, '${emp}')">
-      <td style="font-size:12px">${r.empresa || '—'}</td>
+    return `<tr style="cursor:pointer" onclick="abrirMovDrawer(${r.id_produto})">
       <td class="mono" style="font-size:12px">${r.referencia || '—'}</td>
-      <td style="font-weight:500;font-size:13px;max-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div></td>
+      <td style="font-weight:500;font-size:13px;max-width:260px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div></td>
       ${colsEnt.map(c => cell(r.ent[c.key])).join('')}
       ${colsSai.map(c => cell(r.sai[c.key])).join('')}
       <td class="right mono">${fmtQtd(r.estAnterior, 0)}</td>
@@ -2608,7 +2628,7 @@ function renderMovEstoque() {
       const somaEnt = rows.reduce((s, r) => s + r.totalEnt, 0);
       const somaSai = rows.reduce((s, r) => s + r.totalSai, 0);
       tfoot.innerHTML = `
-        <td colspan="3" style="font-weight:700">TOTAL GERAL</td>
+        <td colspan="2" style="font-weight:700">TOTAL GERAL</td>
         ${colsEnt.map(c => `<td class="right mono" style="font-weight:700">${fmtQtd(somaCol('ent', c.key), 0)}</td>`).join('')}
         ${colsSai.map(c => `<td class="right mono" style="font-weight:700">${fmtQtd(somaCol('sai', c.key), 0)}</td>`).join('')}
         <td class="right mono" style="font-weight:700">${fmtQtd(somaAnt, 0)}</td>
@@ -2626,25 +2646,23 @@ function renderMovEstoque() {
   const liqEl = document.getElementById('mv-kpi-liquido');
   if (liqEl) { const liq = totEnt - totSai; liqEl.textContent = fmtQtd(liq, 0); liqEl.style.color = liq < 0 ? 'var(--red)' : 'var(--green)'; }
   set('mv-kpi-num', fmtQtd(rows.length, 0));
-  set('mv-count', `${fmtQtd(rows.length, 0)} linhas (produto × empresa)`);
+  set('mv-count', `${fmtQtd(rows.length, 0)} produtos`);
   set('mv-resumo', `${fmtQtd(movData.length, 0)} lançamentos no período`);
   renderPaginacaoMov(mvPagina, totalPaginas, totalItens);
 }
 
-function renderSaldoCentro() {
+// Saldo por centro (hoje) de UM produto, agrupado por empresa — usado no drawer.
+function saldoCentroPorProduto(idProduto) {
   const byEmpresa = {};
   movSaldoCentro.forEach(r => {
+    if (r.id_produto !== idProduto) return;
     const e = byEmpresa[r.empresa] || (byEmpresa[r.empresa] = { principal: 0, garantia: 0, consolidado: 0 });
     const q = Number(r.estoque) || 0;
     e.consolidado += q;
     if (r.centro_padrao === 'S') e.principal += q;
     else if ((r.centro_estoque || '').toUpperCase().startsWith('GARANTIA')) e.garantia += q;
   });
-  const linhas = Object.entries(byEmpresa).sort((a, b) => a[0].localeCompare(b[0]));
-  const body = document.getElementById('mv-centro-body');
-  if (body) body.innerHTML = linhas.length ? linhas.map(([emp, v]) =>
-    `<tr><td style="font-weight:500">${emp}</td><td class="right mono">${fmtQtd(v.principal, 0)}</td><td class="right mono">${fmtQtd(v.garantia, 0)}</td><td class="right mono" style="font-weight:700">${fmtQtd(v.consolidado, 0)}</td></tr>`
-  ).join('') : '<tr><td colspan="4" style="color:var(--text-muted)">—</td></tr>';
+  return Object.entries(byEmpresa).sort((a, b) => a[0].localeCompare(b[0]));
 }
 
 function mvCatLabel(categoria, tipoEs) {
@@ -2652,21 +2670,43 @@ function mvCatLabel(categoria, tipoEs) {
   return f ? f.label : (categoria || '—');
 }
 
-function abrirMovDrawer(idProduto, empresa) {
-  const linhas = movData.filter(r => r.id_produto === idProduto && r.empresa === empresa)
+function abrirMovDrawer(idProduto) {
+  const row = movRows.find(r => r.id_produto === idProduto);
+  const linhas = movData.filter(r => r.id_produto === idProduto)
     .sort((a, b) => (a.data_mov || '').localeCompare(b.data_mov || ''));
-  if (!linhas.length) return;
-  document.getElementById('mv-drawer-titulo').textContent = linhas[0].nome_produto || '—';
-  document.getElementById('mv-drawer-sub').textContent = `${linhas[0].referencia || ''} · ${empresa} · ${linhas.length} lançamento(s) no período`;
+  if (!row && !linhas.length) return;
+  document.getElementById('mv-drawer-titulo').textContent = row?.nome || linhas[0]?.nome_produto || '—';
+  document.getElementById('mv-drawer-sub').textContent = `${row?.referencia || linhas[0]?.referencia || ''} · ${linhas.length} lançamento(s) no período`;
+
+  const porEmpresa = Object.entries(row?.empresas || {}).sort((a, b) => a[0].localeCompare(b[0]));
+  const empBody = document.getElementById('mv-drawer-empresa-body');
+  if (empBody) empBody.innerHTML = porEmpresa.length ? porEmpresa.map(([emp, v]) => `<tr>
+      <td style="font-weight:500">${emp}</td>
+      <td class="right mono">${fmtQtd(v.estAnterior, 0)}</td>
+      <td class="right mono" style="color:var(--green)">${fmtQtd(v.totalEnt, 0)}</td>
+      <td class="right mono" style="color:var(--red)">${fmtQtd(v.totalSai, 0)}</td>
+      <td class="right mono" style="font-weight:700">${fmtQtd(v.estAtual, 0)}</td>
+    </tr>`).join('') : '<tr><td colspan="5" style="color:var(--text-muted)">—</td></tr>';
+
+  const linhasCentro = saldoCentroPorProduto(idProduto);
+  const centroBody = document.getElementById('mv-drawer-centro-body');
+  if (centroBody) centroBody.innerHTML = linhasCentro.length ? linhasCentro.map(([emp, v]) => `<tr>
+      <td style="font-weight:500">${emp}</td>
+      <td class="right mono">${fmtQtd(v.principal, 0)}</td>
+      <td class="right mono">${fmtQtd(v.garantia, 0)}</td>
+      <td class="right mono" style="font-weight:700">${fmtQtd(v.consolidado, 0)}</td>
+    </tr>`).join('') : '<tr><td colspan="4" style="color:var(--text-muted)">—</td></tr>';
+
   const body = document.getElementById('mv-drawer-body');
-  if (body) body.innerHTML = linhas.map(r => `<tr>
+  if (body) body.innerHTML = linhas.length ? linhas.map(r => `<tr>
       <td class="mono">${fmtDate ? fmtDate(r.data_mov) : (r.data_mov || '—')}</td>
       <td style="font-size:12px">${r.empresa || '—'}</td>
       <td style="font-size:12px">${r.centro_estoque || '—'}</td>
       <td style="font-size:12px">${mvCatLabel(r.categoria, r.tipo_es)} <span style="color:${r.tipo_es === 'E' ? 'var(--green)' : 'var(--red)'}">${r.tipo_es === 'E' ? '↑' : '↓'}</span></td>
       <td class="right mono">${fmtQtd(r.qtd, 0)}</td>
       <td class="right mono">${r.custo_unit ? fmt(r.custo_unit) : '—'}</td>
-    </tr>`).join('');
+    </tr>`).join('') : '<tr><td colspan="6" style="color:var(--text-muted)">Sem lançamentos no período</td></tr>';
+
   document.getElementById('mv-drawer').classList.add('open');
   document.getElementById('mv-drawer-overlay').classList.add('open');
 }
