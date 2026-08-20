@@ -92,6 +92,12 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .topbar-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .filter-select { height: 34px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 10px; font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500; color: var(--text-primary); background: var(--surface2); cursor: pointer; outline: none; transition: border-color 0.15s; }
 .filter-select:focus { border-color: var(--blue-mid); }
+.switch { position: relative; display: inline-block; width: 34px; height: 19px; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.switch-slider { position: absolute; inset: 0; background: var(--border); transition: 0.15s; border-radius: 20px; cursor: pointer; }
+.switch-slider::before { content: ""; position: absolute; height: 13px; width: 13px; left: 3px; bottom: 3px; background: #fff; transition: 0.15s; border-radius: 50%; box-shadow: var(--shadow-sm); }
+.switch input:checked + .switch-slider { background: var(--blue-mid); }
+.switch input:checked + .switch-slider::before { transform: translateX(15px); }
 .btn-refresh { height: 34px; padding: 0 12px; background: var(--blue-dark); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
 .btn-refresh:hover { background: var(--blue-mid); }
 .last-update { font-size: 11px; color: var(--text-muted); white-space: nowrap; }

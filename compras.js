@@ -115,6 +115,10 @@ const PAGINAS_HTML = {
         <div id="forn-filtro-badges" style="display:none;position:absolute;top:36px;left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);width:280px;max-height:240px;overflow-y:auto"></div>
       </div>
       <div id="forn-selecionados-chips" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary)" title="Produto marcado como fora de linha no ERP (descontinuado). Por padrão fica escondido — não faz sentido sugerir comprar de novo. Ligue pra ver também.">
+        <span class="switch"><input type="checkbox" id="chk-fora-linha" onchange="onForaLinhaChange()"><span class="switch-slider"></span></span>
+        Mostrar fora de linha
+      </label>
       <button class="btn" onclick="abrirChat()" style="margin-left:auto;background:linear-gradient(135deg,#1A3A8F,#0077CC);color:#fff;height:34px;padding:0 14px;gap:6px">✦ Assistente IA</button>
     </div>
     <div style="display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary)">
@@ -761,8 +765,9 @@ function baseFiltradaAlertas() {
   const busca = (document.getElementById('busca-produto')?.value || '').toLowerCase();
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
+  const mostrarForaLinha = document.getElementById('chk-fora-linha')?.checked || false;
   let dados = alertasConsolidado.filter(r => {
-    if (r.fora_linha === 'S') return false; // produto descontinuado no ERP — não sugerir reposição
+    if (!mostrarForaLinha && r.fora_linha === 'S') return false; // produto descontinuado no ERP — escondido por padrão
     if (compIgnorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
     if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
     if (compIgnorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
@@ -800,6 +805,8 @@ function onFilterChange() {
 }
 
 function onSearch() { paginaAtual = 1; renderAlertas(); }
+
+function onForaLinhaChange() { paginaAtual = 1; renderAlertas(); }
 
 // Classe CSS de cada card do semáforo por situação
 const SEMAFORO_CLASSE = { RUPTURA: 'ruptura', CRITICO: 'critico', BAIXO: 'baixo', OK: 'ok', ESTOQUE_MORTO: 'morto', SEM_GIRO: 'sem_mov' };
@@ -4722,6 +4729,7 @@ async function cfgToggleResolvido(id, atual, el) {
 window.onGrupoChange          = onGrupoChange;
 window.onFilterChange         = onFilterChange;
 window.onSearch               = onSearch;
+window.onForaLinhaChange      = onForaLinhaChange;
 window.onHorizonteChange      = onHorizonteChange;
 window.filtrarSituacao        = filtrarSituacao;
 window.onStatusCheck          = onStatusCheck;
