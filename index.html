@@ -353,7 +353,6 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
         <div class="nav-module-items">
           <!-- Comprar Agora oculto temporariamente (entender melhor antes de usar) — página mantida, só saiu do menu -->
           <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Compras</a>
-          <a class="nav-item" data-pagina="cmp-faltar"       onclick="navegarPara('cmp-faltar')">       <span class="nav-dot"></span>🔴 Vai Faltar</a>
           <a class="nav-item" data-pagina="cmp-pedidos"      onclick="navegarPara('cmp-pedidos')">      <span class="nav-dot"></span>📋 Pedidos</a>
           <a class="nav-item" data-pagina="cmp-parado"       onclick="navegarPara('cmp-parado')">       <span class="nav-dot"></span>🧹 Estoque Parado</a>
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
@@ -439,7 +438,6 @@ window.setLastUpdate = () => { document.getElementById('last-update').textConten
 const PAGINAS = {
   'cmp-comprar':      { label: 'Comprar Agora',          breadcrumb: 'Compras · Comprar Agora' },
   'cmp-alertas':      { label: 'Compras',                breadcrumb: 'Compras · Reposição' },
-  'cmp-faltar':       { label: 'Vai Faltar',             breadcrumb: 'Compras · Vai Faltar (lead-aware)' },
   'cmp-pedidos':      { label: 'Pedidos de Compra',      breadcrumb: 'Compras · Pedidos' },
   'cmp-parado':       { label: 'Estoque Parado',         breadcrumb: 'Compras · Estoque Parado' },
   'cmp-totais':       { label: 'Totais de Estoque',      breadcrumb: 'Compras · Totais e Fornecedores' },

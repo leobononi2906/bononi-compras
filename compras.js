@@ -49,59 +49,6 @@ const PAGINAS_HTML = {
       <button class="btn btn-outline" onclick="fecharPedidoDrawer()">Fechar</button>
     </div>
   </div>`,
-  'cmp-faltar': `<div class="page-content" id="page-cmp-faltar">
-    <div class="cards-grid cards-grid-4">
-      <div class="card"><div class="card-label">Vão faltar</div><div class="card-value red" id="vf-kpi-total">—</div><div class="card-sub">não chegam a tempo pelo prazo do fornecedor</div></div>
-      <div class="card"><div class="card-label">Da China / importado</div><div class="card-value" id="vf-kpi-china" style="color:#B45309">—</div><div class="card-sub">prazo longo — comprar com muita antecedência</div></div>
-      <div class="card"><div class="card-label">Curva A/B</div><div class="card-value blue" id="vf-kpi-ab">—</div><div class="card-sub">maior peso no faturamento</div></div>
-      <div class="card"><div class="card-label">Valor sugerido</div><div class="card-value" id="vf-kpi-valor">—</div><div class="card-sub">base último preço de compra</div></div>
-    </div>
-    <div style="display:flex;align-items:center;gap:12px;margin-top:12px;flex-wrap:wrap">
-      <input type="text" id="vf-busca" class="search-input" placeholder="🔍 Buscar produto ou referência..." oninput="setVfFiltro()" style="width:230px" />
-      <select id="vf-origem" class="filter-select" onchange="setVfFiltro()" title="Origem do fornecedor">
-        <option value="">Todas as origens</option>
-        <option value="IMPORTADO">🌏 Só China / importado</option>
-        <option value="NACIONAL">🏭 Só nacional</option>
-      </select>
-      <select id="vf-curva" class="filter-select" onchange="setVfFiltro()" title="Curva ABC por valor">
-        <option value="">Todas as curvas</option>
-        <option value="A">Curva A</option>
-        <option value="B">Curva B</option>
-        <option value="C">Curva C</option>
-      </select>
-      <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-secondary);cursor:pointer;user-select:none" title="Itens de compra rara (esporádicos). Por padrão ficam de fora — a lista foca no que gira de verdade."><input type="checkbox" id="vf-esporadicos" onchange="setVfFiltro()" /> incluir esporádicos</label>
-      <div style="display:flex;align-items:center;gap:6px;padding:0 10px;border:1px solid var(--border);border-radius:var(--radius-sm);height:34px" title="Dias de estoque de segurança ALÉM do prazo do fornecedor. Aumenta a quantidade sugerida (não muda quem aparece na lista).">
-        <span style="font-size:12px;color:var(--text-secondary)">Folga:</span>
-        <input type="number" id="vf-folga" min="0" max="120" value="0" oninput="setVfFiltro()" style="width:46px;height:26px;text-align:right;border:1px solid var(--border);border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" />
-        <span style="font-size:12px;color:var(--text-muted)">dias</span>
-      </div>
-      <div class="toggle-group" style="margin-left:auto">
-        <button class="toggle-btn active" id="vf-ord-urg" onclick="setVfOrdem('urgencia', this)" title="Quanto o estoque está aquém do prazo do fornecedor">Mais urgente</button>
-        <button class="toggle-btn" id="vf-ord-dias" onclick="setVfOrdem('dias', this)" title="Quantos dias até zerar">Falta antes</button>
-        <button class="toggle-btn" id="vf-ord-valor" onclick="setVfOrdem('valor', this)">Maior R$</button>
-      </div>
-    </div>
-    <div class="table-card" style="margin-top:14px">
-      <div class="table-card-header">
-        <div class="table-card-title">🔴 Vai faltar — o que comprar antes de quebrar</div>
-        <span style="font-size:12px;color:var(--text-muted)" id="vf-resumo"></span>
-      </div>
-      <div style="overflow-x:auto"><table class="data-table">
-        <thead><tr>
-          <th>Produto</th>
-          <th class="right">Estoque</th>
-          <th class="right" title="Reposição já pedida e a caminho">🚚 A caminho</th>
-          <th class="right" title="Em quantos dias o estoque zera, considerando o que já está a caminho">Falta em</th>
-          <th class="right" title="Prazo de entrega do fornecedor (China/importado ~100 dias)">Prazo forn.</th>
-          <th>Fornecedor</th>
-          <th class="right">Qtd a pedir</th>
-          <th class="right">R$</th>
-        </tr></thead>
-        <tbody id="vf-body"><tr class="loading-row"><td colspan="8">Carregando...</td></tr></tbody>
-      </table></div>
-      <div id="vf-paginacao" style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--border);background:var(--surface2)"></div>
-    </div>
-  </div>`,
   'cmp-comprar': `<div class="page-content" id="page-cmp-comprar">
     <div class="cards-grid cards-grid-3">
       <div class="card"><div class="card-label">Itens a comprar</div><div class="card-value blue" id="ca-kpi-itens">—</div><div class="card-sub">precisam de decisão agora</div></div>
@@ -168,6 +115,10 @@ const PAGINAS_HTML = {
         <div id="forn-filtro-badges" style="display:none;position:absolute;top:36px;left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow-md);width:280px;max-height:240px;overflow-y:auto"></div>
       </div>
       <div id="forn-selecionados-chips" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary);font-weight:600" title="Mostra só o que NÃO chega a tempo pelo prazo de entrega do fornecedor (China/importado ~100 dias, detectado do cadastro). Nesse modo a Qtd Sugerida usa o prazo real de cada fornecedor, não o horizonte fixo.">
+        <span class="switch"><input type="checkbox" id="chk-vai-faltar" onchange="onVaiFaltarToggle()"><span class="switch-slider"></span></span>
+        🔴 Vai faltar (prazo do fornecedor)
+      </label>
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary)" title="Produto marcado como fora de linha no ERP (descontinuado). Por padrão fica escondido — não faz sentido sugerir comprar de novo. Ligue pra ver também.">
         <span class="switch"><input type="checkbox" id="chk-fora-linha" onchange="onForaLinhaChange()"><span class="switch-slider"></span></span>
         Mostrar fora de linha
@@ -615,7 +566,7 @@ async function loadAll() {
     const { data } = await sb.from('comp_ignorados').select('*');
     compIgnorados = data || [];
   }
-  await Promise.all([loadAlertas(), loadFornProdCache()]);
+  await Promise.all([loadAlertas(), loadFornProdCache(), loadLeadMap()]);
   popularFiltroFornecedores();
   atualizarBadgeSidebar();
   renderAlertas();
@@ -927,7 +878,9 @@ function sugeridaCalc(r) {
   const consumoDia = Number(r.consumo_diario_total) || 0;
   const est = Math.max(0, Number(r.estoque_total) || 0);
   const ped = Number(r.pedido_aberto_total) || 0;
-  return Math.max(0, consumoDia * horizonteCompra - est - ped);
+  // Modo "Vai faltar": horizonte = prazo real do fornecedor (China ~100d). Senão, horizonte fixo do topo.
+  const horizonte = filtroVaiFaltar ? leadDe(r) : horizonteCompra;
+  return Math.max(0, consumoDia * horizonte - est - ped);
 }
 
 function renderAlertas() {
@@ -936,10 +889,15 @@ function renderAlertas() {
   sincronizarSemaforo();
   let dados = baseFiltradaAlertas();
   if (filtroStatus.size) dados = dados.filter(r => filtroStatus.has(r.situacao_estoque));
+  // Modo "Vai faltar (prazo do fornecedor)": só o que não chega a tempo pelo lead real.
+  if (filtroVaiFaltar) dados = dados.filter(r => r.fora_linha !== 'S' && vaiFaltarLead(r));
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, ESTOQUE_MORTO: 5, SEM_GIRO: 6 };
   const abcMap  = { A: 1, B: 2, C: 3 };
   const dir = ordemDir === 'asc' ? 1 : -1;
-  if (ordemAlertas === 'prioridade') {
+  if (filtroVaiFaltar) {
+    // mais urgente primeiro: quem está mais aquém do prazo do fornecedor
+    dados.sort((a, b) => deficitLead(b) - deficitLead(a));
+  } else if (ordemAlertas === 'prioridade') {
     dados.sort((a, b) => {
       const pa = prioMap[a.situacao_estoque] || 9, pb = prioMap[b.situacao_estoque] || 9;
       if (pa !== pb) return pa - pb;
@@ -975,7 +933,7 @@ function renderAlertas() {
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
-      <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${demandaReprimida(r) ? '<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
+      <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${origemDe(r) === 'IMPORTADO' ? `<span class="badge" style="background:#FEF3C7;color:#B45309" title="Fornecedor importado (${fornLeadDe(r) || 'exterior'}) — prazo de entrega ~${leadDe(r)} dias. Comprar com muita antecedência.">🌏 ${leadDe(r)}d</span>` : ''}${demandaReprimida(r) ? '<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${(r.estoque_total || 0) < 0 ? `0 <span title="Estoque negativo no sistema (${fmtQtd(r.estoque_total, 0)}) — erro de contagem herdado da migração. Tratado como 0 para compras." style="color:var(--orange);font-weight:700;cursor:help">!</span>` : fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(sug, 0)}</td>
@@ -1936,151 +1894,60 @@ function incluirNoPedido(idProduto) {
 function removerDoCarrinho(idProduto) { cartItems = cartItems.filter(c => c.id_produto !== idProduto); atualizarCarrinho(); renderAlertas(); }
 
 // ═══════════════════════════════════════════════════════════
-// VAI FALTAR — worklist lead-aware, plana (sem agrupar por fornecedor).
-// Item entra quando (estoque + a caminho) ÷ consumo/dia < prazo do fornecedor.
-// China/importado = 100d por padrão (comp_fornecedor_lead, auto do cadastro UF='EX').
+// VAI FALTAR — filtro lead-aware DENTRO da tela Compras.
+// Liga/desliga: mostra só o que não chega a tempo pelo PRAZO do fornecedor
+// (China/importado ~100d, auto do cadastro UF='EX' via comp_produto_lead).
 // ═══════════════════════════════════════════════════════════
-let vfData = [];
-let vfOrdem = 'urgencia';
-let vfPagina = 1;
-let vfFolga = 0;
+let leadMap = {};             // id_produto -> { lead_time_dias, origem, nome_fornecedor, principal_marcado }
+let filtroVaiFaltar = false;
 
-async function loadVaiFaltar() {
-  const tb = document.getElementById('vf-body');
-  if (tb) tb.innerHTML = '<tr class="loading-row"><td colspan="8">Carregando...</td></tr>';
+async function loadLeadMap() {
   try {
-    const pages = await Promise.all([0, 1, 2].map(i =>
-      sb.from('comp_vai_faltar').select('*').range(i * 1000, i * 1000 + 999)));
-    vfData = pages.flatMap(r => r.data || []);
-    vfPagina = 1;
-    renderVaiFaltar();
-  } catch (e) {
-    console.error('loadVaiFaltar', e);
-    if (tb) tb.innerHTML = '<tr class="loading-row"><td colspan="8" style="color:var(--red)">Erro ao carregar.</td></tr>';
-  }
-}
-
-// Qtd sugerida: consumo/dia × (prazo do fornecedor + folga) − estoque − a caminho.
-function vfQtd(r) {
-  const folga = vfFolga || 0;
-  return Math.max(0, Math.ceil((r.consumo_diario_total || 0) * ((r.lead_time_dias || 15) + folga)
-    - (r.estoque_pos || 0) - (r.pedido_aberto_total || 0)));
-}
-
-function setVfFiltro() {
-  vfFolga = Math.max(0, Math.min(120, parseInt(document.getElementById('vf-folga')?.value, 10) || 0));
-  vfPagina = 1;
-  renderVaiFaltar();
-}
-function setVfOrdem(o, btn) {
-  vfOrdem = o;
-  document.querySelectorAll('#page-cmp-faltar .toggle-group .toggle-btn').forEach(b => b.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  vfPagina = 1;
-  renderVaiFaltar();
-}
-function vfIrPara(p) { vfPagina = p; renderVaiFaltar(); }
-
-function baseFiltradaVf() {
-  const q = (document.getElementById('vf-busca')?.value || '').trim().toLowerCase();
-  const origem = document.getElementById('vf-origem')?.value || '';
-  const curva = document.getElementById('vf-curva')?.value || '';
-  const incEsp = document.getElementById('vf-esporadicos')?.checked;
-  return vfData.filter(r => {
-    if (!incEsp && r.esporadico) return false;
-    if (origem && r.origem !== origem) return false;
-    if (curva && r.curva_abc_valor !== curva) return false;
-    if (q) {
-      const alvo = ((r.nome || '') + ' ' + (r.referencia || '') + ' ' + (r.nome_fornecedor || '')).toLowerCase();
-      if (!alvo.includes(q)) return false;
+    const out = {}; let off = 0;
+    for (let i = 0; i < 20; i++) {
+      const { data, error } = await sb.from('comp_produto_lead')
+        .select('id_produto,lead_time_dias,origem,nome_fornecedor,principal_marcado')
+        .range(off, off + 999);
+      if (error) break;
+      (data || []).forEach(r => { out[r.id_produto] = r; });
+      if (!data || data.length < 1000) break;
+      off += 1000;
     }
-    return true;
-  });
+    leadMap = out;
+  } catch (e) { console.warn('loadLeadMap', e); }
 }
 
-function renderVaiFaltar() {
-  let dados = baseFiltradaVf();
-  const abcMap = { A: 1, B: 2, C: 3 };
-  if (vfOrdem === 'urgencia') dados.sort((a, b) => (b.deficit_dias - a.deficit_dias) || ((abcMap[a.curva_abc_valor] || 9) - (abcMap[b.curva_abc_valor] || 9)));
-  else if (vfOrdem === 'dias') dados.sort((a, b) => (a.dias_ate_faltar - b.dias_ate_faltar));
-  else if (vfOrdem === 'valor') dados.sort((a, b) => (Number(vfQtd(b)) * (b.preco_compra || 0)) - (Number(vfQtd(a)) * (a.preco_compra || 0)));
+function leadDe(r) { return (leadMap[r.id_produto]?.lead_time_dias) || 15; }
+function origemDe(r) { return leadMap[r.id_produto]?.origem || 'NACIONAL'; }
+function fornLeadDe(r) { return leadMap[r.id_produto]?.nome_fornecedor || ''; }
 
-  const setEl = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
-  setEl('vf-kpi-total', fmtQtd(dados.length));
-  setEl('vf-kpi-china', fmtQtd(dados.filter(r => r.origem === 'IMPORTADO').length));
-  setEl('vf-kpi-ab', fmtQtd(dados.filter(r => ['A', 'B'].includes(r.curva_abc_valor)).length));
-  setEl('vf-kpi-valor', fmt(dados.reduce((a, r) => a + (Number(vfQtd(r)) * (r.preco_compra || 0)), 0)));
-
-  const total = dados.length, porPagina = 50;
-  const totalPaginas = Math.max(1, Math.ceil(total / porPagina));
-  if (vfPagina > totalPaginas) vfPagina = 1;
-  const inicio = (vfPagina - 1) * porPagina, fim = Math.min(inicio + porPagina, total);
-  const pagina = dados.slice(inicio, fim);
-  const resumo = document.getElementById('vf-resumo');
-  if (resumo) resumo.textContent = total ? `${total} produto${total !== 1 ? 's' : ''} · mostrando ${inicio + 1}–${fim}` : 'nada a comprar com essa régua';
-  const tb = document.getElementById('vf-body');
-  if (!tb) return;
-  if (!pagina.length) { tb.innerHTML = '<tr class="loading-row"><td colspan="8">Nenhum produto — tudo coberto pelo prazo dos fornecedores 👍</td></tr>'; renderVfPaginacao(0, 0); return; }
-  tb.innerHTML = pagina.map(r => {
-    const dias = r.dias_ate_faltar;
-    const diasCor = dias <= 0 ? 'var(--red)' : (dias < (r.lead_time_dias / 2) ? 'var(--orange)' : 'var(--yellow)');
-    const diasTxt = dias <= 0 ? '<b>0d · já zerou</b>' : fmtQtd(dias) + 'd';
-    const noCarrinho = cartItems.some(c => c.id_produto === r.id_produto);
-    const sug = vfQtd(r);
-    const estNeg = (r.estoque_total || 0) < 0;
-    const origemBadge = r.origem === 'IMPORTADO'
-      ? `<span class="badge" style="background:#FEF3C7;color:#B45309" title="Fornecedor importado — prazo longo (${r.lead_time_dias}d). Comprar com muita antecedência.">🌏 China/import</span>` : '';
-    return `<tr>
-      <td style="font-weight:500;max-width:330px;min-width:210px">
-        <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(r.nome || '').replace(/"/g, '')}">${r.nome || '—'}</div>
-        <div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${origemBadge}</div>
-      </td>
-      <td class="right mono" style="color:${estNeg ? 'var(--orange)' : ''}">${estNeg ? `0 <span title="Estoque negativo no sistema (${fmtQtd(r.estoque_total)}) — erro de contagem, tratado como 0." style="color:var(--orange);font-weight:700;cursor:help">!</span>` : fmtQtd(r.estoque_pos)}</td>
-      <td class="right mono" style="color:var(--text-muted)">${r.pedido_aberto_total > 0 ? fmtQtd(r.pedido_aberto_total) : '—'}</td>
-      <td class="right mono" style="color:${diasCor};font-weight:600">${diasTxt}</td>
-      <td class="right mono" title="Prazo de entrega do fornecedor">${fmtQtd(r.lead_time_dias)}d</td>
-      <td style="max-width:170px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px" title="${(r.nome_fornecedor || '').replace(/"/g, '')}${r.principal_marcado ? ' (principal marcado)' : ''}">${r.nome_fornecedor || '—'}</div></td>
-      <td class="right" onclick="event.stopPropagation()">
-        <div style="display:flex;gap:4px;align-items:center;justify-content:flex-end">
-          <input type="number" min="0" value="${noCarrinho ? Math.round(cartItems.find(c => c.id_produto === r.id_produto)?.qtd_pedido || 0) : Math.max(0, Math.ceil(sug))}" id="vf-qtd-${r.id_produto}" onkeydown="if(event.key==='Enter'){event.preventDefault();vfIncluir(${r.id_produto})}" style="width:56px;height:26px;text-align:right;border:1px solid ${noCarrinho ? 'var(--green)' : 'var(--border)'};border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 5px" title="Quantidade a pedir (pelo prazo do fornecedor)" />
-          ${noCarrinho
-            ? `<button class="btn btn-primary" style="height:26px;padding:0 7px;font-size:11px" onclick="vfIncluir(${r.id_produto})">Atualizar</button><button class="btn btn-outline" style="height:26px;padding:0 6px;font-size:11px" onclick="vfRemover(${r.id_produto})">✕</button>`
-            : `<button class="btn btn-primary" style="height:26px;padding:0 8px;font-size:11px" onclick="vfIncluir(${r.id_produto})">Incluir</button>`}
-        </div>
-      </td>
-      <td class="right mono">${fmt(sug * (r.preco_compra || 0))}</td>
-    </tr>`;
-  }).join('');
-  renderVfPaginacao(total, totalPaginas);
+// Não chega a tempo: (estoque + a caminho) ÷ consumo/dia < prazo do fornecedor.
+function vaiFaltarLead(r) {
+  const c = Number(r.consumo_diario_total) || 0;
+  if (c <= 0) return false;
+  const est = Math.max(0, Number(r.estoque_total) || 0);
+  const ped = Number(r.pedido_aberto_total) || 0;
+  return (est + ped) / c < leadDe(r);
+}
+// Dias que ainda faltam pra chegar no prazo (quanto mais negativo o "sobra", mais urgente).
+function deficitLead(r) {
+  const c = Number(r.consumo_diario_total) || 0;
+  if (c <= 0) return 0;
+  const est = Math.max(0, Number(r.estoque_total) || 0);
+  const ped = Number(r.pedido_aberto_total) || 0;
+  return leadDe(r) - (est + ped) / c;
 }
 
-function renderVfPaginacao(total, totalPaginas) {
-  const el = document.getElementById('vf-paginacao'); if (!el) return;
-  if (total <= 50) { el.innerHTML = ''; return; }
-  const mk = (p, txt, ativo) => `<button class="btn ${ativo ? 'btn-primary' : 'btn-outline'}" style="height:28px;min-width:32px;padding:0 8px;font-size:12px" onclick="vfIrPara(${p})">${txt || p}</button>`;
-  let btns = mk(Math.max(1, vfPagina - 1), '‹', false);
-  for (let p = 1; p <= totalPaginas; p++) {
-    if (p === 1 || p === totalPaginas || Math.abs(p - vfPagina) <= 2) btns += mk(p, null, p === vfPagina);
-    else if (Math.abs(p - vfPagina) === 3) btns += '<span style="color:var(--text-muted)">…</span>';
-  }
-  btns += mk(Math.min(totalPaginas, vfPagina + 1), '›', false);
-  el.innerHTML = btns;
+function onVaiFaltarToggle() {
+  filtroVaiFaltar = document.getElementById('chk-vai-faltar')?.checked || false;
+  // no modo "prazo do fornecedor", o horizonte fixo não manda mais na sugestão
+  const hz = document.getElementById('horizonte-compra');
+  const hzBox = hz?.closest('div');
+  if (hz) hz.disabled = filtroVaiFaltar;
+  if (hzBox) { hzBox.style.opacity = filtroVaiFaltar ? '0.4' : '1'; hzBox.title = filtroVaiFaltar ? 'Desligado no modo "Vai faltar": a sugestão usa o prazo real de cada fornecedor.' : 'Horizonte de compra: por quantos dias você quer ter estoque. Sugestão = consumo/dia × dias − estoque − pedido em aberto.'; }
+  paginaAtual = 1;
+  renderAlertas();
 }
-
-function vfIncluir(id) {
-  const inp = document.getElementById('vf-qtd-' + id);
-  const qtd = inp ? (parseFloat(inp.value) || 0) : 0;
-  const p = vfData.find(r => r.id_produto === id); if (!p) return;
-  if (qtd <= 0) { showToast('Informe uma quantidade maior que zero.', 'error'); return; }
-  const ex = cartItems.find(c => c.id_produto === id);
-  if (ex) { ex.qtd_pedido = qtd; showToast('Quantidade atualizada no pedido.'); }
-  else {
-    cartItems.push({ id_produto: id, nome_produto: p.nome, referencia: p.referencia, id_fornecedor: p.id_fornecedor || null, nome_fornecedor: p.nome_fornecedor || 'A definir', qtd_sugerida: p.qtd_sugerida_lead, qtd_pedido: qtd, vl_unit: p.preco_compra || 0 });
-    showToast('Incluído no pedido.');
-  }
-  atualizarCarrinho(); renderVaiFaltar();
-}
-function vfRemover(id) { cartItems = cartItems.filter(c => c.id_produto !== id); atualizarCarrinho(); renderVaiFaltar(); }
 
 function atualizarCarrinho() {
   const count = cartItems.length;
@@ -4690,7 +4557,6 @@ let _iniciado = false;
 const CMP_PAGE_LOADERS = {
   'cmp-pedidos':      () => loadPedidos(),
   'cmp-comprar':      () => loadComprarAgora(),
-  'cmp-faltar':       () => loadVaiFaltar(),
   'cmp-parado':       () => loadEstoqueParado(),
   'cmp-alertas':      () => loadAll(),
   'cmp-totais':       () => loadTotais(),
@@ -4989,11 +4855,7 @@ window.exportarPedido         = exportarPedido;
 window.baixarPedidoXls        = baixarPedidoXls;
 window.baixarPedidoXlsDrawer  = baixarPedidoXlsDrawer;
 window.incluirNoPedido        = incluirNoPedido;
-window.setVfFiltro            = setVfFiltro;
-window.setVfOrdem             = setVfOrdem;
-window.vfIrPara               = vfIrPara;
-window.vfIncluir              = vfIncluir;
-window.vfRemover              = vfRemover;
+window.onVaiFaltarToggle      = onVaiFaltarToggle;
 window.novoPedido             = novoPedido;
 window.cancelarPedido         = cancelarPedido;
 window.abrirModalSalvarPedido = abrirModalSalvarPedido;
