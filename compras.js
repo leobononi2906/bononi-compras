@@ -211,7 +211,7 @@ const PAGINAS_HTML = {
   <div class="cart-panel" id="cart-panel">
     <div class="cart-header" onclick="toggleCarrinho()" title="Clique para expandir/recolher"><div class="cart-title">🛒 Pedido em Andamento <span class="cart-count" id="cart-count">0</span></div><div style="display:flex;align-items:center;gap:12px"><span style="font-size:14px;font-weight:700;font-family:'DM Mono',monospace" id="cart-total-valor">R$ 0</span><span id="cart-chevron" style="font-size:12px;color:var(--text-muted)">▼</span></div></div>
     <div id="cart-body" style="flex:1;overflow-y:auto;display:none"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Produto</th><th>Fornecedor</th><th class="right">Sugerido</th><th class="right">Pedido</th><th class="right">Vl Unit</th><th class="right">Total</th><th></th></tr></thead><tbody id="cart-items-body"></tbody></table></div></div>
-    <div class="cart-footer" id="cart-foot" style="display:none"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-primary" onclick="baixarPedidoXls()" title="Planilha .xls (codigo/quantidade) que o ERP importa">↓ .xls (ERP)</button><button class="btn btn-outline" onclick="exportarPedido()" title="Relatório completo em CSV">↓ Relatório</button><button class="btn btn-outline" onclick="cancelarPedido()" title="Descartar o pedido em andamento (não salva nada)" style="color:var(--red);border-color:var(--red)">🗑️ Cancelar</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
+    <div class="cart-footer" id="cart-foot" style="display:none"><div style="font-size:13px;color:var(--text-muted)" id="cart-status-label">Pedido de compras</div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-outline" onclick="novoPedido()" title="Limpar e começar um novo pedido">＋ Novo</button><button class="btn btn-outline" onclick="abrirModalItemManual()" title="Adicionar um produto que ainda não está no estoque, só para cotação">✎ Produto manual</button><button class="btn btn-primary" onclick="abrirModalSalvarPedido()" title="Salvar este pedido">💾 Salvar</button><button class="btn btn-primary" onclick="baixarPedidoXls()" title="Planilha .xls (codigo/quantidade) que o ERP importa">↓ .xls (ERP)</button><button class="btn btn-outline" onclick="exportarPedido()" title="Relatório completo em CSV">↓ Relatório</button><button class="btn btn-outline" onclick="cancelarPedido()" title="Descartar o pedido em andamento (não salva nada)" style="color:var(--red);border-color:var(--red)">🗑️ Cancelar</button><button class="btn btn-outline" onclick="document.getElementById('cart-panel').classList.remove('open')">Fechar</button></div></div>
   </div>
   <div id="modal-salvar-pedido" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1200;align-items:center;justify-content:center">
     <div style="background:var(--surface);border-radius:10px;max-width:440px;width:92%;box-shadow:var(--shadow-lg);overflow:hidden">
@@ -222,6 +222,18 @@ const PAGINAS_HTML = {
         <div style="font-size:12px;color:var(--text-muted)">Responsável: <b id="msp-responsavel">—</b> · <span id="msp-resumo"></span></div>
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)"><button class="btn btn-outline" onclick="fecharModalSalvarPedido()">Cancelar</button><button class="btn btn-primary" onclick="salvarPedidoCompra()">Salvar</button></div>
+    </div>
+  </div>
+  <div id="modal-item-manual" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1200;align-items:center;justify-content:center">
+    <div style="background:var(--surface);border-radius:10px;max-width:460px;width:92%;box-shadow:var(--shadow-lg);overflow:hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--border)"><span style="font-weight:700">✎ Adicionar produto manual</span><button onclick="fecharModalItemManual()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-muted)">×</button></div>
+      <div style="padding:16px 18px;display:flex;flex-direction:column;gap:12px">
+        <div style="font-size:12px;color:var(--text-muted);background:var(--bg);border-radius:6px;padding:8px 10px">Use para pedir cotação de um item que <b>ainda não existe no estoque</b>. Só o nome é obrigatório.</div>
+        <div><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Produto *</label><input id="mim-nome" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px" placeholder="Ex: Tapete borracha universal preto" onkeydown="if(event.key==='Enter')adicionarItemManual()" /></div>
+        <div style="display:flex;gap:10px"><div style="flex:1"><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Referência / código</label><input id="mim-ref" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px" placeholder="Opcional" /></div><div style="flex:1"><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Fornecedor</label><input id="mim-forn" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px" placeholder="Opcional" /></div></div>
+        <div style="display:flex;gap:10px"><div style="flex:1"><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Quantidade *</label><input id="mim-qtd" type="number" min="0" value="1" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')adicionarItemManual()" /></div><div style="flex:1"><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Preço estimado (un.)</label><input id="mim-preco" type="number" min="0" step="0.01" style="width:100%;height:38px;border:1px solid var(--border);border-radius:6px;padding:0 10px;font-size:13px;font-family:'DM Mono',monospace" placeholder="Opcional" onkeydown="if(event.key==='Enter')adicionarItemManual()" /></div></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--border)"><button class="btn btn-outline" onclick="fecharModalItemManual()">Cancelar</button><button class="btn btn-primary" onclick="adicionarItemManual()">Adicionar ao pedido</button></div>
     </div>
   </div>`,
 
@@ -1875,6 +1887,28 @@ function adicionarAoCarrinho(idProduto) {
   atualizarCarrinho(); renderAlertas();
 }
 
+// ── Produto manual (item para cotação que ainda não está no estoque) ──
+function abrirModalItemManual() {
+  ['mim-nome','mim-ref','mim-forn','mim-preco'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  const q = document.getElementById('mim-qtd'); if (q) q.value = '1';
+  const m = document.getElementById('modal-item-manual'); if (m) m.style.display = 'flex';
+  setTimeout(() => document.getElementById('mim-nome')?.focus(), 50);
+}
+function fecharModalItemManual() { const m = document.getElementById('modal-item-manual'); if (m) m.style.display = 'none'; }
+function adicionarItemManual() {
+  const nome = (document.getElementById('mim-nome')?.value || '').trim();
+  if (!nome) { showToast('Informe o nome do produto.', 'error'); document.getElementById('mim-nome')?.focus(); return; }
+  const qtd = parseFloat(document.getElementById('mim-qtd')?.value) || 0;
+  if (qtd <= 0) { showToast('Informe uma quantidade maior que zero.', 'error'); document.getElementById('mim-qtd')?.focus(); return; }
+  const ref = (document.getElementById('mim-ref')?.value || '').trim();
+  const forn = (document.getElementById('mim-forn')?.value || '').trim();
+  const preco = parseFloat(document.getElementById('mim-preco')?.value) || 0;
+  cartItems.push({ id_produto: null, manual: true, nome_produto: nome, referencia: ref, id_fornecedor: null, nome_fornecedor: forn || 'A cotar', qtd_sugerida: 0, qtd_pedido: qtd, vl_unit: preco });
+  fecharModalItemManual();
+  atualizarCarrinho();
+  showToast('Produto manual adicionado ao pedido.');
+}
+
 // Inclui/atualiza no pedido com a quantidade digitada na linha da tabela
 function incluirNoPedido(idProduto) {
   const inp = document.getElementById('qtd-in-' + idProduto);
@@ -1980,9 +2014,9 @@ function renderCarrinho() {
   const tbody = document.getElementById('cart-items-body'); if (!tbody) return;
   if (!cartItems.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum item</td></tr>'; return; }
   tbody.innerHTML = cartItems.map((c, i) => `<tr>
-    <td style="font-weight:500;font-size:13px">${c.nome_produto || '—'}<br><span style="font-size:11px;color:var(--text-muted)">${c.referencia || ''}</span></td>
+    <td style="font-weight:500;font-size:13px">${c.nome_produto || '—'}${c.manual ? ' <span style="font-size:10px;font-weight:600;color:var(--blue-mid);border:1px solid var(--blue-mid);border-radius:4px;padding:0 4px;vertical-align:middle">✎ manual</span>' : ''}<br><span style="font-size:11px;color:var(--text-muted)">${c.referencia || ''}</span></td>
     <td style="font-size:12px;color:var(--text-secondary)">${c.nome_fornecedor || '—'}</td>
-    <td class="right mono" style="color:var(--text-muted)">${fmtQtd(c.qtd_sugerida, 0)}</td>
+    <td class="right mono" style="color:var(--text-muted)">${c.manual ? '—' : fmtQtd(c.qtd_sugerida, 0)}</td>
     <td class="right"><input type="number" value="${c.qtd_pedido}" min="0" style="width:70px;height:28px;text-align:right;border:1px solid var(--border);border-radius:4px;font-family:'DM Mono',monospace;font-size:12px;padding:0 6px" onchange="atualizarQtdCart(${i}, this.value)" /></td>
     <td class="right mono">${c.vl_unit ? fmt(c.vl_unit) : '—'}</td>
     <td class="right mono" style="font-weight:600">${c.vl_unit ? fmt(c.qtd_pedido * c.vl_unit) : '—'}</td>
@@ -2213,7 +2247,7 @@ function continuarEditandoPedido() {
   if (!pedidoDrawerCache) return;
   if (carrinhoNaoSalvo() && !confirm('Há um pedido não salvo no carrinho. Abrir este vai substituí-lo. Continuar?')) return;
   const { ped, itens } = pedidoDrawerCache;
-  cartItems = (itens || []).map(it => ({ id_produto: it.id_produto, nome_produto: it.nome, referencia: it.referencia, id_fornecedor: it.id_fornecedor, nome_fornecedor: it.nome_fornecedor, qtd_sugerida: Number(it.qtd) || 0, qtd_pedido: Number(it.qtd) || 0, vl_unit: Number(it.preco_unit) || 0 }));
+  cartItems = (itens || []).map(it => ({ id_produto: it.id_produto, manual: !it.id_produto, nome_produto: it.nome, referencia: it.referencia, id_fornecedor: it.id_fornecedor, nome_fornecedor: it.nome_fornecedor, qtd_sugerida: Number(it.qtd) || 0, qtd_pedido: Number(it.qtd) || 0, vl_unit: Number(it.preco_unit) || 0 }));
   pedidoAtualId = ped.id;
   pedidoAtualCriadoEm = ped.criado_em || null;
   cartSnapshotSalvo = JSON.stringify(cartItems);   // recém-aberto = salvo (sem alterações ainda)
