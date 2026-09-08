@@ -277,6 +277,7 @@ const PAGINAS_HTML = {
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Produto trocado por outro (saiu um, voltou outro)."><input type="checkbox" class="mv-col-check" value="TROCA_E,TROCA_S" checked onchange="renderMovEstoque()"> Troca</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Peça usada em Ordem de Serviço (baixa de estoque na O.S.)."><input type="checkbox" class="mv-col-check" value="OS_S" checked onchange="renderMovEstoque()"> O.S.</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Saída por venda ao cliente (loja, atacado, e-commerce, distribuidor)."><input type="checkbox" class="mv-col-check" value="VENDA_S" checked onchange="renderMovEstoque()"> Venda</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--blue-mid);font-weight:600" title="Transferência entre unidades/empresas do grupo — a mesma mercadoria saindo de uma empresa (TRANSF. VEND INTERGR / TRANSFERÊNCIA FILIAL) e entrando na outra (fornecedor = empresa do grupo). Aparece dos dois lados: entrada e saída."><input type="checkbox" class="mv-col-check" value="TRANSFERENCIA_E,TRANSFERENCIA_S" checked onchange="renderMovEstoque()"> 🔄 Transf. unidade</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Requisição interna de material (não é venda nem O.S.)."><input type="checkbox" class="mv-col-check" value="REQUISICAO_S" checked onchange="renderMovEstoque()"> Requis.</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Consumo interno do produto."><input type="checkbox" class="mv-col-check" value="CONSUMO_S" checked onchange="renderMovEstoque()"> Cons.</label>
       <span style="font-size:11px;color:var(--text-muted)" title="Cancelamento de uma saída anterior. Ainda não existe fonte de dado mapeada pra essa categoria — fica sempre zerada até a TI validar de onde vem no ERP.">⚠️ Estorno: sem dado ainda</span>
@@ -945,7 +946,7 @@ function renderAlertas() {
     const fornExterno = (fornProdMap[r.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor));
     return `<tr class="clickable" onclick="abrirProduto(${r.id_produto})" data-id="${r.id_produto}">
       <td onclick="event.stopPropagation()"><input type="checkbox" class="row-check" data-id="${r.id_produto}" onchange="onRowCheck()" /></td>
-      <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${origemDe(r) === 'IMPORTADO' ? `<span class="badge" style="background:#FEF3C7;color:#B45309" title="Fornecedor importado (${fornLeadDe(r) || 'exterior'}) — prazo de entrega ~${leadDe(r)} dias. Comprar com muita antecedência.">🌏 ${leadDe(r)}d</span>` : ''}${demandaReprimida(r) ? '<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
+      <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${demandaReprimida(r) ?'<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help">📉</span>' : ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${(r.estoque_total || 0) < 0 ? `0 <span title="Estoque negativo no sistema (${fmtQtd(r.estoque_total, 0)}) — erro de contagem herdado da migração. Tratado como 0 para compras." style="color:var(--orange);font-weight:700;cursor:help">!</span>` : fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
       <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(sug, 0)}</td>
@@ -2458,6 +2459,7 @@ const MV_POR_PAGINA = 50;
 
 const MV_CAT_ENTRADA = [
   { key: 'COMPRA_E', cat: 'COMPRA', es: 'E', label: 'Compra' },
+  { key: 'TRANSFERENCIA_E', cat: 'TRANSFERENCIA', es: 'E', label: 'Transf.' },
   { key: 'BALANCO_E', cat: 'BALANCO', es: 'E', label: 'Balanço' },
   { key: 'ESTORNO_E', cat: 'ESTORNO', es: 'E', label: 'Estorno' },
   { key: 'DEVOLUCAO_E', cat: 'DEVOLUCAO', es: 'E', label: 'Devolução' },
@@ -2467,6 +2469,7 @@ const MV_CAT_ENTRADA = [
 const MV_CAT_SAIDA = [
   { key: 'OS_S', cat: 'OS', es: 'S', label: 'O.S.' },
   { key: 'VENDA_S', cat: 'VENDA', es: 'S', label: 'Venda' },
+  { key: 'TRANSFERENCIA_S', cat: 'TRANSFERENCIA', es: 'S', label: 'Transf.' },
   { key: 'REQUISICAO_S', cat: 'REQUISICAO', es: 'S', label: 'Requis.' },
   { key: 'CONSUMO_S', cat: 'CONSUMO', es: 'S', label: 'Cons.' },
   { key: 'AJUSTE_S', cat: 'AJUSTE', es: 'S', label: 'Ajuste' },
@@ -2674,6 +2677,12 @@ function renderMovEstoque() {
   let rows = movRows;
   if (busca) rows = rows.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
 
+  // soma só das colunas de movimento visíveis (pra KPIs e p/ esconder linha sem nada no recorte)
+  const visE = r => colsEnt.reduce((s, c) => s + (r.ent[c.key] || 0), 0);
+  const visS = r => colsSai.reduce((s, c) => s + (r.sai[c.key] || 0), 0);
+  // esconde produto que não teve NADA nas categorias visíveis (ex.: só Transf. marcada → só quem transferiu)
+  rows = rows.filter(r => visE(r) > 0 || visS(r) > 0);
+
   const colVal = r => {
     switch (movOrd.col) {
       case 'nome': return (r.nome || '').toLowerCase();
@@ -2739,8 +2748,8 @@ function renderMovEstoque() {
     }
   }
 
-  const totEnt = rows.reduce((s, r) => s + r.totalEnt, 0);
-  const totSai = rows.reduce((s, r) => s + r.totalSai, 0);
+  const totEnt = rows.reduce((s, r) => s + visE(r), 0);
+  const totSai = rows.reduce((s, r) => s + visS(r), 0);
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   set('mv-kpi-entrada', fmtQtd(totEnt, 0));
   set('mv-kpi-saida', fmtQtd(totSai, 0));
