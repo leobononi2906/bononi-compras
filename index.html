@@ -402,13 +402,19 @@ html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); c
 /* Observação do pagamento: sub-linha de largura total, colada na linha de cima.
    Vai aqui e não numa coluna porque é texto livre de tamanho variável — numa
    coluna ele espremeria os números, que precisam continuar alinhados. */
-.data-table tr.tem-obs > td { border-bottom: none; padding-bottom: 4px; }
+.data-table tr.tem-obs > td { border-bottom: none; padding-bottom: 6px; }
 .data-table tr.linha-obs > td {
-  padding: 0 14px 11px; border-bottom: 1px solid var(--border-subtle);
-  font-size: var(--fs-12); color: var(--text-muted); line-height: var(--lh-normal);
+  padding: 7px 14px 9px; border-bottom: 1px solid var(--border-subtle);
+  background: var(--surface-sunken);
+  font-size: var(--fs-13); color: var(--text-body); line-height: var(--lh-normal);
   white-space: normal;
 }
-.data-table tr.linha-obs:hover > td { background: transparent; }
+/* O poço cinza é o que faz a anotação se destacar da linha de números logo acima.
+   Na primeira versão ela era cinza-claro sobre branco e passava batido — que era
+   exatamente o oposto do pedido. O ícone fica em --text-muted pra não competir
+   com o texto, que é a informação. */
+.data-table tr.linha-obs > td > i.ic { color: var(--text-muted); margin-right: 2px; }
+.data-table tr.linha-obs:hover > td { background: var(--surface-sunken); }
 
 /* ══ ÍCONES ══════════════════════════════════════════════════════════════════
    Lucide é o set substituto do design system, pintado como CSS mask pra herdar
