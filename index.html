@@ -165,7 +165,7 @@ html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); c
 .table-card-header { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .table-card-title { font-size: 13px; font-weight: 700; color: var(--text-primary); }
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.data-table th { padding: 10px 14px; text-align: left; font-size: 10.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
+.data-table th { padding: 10px 14px; text-align: left; font-size: var(--fs-11); font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; border-bottom: 1px solid var(--border); white-space: nowrap; background: var(--surface2); }
 /* Cabeçalho fixo da tabela de Compras (Reposição) durante o scroll vertical */
 #page-cmp-alertas .data-table thead th, #page-cmp-ajustes .data-table thead th { position: sticky; top: 0; z-index: 3; background: var(--surface2); }
 #mv-thead-grupos th { position: sticky; top: 0; z-index: 4; background: var(--surface2); }
@@ -398,6 +398,17 @@ html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); c
   .drawer { width: 100%; }
   .chat-panel { width: 100%; right: -100%; }
 }
+
+/* Observação do pagamento: sub-linha de largura total, colada na linha de cima.
+   Vai aqui e não numa coluna porque é texto livre de tamanho variável — numa
+   coluna ele espremeria os números, que precisam continuar alinhados. */
+.data-table tr.tem-obs > td { border-bottom: none; padding-bottom: 4px; }
+.data-table tr.linha-obs > td {
+  padding: 0 14px 11px; border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--fs-12); color: var(--text-muted); line-height: var(--lh-normal);
+  white-space: normal;
+}
+.data-table tr.linha-obs:hover > td { background: transparent; }
 
 /* ══ ÍCONES ══════════════════════════════════════════════════════════════════
    Lucide é o set substituto do design system, pintado como CSS mask pra herdar

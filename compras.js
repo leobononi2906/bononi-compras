@@ -473,6 +473,12 @@ const PAGINAS_HTML = {
 // desenha transparente. Por isso as paletas de grafico resolvem o token
 // aqui, em tempo de execucao, em vez de carregar hex literal.
 // ═══════════════════════════════════════════════════════════
+// Texto digitado pelo usuario que vai pra innerHTML precisa passar por aqui —
+// senao um "<" numa observacao quebra o HTML da tela (ou pior).
+function escHtml(t) {
+  return String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 const _corCache = {};
 function cssVar(nome) {
   if (_corCache[nome]) return _corCache[nome];
@@ -3919,7 +3925,7 @@ async function loadImpTabPagamentos(p) {
             <thead><tr>
               <th>Tipo</th><th>Data</th><th class="right">BRL</th><th class="right">USD</th><th class="right">Câmbio</th><th>Status</th><th></th>
             </tr></thead>
-            <tbody>${(pags||[]).map(pg=>`<tr>
+            <tbody>${(pags||[]).map(pg=>{ const obs = (pg.observacoes||'').trim(); return `<tr${obs ? ' class="tem-obs"' : ''}>
               <td style="font-size:12px">${IMP_TIPOS_PAG[pg.tipo]||pg.tipo}</td>
               <td class="mono" style="color:var(--text-muted)">${pg.data_pagamento?fmtData(pg.data_pagamento):(pg.data_vencimento?fmtData(pg.data_vencimento):'—')}</td>
               <td class="right mono" style="font-weight:600">${pg.valor_brl?fmt(pg.valor_brl):'—'}</td>
@@ -3927,7 +3933,7 @@ async function loadImpTabPagamentos(p) {
               <td class="right mono" style="color:var(--text-muted);font-size:11px">${pg.valor_brl&&pg.valor_usd?'R$ '+fmtQtd(Math.abs(parseFloat(pg.valor_brl))/Math.abs(parseFloat(pg.valor_usd)),4):'—'}</td>
               <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'Pago':'A Pagar'}</span></td>
               <td style="display:flex;gap:6px;align-items:center"><button onclick="editarPagamento('${pg.id}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px" title="Editar"><i class="ic ic-sm" data-ic="square-pen"></i></button><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Remover"><i class="ic ic-sm" data-ic="x"></i></button></td>
-            </tr>`).join('')}</tbody>
+            </tr>${obs ? `<tr class="linha-obs"><td colspan="7"><i class="ic ic-sm" data-ic="message-square"></i> ${escHtml(obs)}</td></tr>` : ''}`; }).join('')}</tbody>
           </table></div></div>`}
 
       ${pags?.length ? `
