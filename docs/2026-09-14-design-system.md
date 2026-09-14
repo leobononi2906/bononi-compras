@@ -135,6 +135,39 @@ A auditoria do diff linha a linha — a que o Hub registra como a que pega o que
 pega — achou **um** caso real: os gradientes. Os demais alertas eram falso-positivo do
 alinhamento do diff.
 
+## ⚠️ Regressão que escapou — botões só-ícone ficaram vazios
+
+Achada pelo Leo na aba Pagamentos da Importação, no mesmo dia: o lápis de editar
+sumiu (e com ele o acesso à observação do pagamento, que só existe dentro do modal
+que o lápis abre).
+
+**Causa:** o script de migração decidia por **linha inteira** se o contexto aceitava
+HTML, procurando `showToast(` / `.textContent` / `placeholder=` / `<option`. Várias
+linhas deste app são templates de 200+ caracteres que misturam os dois contextos —
+basta um `placeholder=` em qualquer ponto da linha para que TODOS os emoji dela
+fossem apagados em vez de virar ícone, inclusive os que estavam em HTML legítimo.
+
+**Quatro botões só-ícone ficaram sem conteúdo:** editar e remover pagamento
+(`loadImpTabPagamentos`), enviar do chat, e remover documento anexado. Mais o
+`↓ Relatório` do rodapé do carrinho, que ficou com a seta crua.
+
+**Como achar de novo, se acontecer:** o sinal preciso é elemento só-ícone que ficou
+vazio —
+
+```bash
+grep -oE '<(button|span|a|summary)[^>]*title="[^"]*"[^>]*>\s*</(button|span|a|summary)>' compras.js
+grep -oE '<button[^>]*onclick="[^"]*"[^>]*>\s*</button>' compras.js
+```
+
+Os dois têm de dar zero. A auditoria completa (comparar cada linha com emoji da
+versão anterior contra a contagem de `data-ic` na atual) separa remoção intencional
+de perda real, mas exige olhar caso a caso: placeholder, semáforo e setas de
+ordenação saem de propósito.
+
+**A lição para o próximo app:** decidir contexto por linha não serve em arquivo com
+template literal longo. O certo é decidir por **ocorrência**, olhando o que cerca
+aquele emoji — ou, mais barato, rodar o grep de elemento vazio logo depois.
+
 ## Pendências
 
 - **O CSS de shell antigo injetado pelo `compras.js` (L4–13, 9,6 KB) continua lá**, com 32
