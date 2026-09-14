@@ -3998,11 +3998,11 @@ function abrirModalNovoProcesso(param='PROGRAMADA', modo='novo') {
       <div style="grid-column:1/-1"><label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Observações</label><textarea id="imp-f-obs" class="filter-select" style="width:100%;height:60px;resize:vertical;padding:8px">${editando?.observacoes||''}</textarea></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:12px;justify-content:space-between;align-items:center">
-      ${editando ? `<button class="btn" onclick="excluirProcesso('${editando.id}')" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red);height:34px;padding:0 14px">Excluir Processo</button>` : '<div></div>'}
+      ${editando ? `<button class="btn" onclick="excluirProcesso('${editando.id}')" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red);height:34px;padding:0 14px"><i class="ic ic-sm" data-ic="trash-2"></i> Excluir Processo</button>` : '<div></div>'}
       <div style="display:flex;gap:8px">
         <button class="btn btn-outline" onclick="fecharModalProcesso()">Cancelar</button>
         <button class="btn btn-primary" onclick="${editando ? `salvarEdicaoProcesso('${editando.id}')` : 'salvarNovoProcesso()'}">
-          ${editando ? 'Salvar Alterações' : 'Criar Processo'}
+          <i class="ic ic-sm" data-ic="save"></i> ${editando ? 'Salvar Alterações' : 'Criar Processo'}
         </button>
       </div>
     </div>`;
@@ -4171,7 +4171,7 @@ async function buscarPedidoERP(valor, processoId) {
             .ilike('referencia', `%${valor.trim()}%`)
             .range(0, 199);
       if (!data?.length) {
-        if (status) status.innerHTML = '<span style="color:var(--red)">Pedido não encontrado</span>';
+        if (status) status.innerHTML = '<span style="color:var(--red)"><i class="ic ic-sm" data-ic="circle-x"></i> Pedido não encontrado</span>';
         if (selecao) selecao.style.display = 'none';
         if (preview) preview.innerHTML = '';
         return;
@@ -4407,7 +4407,7 @@ async function loadImpTabDocs(p) {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
         <div style="font-size:13px;font-weight:600">Documentos do Processo</div>
         <label class="btn btn-primary" style="height:30px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;gap:6px">
-          Anexar Arquivo
+          <i class="ic ic-sm" data-ic="paperclip"></i> Anexar Arquivo
           <input type="file" id="doc-upload-input" style="display:none" multiple onchange="uploadDocumentos('${p.id}',this)" />
         </label>
       </div>
@@ -4417,12 +4417,12 @@ async function loadImpTabDocs(p) {
         : `<div style="display:flex;flex-direction:column;gap:8px">
             ${docs.map(d=>`
               <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;display:flex;align-items:center;gap:12px">
-                <span style="font-size:20px">${getDocIcon(d.tipo_arquivo)}</span>
+                <span style="display:inline-flex;align-items:center">${getDocIcon(d.tipo_arquivo)}</span>
                 <div style="flex:1;min-width:0">
                   <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nome_arquivo}</div>
                   <div style="font-size:11px;color:var(--text-muted)">${IMP_TIPOS_DOC[d.tipo_doc]||d.tipo_doc||'Documento'} · ${fmtData(d.criado_em?.slice(0,10))}</div>
                 </div>
-                <a href="${d.url_arquivo}" target="_blank" class="btn btn-outline" style="height:28px;font-size:11px;padding:0 10px;flex-shrink:0">Baixar</a>
+                <a href="${d.url_arquivo}" target="_blank" class="btn btn-outline" style="height:28px;font-size:11px;padding:0 10px;flex-shrink:0"><i class="ic ic-sm" data-ic="download"></i> Baixar</a>
                 <button onclick="removerDocumento('${d.id}','${p.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;flex-shrink:0" title="Remover"><i class="ic ic-sm" data-ic="x"></i></button>
               </div>`).join('')}
           </div>`}`;
@@ -4430,13 +4430,15 @@ async function loadImpTabDocs(p) {
 }
 
 function getDocIcon(tipo) {
-  if (!tipo) return '';
-  if (tipo.includes('pdf')) return '';
-  if (tipo.includes('image')) return '';
-  if (tipo.includes('excel') || tipo.includes('spreadsheet')) return '';
-  if (tipo.includes('word') || tipo.includes('document')) return '';
-  if (tipo.includes('zip') || tipo.includes('compressed')) return '';
-  return '';
+  // O PDF se distingue pela cor: o conjunto de icones nao tem glifo dedicado pra ele.
+  const i = (n, cor) => `<i class="ic ic-xl" data-ic="${n}"${cor ? ` style="color:${cor}"` : ''}></i>`;
+  if (!tipo) return i('file');
+  if (tipo.includes('pdf')) return i('file-text', 'var(--status-crit-text)');
+  if (tipo.includes('image')) return i('file-image');
+  if (tipo.includes('excel') || tipo.includes('spreadsheet')) return i('file-spreadsheet');
+  if (tipo.includes('word') || tipo.includes('document')) return i('file-text');
+  if (tipo.includes('zip') || tipo.includes('compressed')) return i('file-archive');
+  return i('file');
 }
 
 const IMP_TIPOS_DOC = {
