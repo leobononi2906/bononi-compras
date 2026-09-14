@@ -3748,18 +3748,16 @@ async function loadImpTabInfo(p) {
     const numPedidos = (pedidos||[]).map(x => x.numero_pedido);
     if (numPedidos.length > 0) {
       const {data:prods} = await sb.from('comp_pedidos_compra_limpo').select('id_pedido,id_produto,nome_produto,referencia,qtd_solicitada,nome_fornecedor,id_fornecedor').in('id_pedido', numPedidos).range(0,999);
-      // Extrai fornecedor único — tenta dos prods, senão usa o do processo
+      // Extrai fornecedor único dos pedidos vinculados. Sem pedido (ou pedido sem
+      // fornecedor) cai no fornecedor do próprio processo, logo abaixo do try.
       if (prods?.length) {
         fornPedido = { nome: prods[0].nome_fornecedor||'—', id: prods[0].id_fornecedor||'—' };
-      } else if (numPedidos.length > 0) {
+      } else {
         // prods veio vazio mas tem pedido — busca direto sem filtro de produto
         const {data:pedForn} = await sb.from('comp_pedidos_compra_limpo')
           .select('id_pedido,nome_fornecedor,id_fornecedor')
           .in('id_pedido', numPedidos).limit(1);
         if (pedForn?.length) fornPedido = { nome: pedForn[0].nome_fornecedor||'—', id: pedForn[0].id_fornecedor||'—' };
-        else if (p.nome_fornecedor) fornPedido = { nome: p.nome_fornecedor, id: '—' };
-      } else if (p.nome_fornecedor) {
-        fornPedido = { nome: p.nome_fornecedor, id: '—' };
       }
       if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:12px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color:var(--blue-mid)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
       pedidosHtml = pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--blue-mid);font-family:'DM Mono',monospace">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px">✕</button></div>`).join('');
@@ -3768,11 +3766,17 @@ async function loadImpTabInfo(p) {
     }
   } catch(e) { pedidosHtml = '<div style="color:var(--red);padding:8px">Erro ao carregar pedidos</div>'; }
 
+  // Fornecedor gravado no próprio processo (aba Informações do formulário). É o que
+  // vale quando o processo ainda não tem pedido vinculado — a maioria dos processos
+  // novos. Antes esse fallback só existia dentro do ramo "tem pedido", então o card
+  // mostrava "Nenhum pedido vinculado" mesmo com o fornecedor já gravado no banco.
+  if (!fornPedido && p.nome_fornecedor) fornPedido = { nome: p.nome_fornecedor, id: p.id_fornecedor || '—' };
+
   document.getElementById('imptab-info').innerHTML = `
     <div class="cards-grid cards-grid-2" style="margin-bottom:16px">
       <div class="card"><div class="card-label">Status</div><div style="margin-top:8px"><span class="badge" style="color:${color};background:${bg};font-size:13px;padding:4px 12px">${label}</span></div></div>
       <div class="card"><div class="card-label">Importadora</div><div class="card-value" style="font-size:18px">${p.importadora||'—'}</div></div>
-      <div class="card" style="grid-column:1/-1"><div class="card-label">Fornecedor</div><div style="margin-top:6px;display:flex;align-items:center;gap:10px">${fornPedido ? `<span style="font-size:15px;font-weight:700">${fornPedido.nome}</span><span style="font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace">Cód. ${fornPedido.id}</span>` : '<span style="color:var(--text-muted);font-size:13px">Nenhum pedido vinculado</span>'}</div></div>
+      <div class="card" style="grid-column:1/-1"><div class="card-label">Fornecedor</div><div style="margin-top:6px;display:flex;align-items:center;gap:10px">${fornPedido ? `<span style="font-size:15px;font-weight:700">${fornPedido.nome}</span><span style="font-size:11px;color:var(--text-muted);font-family:'DM Mono',monospace">Cód. ${fornPedido.id}</span>` : '<span style="color:var(--text-muted);font-size:13px">Não informado — edite o processo para definir o fornecedor</span>'}</div></div>
       <div class="card"><div class="card-label">Embarque</div><div class="card-value" style="font-size:18px">${p.data_embarque?fmtData(p.data_embarque):'—'}</div></div>
       <div class="card"><div class="card-label">Previsão Chegada</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
@@ -4013,10 +4017,33 @@ async function buscarFornecedorImport(valor) {
   clearTimeout(_fornTimer);
   _fornTimer = setTimeout(async () => {
     try {
-      const { data } = await sb.from('vw_fb_forn_prod').select('id_fornecedor,nome_fornecedor').ilike('nome_fornecedor', `%${valor}%`).range(0, 9).order('nome_fornecedor');
-      if (!data?.length) { sugg.style.display = 'none'; return; }
-      const uniq = [...new Map(data.map(d => [d.id_fornecedor, d])).values()];
-      sugg.innerHTML = uniq.map(d => `<div onclick="selecionarFornecedorImport(${d.id_fornecedor}, '${d.nome_fornecedor.replace(/'/g,"\\'")}' )" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${d.nome_fornecedor}</div>`).join('');
+      // Duas fontes, porque elas respondem coisas diferentes:
+      //   vw_fb_forn_prod = vínculo produto↔fornecedor (só quem já tem produto amarrado)
+      //   vw_fb_contatos  = o cadastro de contatos do SGA
+      // Fornecedor recém-cadastrado, sem compra e sem produto vinculado, existe SÓ na
+      // segunda. Buscar só na primeira o deixava invisível no formulário — foi o que
+      // aconteceu com o ZHONGSHAN (cadastrado 11/09/2026, id 89577).
+      const [rVinc, rCad] = await Promise.all([
+        sb.from('vw_fb_forn_prod').select('id_fornecedor,nome_fornecedor')
+          .ilike('nome_fornecedor', `%${valor}%`).range(0, 19).order('nome_fornecedor'),
+        sb.from('vw_fb_contatos').select('id_contato,nome_contato')
+          .ilike('nome_contato', `%${valor}%`).eq('situacao', 'A').range(0, 19).order('nome_contato'),
+      ]);
+      // Mesmo espaço de id nas duas (id_contato == id_fornecedor). Os já conhecidos vêm
+      // primeiro; o cadastro só completa o que faltou.
+      const mapa = new Map();
+      (rVinc.data || []).forEach(d => {
+        if (!mapa.has(d.id_fornecedor)) mapa.set(d.id_fornecedor, { id: d.id_fornecedor, nome: d.nome_fornecedor, soCadastro: false });
+      });
+      (rCad.data || []).forEach(d => {
+        if (!mapa.has(d.id_contato)) mapa.set(d.id_contato, { id: d.id_contato, nome: d.nome_contato, soCadastro: true });
+      });
+      const lista = [...mapa.values()].slice(0, 10);
+      if (!lista.length) { sugg.style.display = 'none'; return; }
+      // O cadastro do SGA não separa cliente de fornecedor (a classificação não vem na
+      // replicação), então o que veio só de lá é marcado para o comprador conferir.
+      const esc = s => String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      sugg.innerHTML = lista.map(d => `<div onclick="selecionarFornecedorImport(${d.id}, '${esc(d.nome)}' )" style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border)" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">${d.nome}${d.soCadastro ? ` <span title="Veio do cadastro de contatos do SGA — ainda não tem compra nem produto vinculado. Confira se é o fornecedor certo." style="font-size:10px;color:var(--text-muted);border:1px solid var(--border);border-radius:10px;padding:1px 6px;margin-left:6px">cadastro</span>` : ''}</div>`).join('');
       sugg.style.display = 'block';
     } catch(e) { sugg.style.display = 'none'; }
   }, 300);
