@@ -332,6 +332,28 @@ const PAGINAS_HTML = {
     <div class="table-card"><div class="table-card-header"><span class="table-card-title">Sessões de Contagem</span></div><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Sessão</th><th>Progresso</th><th class="right">Divergências</th><th>Status</th><th class="right">Data</th><th>Criado por</th><th></th></tr></thead><tbody id="balanco-body"><tr class="loading-row"><td colspan="7">Carregando sessões...</td></tr></tbody></table></div></div>
   </div>`,
 
+  // Fila das peças que a Garantia (Assistência Stonni) pediu. Aqui se informa o
+  // NÚMERO DO PEDIDO de compra, não a data: a previsão já existe em
+  // import_processos e sai por esse número. Dois campos de data para o mesmo
+  // fato iam divergir, e a Garantia prometeria a data errada ao cliente.
+  'cmp-solicitacoes': `<div class="page-content" id="page-cmp-solicitacoes">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:15px;font-weight:600">Peças pedidas pela Garantia</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Informe o número do pedido de compra — a previsão de chegada vem sozinha do processo de importação</div>
+      </div>
+      <div class="toggle-group" id="sol-view-toggle">
+        <button class="toggle-btn active" onclick="setSolFiltro('pendentes',this)">Em aberto</button>
+        <button class="toggle-btn" onclick="setSolFiltro('recebidas',this)">Recebidas</button>
+        <button class="toggle-btn" onclick="setSolFiltro('todas',this)">Todas</button>
+      </div>
+    </div>
+    <div class="table-card"><div style="overflow-x:auto"><table class="data-table">
+      <thead><tr><th>Peça</th><th class="right">Qtd</th><th>Origem</th><th>Pedido por</th><th>Situação</th><th>Pedido de compra</th><th class="right">Chegada Prev.</th><th></th></tr></thead>
+      <tbody id="sol-body"><tr class="loading-row"><td colspan="8">Carregando pedidos...</td></tr></tbody>
+    </table></div></div>
+  </div>`,
+
   'cmp-importacao': `<div class="page-content" id="page-cmp-importacao">
     <div class="cards-grid cards-grid-4"><div class="card"><div class="card-label">Em Produção</div><div class="card-value blue" id="imp-kpi-producao">—</div></div><div class="card"><div class="card-label">Em Transporte</div><div class="card-value" id="imp-kpi-transporte">—</div></div><div class="card"><div class="card-label">A Pagar Fornec.</div><div class="card-value orange" id="imp-kpi-apagar">—</div><div class="card-sub" id="imp-kpi-apagar-sub">—</div></div><div class="card"><div class="card-label">Chegada Próxima</div><div class="card-value" style="font-size:16px" id="imp-kpi-proxima">—</div><div class="card-sub" id="imp-kpi-proxima-forn">—</div></div></div>
     <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)"><i class="ic ic-sm" data-ic="package"></i> Produtos</button></div><button id="btn-concluidos" class="btn btn-outline" style="height:32px;font-size:12px" onclick="toggleConcluidos(this)">Concluídos</button><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
@@ -4638,9 +4660,173 @@ function toggleSidebar() {
 // ═══════════════════════════════════════════════════════════
 let _container = null;
 let _paginaAtiva = null;
+// ============================================================================
+//  PEÇAS PEDIDAS PELA GARANTIA (prt_solicitacao_peca)
+//
+//  A Garantia da Assistência Stonni registra a peça que faltou; aqui ela é
+//  comprada. O que se informa é o NÚMERO DO PEDIDO de compra -- e a previsão de
+//  chegada sai de import_processos por esse número, via import_pedidos.
+//
+//  Por que não um campo de data aqui: a previsão já é mantida no módulo de
+//  Importação. Um segundo lugar para o mesmo dado significa dois valores
+//  diferentes mais cedo ou mais tarde, e a Garantia prometendo a data errada ao
+//  cliente. Data digitada à mão fica só para compra nacional, que não passa por
+//  processo de importação.
+// ============================================================================
+let solLista = [], solPrev = {}, solFiltro = 'pendentes';
+
+const SOL_SITUACAO = {
+  aberta:    { label: 'Aberta',    cor: 'var(--orange)' },
+  em_compra: { label: 'Em compra', cor: 'var(--blue-mid, #0077CC)' },
+  a_caminho: { label: 'A caminho', cor: 'var(--blue-mid, #0077CC)' },
+  recebida:  { label: 'Recebida',  cor: 'var(--green)' },
+  cancelada: { label: 'Cancelada', cor: 'var(--text-muted)' }
+};
+const SOL_ORIGEM = { autorizada: 'Autorizada', demanda: 'Demanda', tecnico: 'Técnico', outro: 'Outro' };
+
+function solEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+// Por recorte do texto, não new Date(): '2026-09-14' vira meia-noite UTC e
+// apareceria como 13/09 no fuso de Brasília. Previsão errada por um dia é o
+// tipo de erro que ninguém desconfia.
+function solData(d) { if (!d) return '—'; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(d)); return m ? `${m[3]}/${m[2]}/${m[1]}` : String(d); }
+
+function setSolFiltro(f, btn) {
+  solFiltro = f;
+  document.querySelectorAll('#sol-view-toggle .toggle-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  loadSolicitacoes();
+}
+
+async function loadSolicitacoes() {
+  const body = document.getElementById('sol-body');
+  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="8">Carregando pedidos...</td></tr>';
+  try {
+    let q = sb.from('prt_solicitacao_peca').select('*').order('criado_em', { ascending: false });
+    if (solFiltro === 'pendentes') q = q.in('status', ['aberta', 'em_compra', 'a_caminho']);
+    else if (solFiltro === 'recebidas') q = q.eq('status', 'recebida');
+    const { data, error } = await q;
+    if (error) throw error;
+    solLista = data || [];
+    await solCarregarPrevisoes();
+    renderSolicitacoes();
+  } catch (e) {
+    console.error(e);
+    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="8">Não deu para carregar: ${solEsc(e.message || e)}</td></tr>`;
+  }
+}
+
+// Duas consultas para a lista inteira, não uma por linha.
+async function solCarregarPrevisoes() {
+  solPrev = {};
+  const nums = [...new Set(solLista.map(r => (r.numero_pedido || '').trim()).filter(Boolean))];
+  if (!nums.length) return;
+  try {
+    const { data: vinc } = await sb.from('import_pedidos').select('numero_pedido,processo_id').in('numero_pedido', nums);
+    const ids = [...new Set((vinc || []).map(v => v.processo_id).filter(Boolean))];
+    if (!ids.length) return;
+    const { data: procs } = await sb.from('import_processos').select('id,codigo,data_prev_chegada,data_chegada_real').in('id', ids);
+    const porId = {}; (procs || []).forEach(p => { porId[p.id] = p; });
+    (vinc || []).forEach(v => { const p = porId[v.processo_id]; if (p) solPrev[v.numero_pedido] = p; });
+  } catch (e) { console.error('previsão:', e); }
+}
+
+function solPrevisaoHtml(r) {
+  const proc = r.numero_pedido ? solPrev[(r.numero_pedido || '').trim()] : null;
+  if (proc && proc.data_chegada_real) return `<span class="green">chegou ${solData(proc.data_chegada_real)}</span>`;
+  if (proc && proc.data_prev_chegada) return `<span class="mono">${solData(proc.data_prev_chegada)}</span><div style="font-size:11px;color:var(--text-muted)">${solEsc(proc.codigo || '')}</div>`;
+  if (r.previsao_chegada) return `<span class="mono">${solData(r.previsao_chegada)}</span><div style="font-size:11px;color:var(--text-muted)">nacional</div>`;
+  if (r.numero_pedido) return '<span style="color:var(--text-muted)">sem processo</span>';
+  return '<span style="color:var(--text-muted)">—</span>';
+}
+
+function renderSolicitacoes() {
+  const body = document.getElementById('sol-body');
+  if (!body) return;
+  if (!solLista.length) {
+    body.innerHTML = `<tr class="loading-row"><td colspan="8">${solFiltro === 'pendentes' ? 'Nenhuma peça em aberto — a Garantia não está esperando nada.' : 'Nada neste filtro.'}</td></tr>`;
+    return;
+  }
+  body.innerHTML = solLista.map(r => {
+    const s = SOL_SITUACAO[r.status] || { label: r.status, cor: 'var(--text-muted)' };
+    return `<tr>
+      <td><div style="font-weight:600">${solEsc(r.codigo)}</div>
+          ${r.nome_peca ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.nome_peca)}</div>` : ''}
+          ${r.observacao ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.observacao)}</div>` : ''}</td>
+      <td class="right mono">${r.quantidade}</td>
+      <td>${solEsc(SOL_ORIGEM[r.origem] || r.origem)}</td>
+      <td><div>${solData(r.criado_em)}</div><div style="font-size:11px;color:var(--text-muted)">${solEsc(r.solicitante_nome || r.solicitante_email || '')}</div></td>
+      <td><span style="color:${s.cor};font-weight:600">${solEsc(s.label)}</span>
+          ${r.resposta ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.resposta)}</div>` : ''}</td>
+      <td class="mono">${r.numero_pedido ? solEsc(r.numero_pedido) : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td class="right">${solPrevisaoHtml(r)}</td>
+      <td class="right">${r.status === 'cancelada' ? '' : `<button class="btn btn-outline" style="height:28px;font-size:12px" onclick="abrirModalSolicitacao(${r.id})">Atender</button>`}</td>
+    </tr>`;
+  }).join('');
+}
+
+function abrirModalSolicitacao(id) {
+  const r = solLista.find(x => Number(x.id) === Number(id));
+  if (!r) { showToast('Pedido não encontrado.', 'error'); return; }
+  document.getElementById('modal-solicitacao')?.remove();
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="modal-solicitacao" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.remove()">
+      <div style="background:var(--surface);border-radius:var(--radius-md);padding:22px;width:520px;max-width:94vw;box-shadow:var(--shadow-lg)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:2px">${solEsc(r.codigo)}${r.nome_peca ? ' — ' + solEsc(r.nome_peca) : ''}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">${r.quantidade} un · pedido por ${solEsc(r.solicitante_nome || r.solicitante_email || '—')} em ${solData(r.criado_em)}${r.observacao ? ' · ' + solEsc(r.observacao) : ''}</div>
+
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Situação</label>
+        <select id="sol-f-status" class="filter-select" style="width:100%;height:36px;margin-bottom:12px">
+          ${['aberta','em_compra','a_caminho','recebida','cancelada'].map(k => `<option value="${k}"${k === r.status ? ' selected' : ''}>${SOL_SITUACAO[k].label}</option>`).join('')}
+        </select>
+
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Número do pedido de compra</label>
+        <input id="sol-f-pedido" class="filter-select" style="width:100%;height:36px" placeholder="Como está em Importação" value="${solEsc(r.numero_pedido || '')}" />
+        <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">Com o número, a <strong>previsão de chegada vem sozinha</strong> do processo de importação. Não precisa digitar data.</div>
+
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Previsão (só compra nacional)</label>
+        <input id="sol-f-previsao" type="date" class="filter-select" style="width:100%;height:36px" value="${solEsc(r.previsao_chegada || '')}" />
+        <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">Use só quando não houver processo de importação. Se o pedido estiver num processo, deixe vazio — a data de lá vale mais.</div>
+
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Recado para a Garantia</label>
+        <input id="sol-f-resposta" class="filter-select" style="width:100%;height:36px" placeholder="Ex.: fornecedor sem estoque até março" value="${solEsc(r.resposta || '')}" />
+
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:18px">
+          <button class="btn btn-outline" onclick="document.getElementById('modal-solicitacao').remove()">Fechar</button>
+          <button class="btn btn-primary" id="sol-f-salvar" onclick="salvarSolicitacao(${r.id})">Salvar</button>
+        </div>
+      </div>
+    </div>`);
+}
+
+async function salvarSolicitacao(id) {
+  const btn = document.getElementById('sol-f-salvar');
+  if (btn) { btn.disabled = true; btn.textContent = 'Salvando...'; }
+  try {
+    const u = window.usuarioAtual || {};
+    const { error } = await sb.from('prt_solicitacao_peca').update({
+      status:           document.getElementById('sol-f-status').value,
+      numero_pedido:    (document.getElementById('sol-f-pedido').value || '').trim() || null,
+      previsao_chegada: document.getElementById('sol-f-previsao').value || null,
+      resposta:         (document.getElementById('sol-f-resposta').value || '').trim() || null,
+      atualizado_em:    new Date().toISOString(),
+      atualizado_por:   u.nome || u.email || null
+    }).eq('id', id);
+    if (error) throw error;
+    document.getElementById('modal-solicitacao')?.remove();
+    showToast('Pedido atualizado. A Garantia já vê.');
+    loadSolicitacoes();
+  } catch (e) {
+    console.error(e);
+    showToast('Não deu para salvar: ' + (e.message || e), 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Salvar'; }
+  }
+}
+
 let _iniciado = false;
 
 const CMP_PAGE_LOADERS = {
+  'cmp-solicitacoes': () => loadSolicitacoes(),
   'cmp-pedidos':      () => loadPedidos(),
   'cmp-comprar':      () => loadComprarAgora(),
   'cmp-parado':       () => loadEstoqueParado(),
