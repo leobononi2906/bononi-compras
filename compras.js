@@ -4730,11 +4730,28 @@ async function solCarregarPrevisoes() {
   } catch (e) { console.error('previsão:', e); }
 }
 
+// Hoje em data LOCAL: toISOString() daria UTC e, depois das 21h de Brasília,
+// uma previsão de hoje já apareceria como vencida.
+function solHoje() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Previsão vencida em laranja, e dizendo que venceu. Em 14/09/2026, 15 das 25
+// previsões em aberto já tinham passado e nenhum processo tinha chegada real
+// registrada. Do outro lado dessa tela a Garantia promete a data a um cliente.
+function solDataPrev(iso, rodape) {
+  const venceu = String(iso) < solHoje();
+  const cor = venceu ? 'var(--orange)' : 'var(--text-primary)';
+  return `<span class="mono" style="color:${cor};font-weight:${venceu ? 600 : 400}">${solData(iso)}${venceu ? ' · vencida' : ''}</span>`
+       + `<div style="font-size:11px;color:var(--text-muted)">${rodape}</div>`;
+}
+
 function solPrevisaoHtml(r) {
   const proc = r.numero_pedido ? solPrev[(r.numero_pedido || '').trim()] : null;
   if (proc && proc.data_chegada_real) return `<span class="green">chegou ${solData(proc.data_chegada_real)}</span>`;
-  if (proc && proc.data_prev_chegada) return `<span class="mono">${solData(proc.data_prev_chegada)}</span><div style="font-size:11px;color:var(--text-muted)">${solEsc(proc.codigo || '')}</div>`;
-  if (r.previsao_chegada) return `<span class="mono">${solData(r.previsao_chegada)}</span><div style="font-size:11px;color:var(--text-muted)">nacional</div>`;
+  if (proc && proc.data_prev_chegada) return solDataPrev(proc.data_prev_chegada, solEsc(proc.codigo || ''));
+  if (r.previsao_chegada) return solDataPrev(r.previsao_chegada, 'nacional');
   if (r.numero_pedido) return '<span style="color:var(--text-muted)">sem processo</span>';
   return '<span style="color:var(--text-muted)">—</span>';
 }
