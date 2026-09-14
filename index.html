@@ -4,44 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Bononi — Compras</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Design system da marca. As fontes vêm por <link> (não por @import dentro do CSS) pra não
+     encadear requisição e atrasar a pintura — o app não tem build. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..800;1,400..800&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ds/bononi-ds.css?v=20260914a">
 
 <style>
 /* ══ RESET + TOKENS ══ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Ponte com os nomes antigos ───────────────────────────────────────────────
+   O app tem ~930 atributos `style` inline e 9,6 KB de CSS injetado pelo compras.js
+   usando os nomes de variável da versão azul. Em vez de reescrever cada um, cada
+   nome antigo passa a apontar para o token do design system. Código novo deve usar
+   o token do DS direto, não a ponte.
+
+   TRÊS nomes NÃO estão aqui porque colidem com nomes do próprio DS — uma linha
+   `--x: var(--x)` é auto-referência: CSS inválido, descartado em silêncio.
+     --text-muted  o do DS (#6b7382) vale, e tem contraste melhor que o antigo
+     --radius-sm   o do DS é 3px (chip); os controles do app foram para --radius-md
+     --sidebar-w   o do DS é 232px (era 228px)                                     */
 :root {
-  --bg:           #F0F3F8;
-  --surface:      #FFFFFF;
-  --surface2:     #F7F9FC;
-  --border:       #E2E8F2;
-  --blue-dark:    #1A3A8F;
-  --blue-mid:     #0077CC;
-  --blue-light:   #00AAEE;
-  --blue-pale:    #E8F4FD;
-  --text-primary: #0F1D35;
-  --text-secondary:#5A6A85;
-  --text-muted:   #9AA5B8;
-  --green:        #0F9D6E;
-  --green-bg:     #E8F8F3;
-  --red:          #D93025;
-  --red-bg:       #FEF0EF;
-  --orange:       #E07B00;
-  --orange-bg:    #FEF5E7;
-  --yellow:       #B45309;
-  --yellow-bg:    #FFFBEB;
-  --purple:       #7C3AED;
-  --purple-bg:    #F5F3FF;
-  --shadow-sm:    0 1px 3px rgba(15,29,53,0.06), 0 1px 2px rgba(15,29,53,0.04);
-  --shadow-md:    0 4px 16px rgba(15,29,53,0.08), 0 2px 4px rgba(15,29,53,0.04);
-  --shadow-lg:    0 12px 40px rgba(15,29,53,0.12);
-  --radius:       12px;
-  --radius-sm:    8px;
-  --sidebar-w:    228px;
-  --sidebar-bg:   #111827;
+  --bg:            var(--surface-page);
+  --surface:       var(--surface-card);
+  --surface2:      var(--surface-sunken);
+  --border:        var(--border-subtle);
+
+  /* O azul era a cor de ação da versão antiga → vira tinta, que é a ação primária
+     do DS. O vermelho da marca fica reservado pro acento, um por tela. */
+  --blue-dark:     var(--action-primary);
+  --blue-mid:      var(--action-primary);
+  --blue-light:    var(--bnn-gray-600);
+  --blue-pale:     var(--surface-sunken);
+
+  --text-primary:  var(--text-strong);
+  --text-secondary:var(--text-body);
+
+  /* Severidade em 4 degraus distinguíveis. O DS só tem um âmbar, então crítico e
+     ruptura se separam por profundidade de vermelho — e o rótulo sempre acompanha,
+     porque estado nunca é comunicado só por cor. */
+  --green:         var(--status-ok-text);    --green-bg:  var(--status-ok-bg);
+  --red:           var(--status-crit-text);  --red-bg:    var(--status-crit-bg);
+  --orange:        var(--bnn-red-500);       --orange-bg: var(--status-crit-bg);
+  --yellow:        var(--status-warn-text);  --yellow-bg: var(--status-warn-bg);
+  /* O DS não tem roxo. Os usos (curva ABC, etiqueta de tipo) vão pro azul da rampa,
+     que é a cor semântica de informação. */
+  --purple:        var(--bnn-blue-500);      --purple-bg: var(--bnn-blue-50);
+
+  --shadow-sm:     var(--shadow-card);
+  --shadow-md:     var(--shadow-raised);
+  --shadow-lg:     var(--shadow-overlay);
+
+  --radius:        var(--radius-lg);
+  --sidebar-bg:    var(--surface-nav);
 }
 
-html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text-primary); font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+/* O base.css do DS trata todo <a> como link vermelho sublinhado no hover. Aqui os
+   10 <a> do app são todos item de navegação da sidebar — sem isto, passar o mouse
+   pinta o item de vinho e acende uma borda inferior. */
+a { color: inherit; border-bottom: none; }
+a:hover { color: inherit; border-bottom-color: transparent; }
+
+html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); color: var(--text-primary); font-size: var(--fs-14); line-height: var(--lh-normal); -webkit-font-smoothing: antialiased; }
 
 /* ══ LAYOUT ══ */
 .app-shell { display: flex; height: 100vh; overflow: hidden; }
@@ -50,65 +76,66 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); background: var(--sidebar-bg); display: flex; flex-direction: column; overflow: hidden; z-index: 100; transition: transform 0.25s ease; }
 .sidebar-brand { padding: 18px 16px 14px; border-bottom: 1px solid rgba(255,255,255,0.06); flex-shrink: 0; }
 .brand-row { display: flex; align-items: center; gap: 10px; }
-.brand-icon { width: 34px; height: 34px; background: var(--blue-mid); border-radius: 9px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.brand-icon svg { width: 18px; height: 18px; }
-.brand-name { font-size: 14px; font-weight: 700; color: #fff; letter-spacing: -0.2px; }
+/* Assinatura reversa sobre tinta, 26px de altura (medida do DS). Sem capsula,
+   sem cartao colorido, sem recorte — o manual da marca proibe os tres. */
+.brand-logo { height: 26px; width: auto; flex-shrink: 0; }
+.brand-name { font-size: 14px; font-weight: 700; color: var(--text-inverse); letter-spacing: -0.2px; }
 .brand-sub { font-size: 10px; color: rgba(255,255,255,0.35); margin-top: 1px; }
 .sidebar-nav { flex: 1; padding: 12px 10px; overflow-y: auto; scrollbar-width: none; }
 .sidebar-nav::-webkit-scrollbar { display: none; }
-.nav-module { margin-bottom: 4px; border-radius: var(--radius-sm); overflow: hidden; }
-.nav-module-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; cursor: pointer; border-radius: var(--radius-sm); transition: background 0.15s; user-select: none; }
+.nav-module { margin-bottom: 4px; border-radius: var(--radius-md); overflow: hidden; }
+.nav-module-header { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; cursor: pointer; border-radius: var(--radius-md); transition: background 0.15s; user-select: none; }
 .nav-module-header:hover { background: rgba(255,255,255,0.05); }
-.nav-module-header.has-active { background: rgba(0,170,238,0.08); }
+.nav-module-header.has-active { background: rgba(255,255,255,0.04); }
 .nav-module-label { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.4); }
 .nav-module-icon { font-size: 13px; }
 .nav-module-chevron { font-size: 10px; color: rgba(255,255,255,0.2); transition: transform 0.2s; }
 .nav-module.collapsed .nav-module-chevron { transform: rotate(-90deg); }
 .nav-module.collapsed .nav-module-items { display: none; }
 .nav-module-items { padding: 2px 0 4px 4px; }
-.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius-sm); color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius-md); color: rgba(255,255,255,0.55); font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; text-decoration: none; margin-bottom: 1px; white-space: nowrap; }
 .nav-item:hover { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.88); }
-.nav-item.active { background: rgba(0,170,238,0.18); color: var(--blue-light); font-weight: 600; }
+.nav-item.active { background: rgba(255,255,255,0.08); color: var(--blue-light); font-weight: 600; }
 .nav-item .nav-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.5; flex-shrink: 0; }
 .nav-item.active .nav-dot { opacity: 1; }
 .nav-separator { height: 1px; background: rgba(255,255,255,0.06); margin: 8px 6px; }
 .sidebar-footer { flex-shrink: 0; padding: 10px; border-top: 1px solid rgba(255,255,255,0.06); }
-.user-card { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius-sm); }
-.user-avatar { width: 30px; height: 30px; border-radius: 8px; background: var(--blue-mid); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.user-card { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: var(--radius-md); }
+.user-avatar { width: 30px; height: 30px; border-radius: var(--radius-md); background: var(--blue-mid); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: var(--text-inverse); flex-shrink: 0; }
 .user-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8); }
 .user-perfil { font-size: 10px; color: rgba(255,255,255,0.35); }
 .sidebar-actions { display: flex; gap: 4px; padding: 0 2px; margin-top: 6px; }
-.sidebar-action-btn { flex: 1; padding: 7px 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-sm); color: rgba(255,255,255,0.45); font-size: 11px; font-family: 'DM Sans', sans-serif; font-weight: 500; cursor: pointer; transition: all 0.15s; text-align: center; }
+.sidebar-action-btn { flex: 1; padding: 7px 0; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08); border-radius: var(--radius-md); color: rgba(255,255,255,0.45); font-size: 11px; font-family: var(--font-ui); font-weight: 500; cursor: pointer; transition: all 0.15s; text-align: center; }
 .sidebar-action-btn:hover { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); }
-.sidebar-action-btn.danger:hover { background: rgba(217,48,37,0.15); color: #F87171; border-color: rgba(217,48,37,0.25); }
+.sidebar-action-btn.danger:hover { background: rgba(193,31,37,0.18); color: var(--bnn-red-300); border-color: rgba(193,31,37,0.32); }
 
 /* ══ MAIN ══ */
 .main-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 .topbar { height: 54px; background: var(--surface); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 20px; gap: 12px; flex-shrink: 0; box-shadow: var(--shadow-sm); }
-.menu-toggle { display: none; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-secondary); padding: 4px; border-radius: 6px; line-height: 1; }
+.menu-toggle { display: none; background: none; border: none; font-size: 18px; cursor: pointer; color: var(--text-secondary); padding: 4px; border-radius: var(--radius-md); line-height: 1; }
 .topbar-title-area { flex: 1; min-width: 0; }
 .page-title { font-size: 15px; font-weight: 700; color: var(--blue-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .page-breadcrumb { font-size: 11px; color: var(--text-muted); }
 .topbar-controls { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.filter-select { height: 34px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 10px; font-size: 12px; font-family: 'DM Sans', sans-serif; font-weight: 500; color: var(--text-primary); background: var(--surface2); cursor: pointer; outline: none; transition: border-color 0.15s; }
+.filter-select { height: 34px; border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 10px; font-size: 12px; font-family: var(--font-ui); font-weight: 500; color: var(--text-primary); background: var(--surface2); cursor: pointer; outline: none; transition: border-color 0.15s; }
 .filter-select:focus { border-color: var(--blue-mid); }
 .switch { position: relative; display: inline-block; width: 34px; height: 19px; flex-shrink: 0; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.switch-slider { position: absolute; inset: 0; background: var(--border); transition: 0.15s; border-radius: 20px; cursor: pointer; }
-.switch-slider::before { content: ""; position: absolute; height: 13px; width: 13px; left: 3px; bottom: 3px; background: #fff; transition: 0.15s; border-radius: 50%; box-shadow: var(--shadow-sm); }
+.switch-slider { position: absolute; inset: 0; background: var(--border); transition: 0.15s; border-radius: var(--radius-pill); cursor: pointer; }
+.switch-slider::before { content: ""; position: absolute; height: 13px; width: 13px; left: 3px; bottom: 3px; background: var(--surface-card); transition: 0.15s; border-radius: 50%; box-shadow: var(--shadow-sm); }
 .switch input:checked + .switch-slider { background: var(--blue-mid); }
 .switch input:checked + .switch-slider::before { transform: translateX(15px); }
-.btn-refresh { height: 34px; padding: 0 12px; background: var(--blue-dark); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+.btn-refresh { height: 34px; padding: 0 12px; background: var(--blue-dark); color: var(--text-inverse); border: none; border-radius: var(--radius-md); font-size: 12px; font-weight: 600; font-family: var(--font-ui); cursor: pointer; transition: background 0.15s; white-space: nowrap; }
 .btn-refresh:hover { background: var(--blue-mid); }
 .last-update { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.module-loading-bar { position: absolute; top: 54px; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--blue-mid), var(--blue-light), var(--blue-mid)); background-size: 200% 100%; animation: loadingBar 1.2s linear infinite; display: none; z-index: 50; }
+.module-loading-bar { position: absolute; top: 54px; left: 0; right: 0; height: 2px; background: var(--action-primary); background-size: 200% 100%; animation: loadingBar 1.2s linear infinite; display: none; z-index: 50; }
 .module-loading-bar.show { display: block; }
 @keyframes loadingBar { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
 .content-area { flex: 1; overflow-y: auto; position: relative; }
 .module-slot { display: none; height: 100%; }
 .module-slot.active { display: block; }
 .module-placeholder { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 16px; color: var(--text-muted); }
-.module-placeholder .spinner { width: 32px; height: 32px; border: 3px solid rgba(26,58,143,0.12); border-top-color: var(--blue-mid); border-radius: 50%; animation: spin 0.7s linear infinite; }
+.module-placeholder .spinner { width: 32px; height: 32px; border: 3px solid var(--border-subtle); border-top-color: var(--blue-mid); border-radius: 50%; animation: spin 0.7s linear infinite; }
 .module-placeholder p { font-size: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
@@ -123,7 +150,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-sm); transition: box-shadow 0.15s; }
 .card:hover { box-shadow: var(--shadow-md); }
 .card-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-.card-value { font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: 'DM Mono', monospace; line-height: 1.2; }
+.card-value { font-size: 22px; font-weight: 700; color: var(--text-primary); font-family: var(--font-mono); line-height: 1.2; }
 .card-value.green  { color: var(--green); }
 .card-value.red    { color: var(--red); }
 .card-value.orange { color: var(--orange); }
@@ -146,54 +173,73 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .data-table th.sortable { cursor: pointer; user-select: none; }
 .data-table th.sortable:hover { color: var(--text-secondary); background: var(--surface); }
 .data-table th .sort-icon { opacity: 0.45; font-size: 9px; margin-left: 2px; }
-.data-table td { padding: 11px 14px; border-bottom: 1px solid #F0F4FA; vertical-align: middle; }
+.data-table td { padding: 11px 14px; border-bottom: 1px solid var(--border-subtle); vertical-align: middle; }
 .data-table tr:last-child td { border-bottom: none; }
-.data-table tr:hover td { background: #F8FAFC; }
-.data-table tfoot td { border-top: 2px solid var(--border); background: #FDF6E3; padding: 10px 14px; }
+.data-table tr:hover td { background: var(--surface-hover); }
+.data-table tfoot td { border-top: 2px solid var(--border); background: var(--surface-sunken); padding: 10px 14px; }
 .data-table .right { text-align: right; }
-.data-table .mono { font-family: 'DM Mono', monospace; }
+.data-table .mono { font-family: var(--font-mono); }
 .data-table .green { color: var(--green); }
 .data-table .red   { color: var(--red); }
 .data-table .orange{ color: var(--orange); }
-.badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
-.badge-green   { background: var(--green-bg);  color: #065F46; }
-.badge-red     { background: var(--red-bg);    color: #991B1B; }
-.badge-orange  { background: var(--orange-bg); color: #92400E; }
-.badge-blue    { background: var(--blue-pale); color: var(--blue-dark); }
-.badge-gray    { background: var(--surface2);  color: var(--text-muted); }
-.badge-purple  { background: var(--purple-bg); color: var(--purple); }
-.badge-ruptura { background: #FEE2E2; color: #991B1B; }
-.badge-critico { background: #FEF3C7; color: #92400E; }
-.badge-baixo   { background: #FEF9C3; color: #854D0E; }
-.badge-ok      { background: var(--green-bg); color: #065F46; }
-.badge-sem_mov { background: var(--surface2); color: var(--text-muted); }
-.badge-morto { background: #EDE9FE; color: #5B21B6; }
-.badge-a       { background: #DCFCE7; color: #166534; }
-.badge-b       { background: #DBEAFE; color: #1E40AF; }
-.badge-c       { background: var(--surface2); color: var(--text-muted); }
-.badge-aprovado  { background: var(--green-bg); color: #065F46; }
-.badge-sugerido  { background: var(--blue-pale); color: var(--blue-dark); }
-.badge-rejeitado { background: var(--red-bg);    color: #991B1B; }
-.badge-em_analise{ background: var(--orange-bg); color: #92400E; }
-.btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 600; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.15s; border: none; white-space: nowrap; text-decoration: none; }
-.btn-primary   { background: var(--blue-dark); color: #fff; }
+/* Badge do DS: chip de 3px, overline em caixa alta, tint sólido (nunca alpha) e
+   texto em opacidade cheia. */
+.badge { display: inline-flex; align-items: center; gap: var(--space-3); height: 22px; padding: 0 var(--space-4); border-radius: var(--radius-sm); font: var(--type-overline); letter-spacing: var(--ls-caps); text-transform: uppercase; white-space: nowrap; }
+.badge-green   { background: var(--status-ok-bg);   color: var(--status-ok-text); }
+.badge-red     { background: var(--status-crit-bg); color: var(--status-crit-text); }
+.badge-orange  { background: var(--status-warn-bg); color: var(--status-warn-text); }
+.badge-blue    { background: var(--status-info-bg); color: var(--status-info-text); }
+.badge-gray    { background: var(--surface-sunken); color: var(--text-muted); }
+.badge-purple  { background: var(--bnn-blue-50);    color: var(--bnn-blue-500); }
+
+/* ── Situação de estoque ──────────────────────────────────────────────────────
+   Seis estados que precisam continuar distinguíveis. O DS só tem um âmbar, então
+   ruptura e crítico se separam por profundidade de vermelho; morto vai pra tinta
+   (dinheiro parado) e sem giro fica vazado, sem preenchimento — a diferença entre
+   os dois é cara de errar. O rótulo sempre acompanha: estado nunca é comunicado
+   só por cor. O ponto é reforço. */
+.badge-ruptura { background: var(--bnn-red-50);    color: var(--bnn-red-700); }
+.badge-critico { background: var(--bnn-red-50);    color: var(--bnn-red-500); }
+.badge-baixo   { background: var(--bnn-amber-50);  color: var(--bnn-amber-500); }
+.badge-ok      { background: var(--bnn-green-50);  color: var(--bnn-green-500); }
+.badge-morto   { background: var(--bnn-gray-100);  color: var(--bnn-ink-900); }
+.badge-sem_mov { background: transparent; color: var(--bnn-gray-500); box-shadow: var(--shadow-hairline); }
+.badge-ruptura::before, .badge-critico::before, .badge-baixo::before,
+.badge-ok::before, .badge-morto::before, .badge-sem_mov::before {
+  content: ''; width: 6px; height: 6px; border-radius: var(--radius-pill);
+  background: currentColor; flex: 0 0 auto;
+}
+/* Sem giro: ponto vazado, para não competir com o de estoque morto. */
+.badge-sem_mov::before { background: transparent; box-shadow: inset 0 0 0 1.5px currentColor; }
+
+/* Curva ABC — três degraus da rampa, não três matizes inventados. */
+.badge-a       { background: var(--bnn-green-50);   color: var(--bnn-green-500); }
+.badge-b       { background: var(--bnn-blue-50);    color: var(--bnn-blue-500); }
+.badge-c       { background: var(--surface-sunken); color: var(--text-muted); }
+
+.badge-aprovado  { background: var(--status-ok-bg);   color: var(--status-ok-text); }
+.badge-sugerido  { background: var(--status-info-bg); color: var(--status-info-text); }
+.badge-rejeitado { background: var(--status-crit-bg); color: var(--status-crit-text); }
+.badge-em_analise{ background: var(--status-warn-bg); color: var(--status-warn-text); }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border-radius: var(--radius-md); font-size: 13px; font-weight: 600; font-family: var(--font-ui); cursor: pointer; transition: all 0.15s; border: none; white-space: nowrap; text-decoration: none; }
+.btn-primary   { background: var(--blue-dark); color: var(--text-inverse); }
 .btn-primary:hover { background: var(--blue-mid); }
 .btn-secondary { background: var(--surface2); color: var(--text-primary); border: 1px solid var(--border); }
 .btn-secondary:hover { background: var(--border); }
 .btn-danger    { background: var(--red-bg); color: var(--red); }
-.btn-danger:hover { background: #FECACA; }
+.btn-danger:hover { background: var(--bnn-red-100); }
 .btn-success   { background: var(--green-bg); color: var(--green); }
-.btn-success:hover { background: #BBF7D0; }
+.btn-success:hover { background: var(--bnn-green-50); }
 .btn-outline   { background: none; color: var(--blue-mid); border: 1.5px solid var(--blue-mid); }
 .btn-outline:hover { background: var(--blue-pale); }
 .btn-sm        { height: 28px; padding: 0 10px; font-size: 12px; }
-.btn-icon      { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border); border-radius: 6px; cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; }
+.btn-icon      { width: 30px; height: 30px; padding: 0; display: inline-flex; align-items: center; justify-content: center; background: none; border: 1px solid var(--border); border-radius: var(--radius-md); cursor: pointer; color: var(--text-muted); font-size: 13px; transition: all 0.15s; }
 .btn-icon:hover { background: var(--surface2); color: var(--text-primary); }
-.fluxo-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
-.fluxo-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; font-family: 'DM Sans', sans-serif; color: var(--text-muted); background: none; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-.fluxo-btn.active { background: var(--blue-dark); color: #fff; }
+.fluxo-toggle { display: flex; background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+.fluxo-btn { padding: 5px 12px; font-size: 12px; font-weight: 600; font-family: var(--font-ui); color: var(--text-muted); background: none; border: none; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.fluxo-btn.active { background: var(--blue-dark); color: var(--text-inverse); }
 .fluxo-btn:hover:not(.active) { background: var(--border); }
-.search-input { height: 32px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 10px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--surface2); outline: none; transition: border-color 0.15s; }
+.search-input { height: 32px; border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 10px; font-size: 13px; font-family: var(--font-ui); color: var(--text-primary); background: var(--surface2); outline: none; transition: border-color 0.15s; }
 .search-input:focus { border-color: var(--blue-mid); }
 .page-content { display: none; padding: 20px 24px; }
 .page-content.active { display: block; }
@@ -201,29 +247,30 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .saldo-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; margin-bottom: 16px; }
 .saldo-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: var(--surface2); border-bottom: 1px solid var(--border); }
 .saldo-header-title { font-size: 13px; font-weight: 700; }
-.saldo-total-badge { font-size: 17px; font-weight: 700; color: var(--blue-dark); font-family: 'DM Mono', monospace; }
+.saldo-total-badge { font-size: 17px; font-weight: 700; color: var(--blue-dark); font-family: var(--font-mono); }
 .semaforo-grid { display: grid; grid-template-columns: repeat(5,1fr); gap: 10px; margin-bottom: 16px; }
 .semaforo-card { background: var(--surface); border: 2px solid var(--border); border-radius: var(--radius); padding: 14px 12px; text-align: center; cursor: pointer; transition: all 0.15s; }
 .semaforo-card:hover, .semaforo-card.active { border-color: currentColor; box-shadow: var(--shadow-md); }
-.semaforo-card .sem-count { font-size: 28px; font-weight: 800; font-family: 'DM Mono', monospace; }
-.semaforo-card .sem-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
-.semaforo-card.ruptura { color: var(--red); }
-.semaforo-card.critico { color: var(--orange); }
-.semaforo-card.baixo   { color: var(--yellow); }
-.semaforo-card.ok      { color: var(--green); }
-.semaforo-card.sem_mov { color: var(--text-muted); }
-.semaforo-card.morto   { color: #7C3AED; }
-.cart-panel { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; background: var(--surface); border-top: 2px solid var(--blue-mid); box-shadow: 0 -4px 20px rgba(0,0,0,0.1); transform: translateY(100%); transition: transform 0.25s ease; z-index: 90; }
+.semaforo-card .sem-count { font: var(--type-display); font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.semaforo-card .sem-label { font: var(--type-overline); letter-spacing: var(--ls-caps); text-transform: uppercase; margin-top: 2px; }
+/* Mesma rampa dos badges — os seis cards e os seis badges têm de falar a mesma cor. */
+.semaforo-card.ruptura { color: var(--bnn-red-700); }
+.semaforo-card.critico { color: var(--bnn-red-500); }
+.semaforo-card.baixo   { color: var(--bnn-amber-500); }
+.semaforo-card.ok      { color: var(--bnn-green-500); }
+.semaforo-card.morto   { color: var(--bnn-ink-900); }
+.semaforo-card.sem_mov { color: var(--bnn-gray-500); }
+.cart-panel { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; background: var(--surface); border-top: 2px solid var(--blue-mid); box-shadow: var(--shadow-overlay); transform: translateY(100%); transition: transform 0.25s ease; z-index: 90; }
 .cart-panel.open { transform: translateY(0); }
 .cart-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); }
 .cart-title { font-size: 13px; font-weight: 700; }
-.cart-count { background: var(--blue-mid); color: #fff; border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700; }
+.cart-count { background: var(--blue-mid); color: var(--text-inverse); border-radius: var(--radius-pill); padding: 2px 8px; font-size: 11px; font-weight: 700; }
 .cart-body { padding: 12px 20px; max-height: 240px; overflow-y: auto; }
 .cart-footer { padding: 10px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 .drawer { position: fixed; top: 0; right: -600px; width: 580px; max-width: 95vw; height: 100vh; background: var(--surface); box-shadow: var(--shadow-lg); z-index: 300; transition: right 0.28s ease; display: flex; flex-direction: column; }
 .drawer.open { right: 0; }
 #produto-drawer { width: 820px; }
-.drawer-overlay { position: fixed; inset: 0; background: rgba(15,29,53,0.35); z-index: 299; display: none; }
+.drawer-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 299; display: none; }
 .drawer-overlay.open { display: block; }
 .drawer-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
 .drawer-body { flex: 1; overflow-y: auto; padding: 0; }
@@ -232,52 +279,51 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 .drawer-tab.active { color: var(--blue-mid); border-bottom-color: var(--blue-mid); }
 .drawer-tab-content { display: none; padding: 16px 20px; }
 .drawer-tab-content.active { display: block; }
-.modal-overlay { position: fixed; inset: 0; background: rgba(15,29,53,0.45); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay { position: fixed; inset: 0; background: var(--scrim); z-index: 400; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .modal { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 100%; max-width: 520px; max-height: 90vh; overflow-y: auto; }
 .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
 .modal-title { font-size: 15px; font-weight: 700; }
 .modal-body { padding: 20px; }
 .field { margin-bottom: 14px; }
 .field label { display: block; font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 5px; }
-.field input, .field select, .field textarea { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 9px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--surface2); outline: none; transition: all 0.15s; }
-.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(0,119,204,0.08); }
+.field input, .field select, .field textarea { width: 100%; border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 9px 12px; font-size: 13px; font-family: var(--font-ui); color: var(--text-primary); background: var(--surface2); outline: none; transition: all 0.15s; }
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(20,22,26,0.08); }
 .field-hint { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
-.alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-bottom: 12px; }
-.alert-success { background: #F0FDF4; border: 1px solid #BBF7D0; color: #166534; }
-.alert-error   { background: var(--red-bg); border: 1px solid #FECACA; color: #991B1B; }
-.alert-warning { background: var(--orange-bg); border: 1px solid #FCD34D; color: #92400E; }
-.alert-info    { background: var(--blue-pale); border: 1px solid #BAE6FD; color: var(--blue-dark); }
+.alert { padding: 10px 14px; border-radius: var(--radius-md); font-size: 13px; margin-bottom: 12px; }
+.alert-success { background: var(--status-ok-bg); border: 1px solid var(--border-subtle); color: var(--status-ok-text); }
+.alert-error   { background: var(--red-bg); border: 1px solid var(--border-subtle); color: var(--status-crit-text); }
+.alert-warning { background: var(--orange-bg); border: 1px solid var(--border-subtle); color: var(--status-warn-text); }
+.alert-info    { background: var(--blue-pale); border: 1px solid var(--border-subtle); color: var(--blue-dark); }
 
 /* ══ AUTH LOADING ══ */
 .auth-loading { position: fixed; inset: 0; background: var(--bg); z-index: 999; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 16px; }
-.auth-loading .spinner { width: 36px; height: 36px; border: 3px solid rgba(26,58,143,0.12); border-top-color: var(--blue-mid); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.auth-loading .spinner { width: 36px; height: 36px; border: 3px solid var(--border-subtle); border-top-color: var(--blue-mid); border-radius: 50%; animation: spin 0.8s linear infinite; }
 .auth-loading p { font-size: 14px; color: var(--text-muted); }
 
 /* ══ LOGIN ══ */
 .login-wrap { position: fixed; inset: 0; background: var(--bg); z-index: 998; display: none; align-items: center; justify-content: center; padding: 20px; }
 .login-wrap.show { display: flex; }
-.login-card { background: #fff; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-md); padding: 40px 36px; width: 100%; max-width: 380px; }
+.login-card { background: var(--surface-card); border-radius: var(--radius-lg); border: 1px solid var(--border); box-shadow: var(--shadow-md); padding: 40px 36px; width: 100%; max-width: 380px; }
 .login-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 28px; }
-.login-brand-icon { width: 38px; height: 38px; background: var(--blue-mid); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
-.login-brand-icon svg { width: 20px; height: 20px; }
+.login-brand-logo { height: 32px; width: auto; }
 .login-brand-name { font-size: 18px; font-weight: 700; color: var(--text-primary); }
 .login-brand-sub { font-size: 11px; color: var(--text-muted); }
 .login-h1 { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
 .login-sub { font-size: 13px; color: var(--text-secondary); margin-bottom: 24px; }
 .login-label { display: block; font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }
-.login-input { width: 100%; height: 42px; border: 1.5px solid var(--border); border-radius: 8px; padding: 0 14px; font-size: 14px; font-family: 'DM Sans', sans-serif; color: var(--text-primary); background: var(--surface2); outline: none; transition: border-color 0.15s, box-shadow 0.15s; margin-bottom: 14px; }
-.login-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(0,119,204,0.1); background: #fff; }
-.login-btn { width: 100%; height: 44px; background: var(--blue-dark); color: #fff; border: none; border-radius: 8px; font-size: 14px; font-weight: 700; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: background 0.15s; margin-top: 4px; }
+.login-input { width: 100%; height: 42px; border: 1.5px solid var(--border); border-radius: var(--radius-md); padding: 0 14px; font-size: 14px; font-family: var(--font-ui); color: var(--text-primary); background: var(--surface2); outline: none; transition: border-color 0.15s, box-shadow 0.15s; margin-bottom: 14px; }
+.login-input:focus { border-color: var(--blue-mid); box-shadow: 0 0 0 3px rgba(20,22,26,0.08); background: var(--surface-card); }
+.login-btn { width: 100%; height: 44px; background: var(--blue-dark); color: var(--text-inverse); border: none; border-radius: var(--radius-md); font-size: 14px; font-weight: 700; font-family: var(--font-ui); cursor: pointer; transition: background 0.15s; margin-top: 4px; }
 .login-btn:hover { background: var(--blue-mid); }
 .login-btn:disabled { background: var(--text-muted); cursor: not-allowed; }
-.login-erro { background: var(--red-bg); border: 1px solid #FECACA; color: #991B1B; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+.login-erro { background: var(--red-bg); border: 1px solid var(--border-subtle); color: var(--status-crit-text); border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
 .login-spinner { display: none; align-items: center; justify-content: center; gap: 8px; font-size: 13px; color: var(--text-secondary); padding: 10px 0; }
 
 /* ══ RESPONSIVE ══ */
 @media (max-width: 900px) {
   .sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 200; transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
-  .sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; }
+  .sidebar-overlay { display: none; position: fixed; inset: 0; background: var(--scrim); z-index: 199; }
   .sidebar-overlay.open { display: block; }
   .menu-toggle { display: block; }
   .cart-panel { left: 0; }
@@ -290,6 +336,48 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
   .page-content { padding: 14px; }
   .topbar { padding: 0 12px; }
 }
+/* ══ ÍCONES ══════════════════════════════════════════════════════════════════
+   Lucide é o set substituto do design system, pintado como CSS mask pra herdar
+   currentColor — o ícone segue a cor do texto onde estiver.
+   Uso no markup:      <i class="ic" data-ic="package"></i>
+   Em template string: ${ic('package')}                                          */
+.ic {
+  display: inline-block; width: 16px; height: 16px; flex: 0 0 auto;
+  background-color: currentColor;
+  -webkit-mask: var(--ic) no-repeat center / contain;
+          mask: var(--ic) no-repeat center / contain;
+  vertical-align: -3px;
+}
+.ic-sm { width: 14px; height: 14px; vertical-align: -2px; }
+.ic-lg { width: 20px; height: 20px; vertical-align: -4px; }
+.ic-xl { width: 24px; height: 24px; vertical-align: -5px; }
+
+/* A lupa dos campos de busca era emoji dentro do placeholder — e placeholder não
+   aceita markup. Volta como máscara no próprio campo, cobrindo os 5 de uma vez. */
+/* Especificidade de elemento+classe de proposito: o CSS que o compras.js injeta
+   e anexado ao <head> DEPOIS deste bloco e redeclara .search-input com o atalho
+   `background:`, que zeraria a lupa. `input.search-input` vence por especificidade,
+   nao por ordem. */
+input.search-input {
+  background-image: var(--ic-busca); background-repeat: no-repeat;
+  background-position: 10px center; background-size: 14px 14px;
+  padding-left: 30px;
+}
+
+/* Ordenação de coluna: era /↑/↓ escrito por textContent, que não aceita markup.
+   Vira triângulo em CSS, controlado por data-sort no próprio <th>. */
+.data-table th .sort-icon {
+  display: inline-block; width: 0; height: 0; margin-left: 4px;
+  border: 4px solid transparent; border-top-color: currentColor;
+  opacity: .35; vertical-align: middle; font-size: 0;
+}
+.data-table th[data-sort="asc"]  .sort-icon { border-top-color: transparent; border-bottom-color: currentColor; opacity: 1; }
+.data-table th[data-sort="desc"] .sort-icon { opacity: 1; }
+
+/* Chevron de expandir: um glifo só, girado. Antes eram //trocados por
+   textContent — e o carrinho usava a convenção invertida das outras duas telas. */
+.chev { transition: transform var(--dur-fast) var(--ease-standard); }
+.chev.open { transform: rotate(90deg); }
 </style>
 </head>
 <body>
@@ -304,9 +392,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 <div class="login-wrap" id="login-wrap">
   <div class="login-card">
     <div class="login-brand">
-      <div class="login-brand-icon">
-        <svg viewBox="0 0 20 20" fill="none"><rect x="1" y="6" width="8" height="10" rx="2" fill="white" opacity="0.9"/><rect x="11" y="1" width="8" height="10" rx="2" fill="white" opacity="0.6"/><rect x="11" y="13" width="8" height="6" rx="2" fill="white" opacity="0.8"/></svg>
-      </div>
+      <img class="login-brand-logo" src="assets/logo-bononi.png" alt="Bononi Acessórios">
       <div>
         <div class="login-brand-name">Bononi · Compras</div>
         <div class="login-brand-sub">Grupo Bononi Acessórios</div>
@@ -334,9 +420,7 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-brand">
       <div class="brand-row">
-        <div class="brand-icon">
-          <svg viewBox="0 0 18 18" fill="none"><rect x="1" y="5" width="7" height="9" rx="1.5" fill="white" opacity="0.9"/><rect x="10" y="1" width="7" height="9" rx="1.5" fill="white" opacity="0.6"/><rect x="10" y="12" width="7" height="5" rx="1.5" fill="white" opacity="0.8"/></svg>
-        </div>
+        <img class="brand-logo" src="assets/logo-bononi-reverse.png" alt="Bononi Acessórios">
         <div>
           <div class="brand-name">Compras</div>
           <div class="brand-sub">Bononi Acessórios</div>
@@ -347,25 +431,25 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
     <nav class="sidebar-nav" id="sidebar-nav">
       <div class="nav-module" id="nav-module-compras">
         <div class="nav-module-header" onclick="toggleNavModule('compras')">
-          <div class="nav-module-label"><span class="nav-module-icon">📦</span>Compras</div>
-          <span class="nav-module-chevron">▼</span>
+          <div class="nav-module-label"><span class="nav-module-icon"><i class="ic ic-sm" data-ic="package"></i> </span>Compras</div>
+          <span class="nav-module-chevron"></span>
         </div>
         <div class="nav-module-items">
           <!-- Comprar Agora oculto temporariamente (entender melhor antes de usar) — página mantida, só saiu do menu -->
           <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Compras</a>
-          <a class="nav-item" data-pagina="cmp-pedidos"      onclick="navegarPara('cmp-pedidos')">      <span class="nav-dot"></span>📋 Pedidos</a>
-          <a class="nav-item" data-pagina="cmp-parado"       onclick="navegarPara('cmp-parado')">       <span class="nav-dot"></span>🧹 Estoque Parado</a>
+          <a class="nav-item" data-pagina="cmp-pedidos"      onclick="navegarPara('cmp-pedidos')">      <span class="nav-dot"></span><i class="ic ic-sm" data-ic="clipboard-list"></i> Pedidos</a>
+          <a class="nav-item" data-pagina="cmp-parado"       onclick="navegarPara('cmp-parado')">       <span class="nav-dot"></span><i class="ic ic-sm" data-ic="package-x"></i> Estoque Parado</a>
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
-          <a class="nav-item" data-pagina="cmp-ajustes"      onclick="navegarPara('cmp-ajustes')">      <span class="nav-dot"></span>🔄 Movimentações de Estoque</a>
+          <a class="nav-item" data-pagina="cmp-ajustes"      onclick="navegarPara('cmp-ajustes')">      <span class="nav-dot"></span><i class="ic ic-sm" data-ic="arrow-left-right"></i> Movimentações de Estoque</a>
           <a class="nav-item" data-pagina="cmp-balanco"      onclick="navegarPara('cmp-balanco')">      <span class="nav-dot"></span>Balanço Físico</a>
           <a class="nav-item" data-pagina="cmp-importacao"   onclick="navegarPara('cmp-importacao')">   <span class="nav-dot"></span>Importação</a>
-          <a class="nav-item" data-pagina="cmp-config"       onclick="navegarPara('cmp-config')">       <span class="nav-dot"></span>⚙️ Configurações</a>
+          <a class="nav-item" data-pagina="cmp-config"       onclick="navegarPara('cmp-config')">       <span class="nav-dot"></span><i class="ic ic-sm" data-ic="settings"></i> Configurações</a>
         </div>
       </div>
       <div class="nav-separator"></div>
       <a class="nav-item" onclick="window.open('https://bononi-hub.vercel.app/','_blank')"
         style="color:rgba(255,255,255,0.35);font-size:12px">
-        <span class="nav-dot"></span>↩ Portal Bononi ↗
+        <span class="nav-dot"></span><i class="ic ic-sm" data-ic="external-link"></i> Portal Bononi
       </a>
     </nav>
 
@@ -378,21 +462,21 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
         </div>
       </div>
       <div class="sidebar-actions">
-        <button class="sidebar-action-btn danger" onclick="sair()" style="flex:1">↩ Sair</button>
+        <button class="sidebar-action-btn danger" onclick="sair()" style="flex:1"><i class="ic ic-sm" data-ic="log-out"></i> Sair</button>
       </div>
     </div>
   </aside>
 
   <div class="main-area">
     <header class="topbar">
-      <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
+      <button class="menu-toggle" onclick="toggleSidebar()"><i class="ic ic-lg" data-ic="menu"></i> </button>
       <div class="topbar-title-area">
         <div class="page-title" id="page-title">Compras</div>
         <div class="page-breadcrumb" id="page-breadcrumb">Compras</div>
       </div>
       <div class="topbar-controls">
         <span class="last-update" id="last-update"></span>
-        <button class="btn-refresh" onclick="onRefresh()">↻</button>
+        <button class="btn-refresh" onclick="onRefresh()"><i class="ic ic-sm" data-ic="refresh-cw"></i> </button>
       </div>
     </header>
     <div class="module-loading-bar" id="module-loading-bar"></div>
@@ -408,6 +492,32 @@ html, body { height: 100%; font-family: 'DM Sans', sans-serif; background: var(-
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script>
 'use strict';
+
+// ── Ícones (design system Bononi) ─────────────────────────────────────────────
+// Lucide é o set substituto do DS. Pintado como CSS mask pra herdar currentColor
+// e respeitar os tokens de cor. Uso em markup:
+//   <i class="ic" data-ic="package"></i>   ·   em template string: ${ic('package')}
+const LUCIDE = 'https://unpkg.com/lucide-static@0.544.0/icons/';
+function ic(nome, cls) { return `<i class="ic${cls ? ' ' + cls : ''}" data-ic="${nome}"></i>`; }
+function _pintaIcone(el) {
+  if (el.dataset.icOn) return;
+  el.style.setProperty('--ic', `url(${LUCIDE}${el.dataset.ic}.svg)`);
+  el.dataset.icOn = '1';
+}
+function hydrateIcons(raiz) { (raiz || document).querySelectorAll('i.ic[data-ic]').forEach(_pintaIcone); }
+// As telas são montadas com innerHTML em dezenas de pontos; o observer evita ter
+// que lembrar de hidratar em cada um deles.
+new MutationObserver(muts => {
+  for (const m of muts) for (const nd of m.addedNodes) {
+    if (nd.nodeType !== 1) continue;
+    if (nd.matches('i.ic[data-ic]')) _pintaIcone(nd);
+    else if (nd.firstElementChild) hydrateIcons(nd);
+  }
+}).observe(document.documentElement, { childList: true, subtree: true });
+document.addEventListener('DOMContentLoaded', () => hydrateIcons());
+// A lupa dos campos de busca é background-image, não elemento — precisa da URL
+// resolvida numa variável, porque o CSS não monta a URL sozinho.
+document.documentElement.style.setProperty('--ic-busca', `url(${LUCIDE}search.svg)`);
 
 const SUPA_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
