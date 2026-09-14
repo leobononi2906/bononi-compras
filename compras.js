@@ -4718,7 +4718,7 @@ async function loadSolicitacoes() {
 // Duas consultas para a lista inteira, não uma por linha.
 async function solCarregarPrevisoes() {
   solPrev = {};
-  const nums = [...new Set(solLista.map(r => (r.numero_pedido || '').trim()).filter(Boolean))];
+  const nums = [...new Set(solLista.map(r => Number(r.numero_pedido)).filter(n => Number.isFinite(n)))];
   if (!nums.length) return;
   try {
     const { data: vinc } = await sb.from('import_pedidos').select('numero_pedido,processo_id').in('numero_pedido', nums);
@@ -4726,7 +4726,7 @@ async function solCarregarPrevisoes() {
     if (!ids.length) return;
     const { data: procs } = await sb.from('import_processos').select('id,codigo,data_prev_chegada,data_chegada_real').in('id', ids);
     const porId = {}; (procs || []).forEach(p => { porId[p.id] = p; });
-    (vinc || []).forEach(v => { const p = porId[v.processo_id]; if (p) solPrev[v.numero_pedido] = p; });
+    (vinc || []).forEach(v => { const p = porId[v.processo_id]; if (p) solPrev[String(v.numero_pedido)] = p; });
   } catch (e) { console.error('previsão:', e); }
 }
 
@@ -4748,7 +4748,7 @@ function solDataPrev(iso, rodape) {
 }
 
 function solPrevisaoHtml(r) {
-  const proc = r.numero_pedido ? solPrev[(r.numero_pedido || '').trim()] : null;
+  const proc = r.numero_pedido != null ? solPrev[String(r.numero_pedido)] : null;
   if (proc && proc.data_chegada_real) return `<span class="green">chegou ${solData(proc.data_chegada_real)}</span>`;
   if (proc && proc.data_prev_chegada) return solDataPrev(proc.data_prev_chegada, solEsc(proc.codigo || ''));
   if (r.previsao_chegada) return solDataPrev(r.previsao_chegada, 'nacional');
@@ -4797,7 +4797,7 @@ function abrirModalSolicitacao(id) {
         </select>
 
         <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Número do pedido de compra</label>
-        <input id="sol-f-pedido" class="filter-select" style="width:100%;height:36px" placeholder="Como está em Importação" value="${solEsc(r.numero_pedido || '')}" />
+        <input id="sol-f-pedido" type="number" step="1" min="0" class="filter-select" style="width:100%;height:36px" placeholder="Só o número, como está em Importação" value="${r.numero_pedido != null ? r.numero_pedido : ''}" />
         <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">Com o número, a <strong>previsão de chegada vem sozinha</strong> do processo de importação. Não precisa digitar data.</div>
 
         <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Previsão (só compra nacional)</label>
@@ -4822,7 +4822,10 @@ async function salvarSolicitacao(id) {
     const u = window.usuarioAtual || {};
     const { error } = await sb.from('prt_solicitacao_peca').update({
       status:           document.getElementById('sol-f-status').value,
-      numero_pedido:    (document.getElementById('sol-f-pedido').value || '').trim() || null,
+      // INTEGER no banco, igual a import_pedidos.numero_pedido -- e o que faz
+      // o JOIN da previsao funcionar. Texto aqui quebraria em silencio.
+      numero_pedido:    (function () { const v = (document.getElementById('sol-f-pedido').value || '').trim();
+                                       return v === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null); })(),
       previsao_chegada: document.getElementById('sol-f-previsao').value || null,
       resposta:         (document.getElementById('sol-f-resposta').value || '').trim() || null,
       atualizado_em:    new Date().toISOString(),
