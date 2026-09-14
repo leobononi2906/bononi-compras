@@ -36,15 +36,35 @@ Prioridades: 🔴 alta · 🟠 média · 🟡 baixa.
 - **Causa:** `#imp-drawer` e `#forn-drawer` têm `width:720px` inline (compras.js:170 e :180), mas a regra `.drawer` fechada usava `right:-680px` → **vazavam 40px** para dentro da tela. Como não estão em `FIXED_IDS`, vivem em `#compras-pages` e apareciam em **todas** as páginas; o remendo `DRAWER_ZINDEX_FIX` ainda os colocava por cima de tudo (`z-index:9999`). O `#produto-drawer` escapava por coincidência (680 = 680).
 - **Correção:** trocado o esconderijo de `right:-680px` para `transform: translateX(100%)` (+ `max-width:95vw`). Agora qualquer drawer some 100% fora da tela, independente da largura. Mudança de 1 regra CSS.
 
-### 🟠 Pendentes (mesma raiz — não mexidos ainda)
-| Item | Onde | Efeito |
-|---|---|---|
-| **Hambúrguer some entre 768–900px** | media query injetada usa breakpoint 768; o shell usa 900. Entre 769–900 a sidebar já é off-canvas mas o botão `☰` some | Em tablet, o usuário **não consegue abrir o menu**. É provavelmente parte da "dificuldade" da equipe |
-| Carrinho desalinhado 12px | `.cart-panel { left:240px }` injetado vs sidebar real de 228px | Barra do carrinho sai do lugar |
-| Regras órfãs/mortas | `.main{left:240px}`, `.content`, `.sidebar.open{left:0}` no CSS injetado | Não fazem efeito, mas confundem quem lê o código |
-| `z-index` do drawer fechado | remendo aplica `9999` a `#imp-drawer.drawer` mesmo fechado | Inofensivo após a correção do drawer, mas convém restringir a `.open` |
+### ✅ Resolvido em 14/09/2026 — o bloco injetado foi removido
 
-> **Recomendação de fundo:** remover cirurgicamente do CSS injetado (compras.js:8) as regras de *layout do shell antigo* (`.main`, `.cart-panel left:240`, a `.drawer` duplicada — já feito em parte, `.menu-toggle`+media 768), mantendo as regras de *componente* que o `index.html` não define (chat, drawer-tabs, semáforo, toggles). **Quebra gradual**, um pedaço por vez, só quando já estivermos ali por outro motivo.
+O CSS de shell antigo saiu do `compras.js` (eram 9,6 KB em 4 linhas, com 55 seletores, 32 deles
+colidindo com o `index.html`). Como era anexado ao `<head>` **depois** daquele `<style>`, vencia
+todo empate: na prática o app era estilizado por ele, e 32 regras do `index.html` nunca chegavam
+a valer. O que era exclusivo e usado (`.chat-*`, `.toggle-*`, `.drawer-title/-sub/-close`,
+`.content`) foi absorvido pelo `index.html`; o resto morreu.
+
+Saiu junto, e cada um pelo seu motivo:
+
+| Item | Por que pôde sair |
+|---|---|
+| Hambúrguer sumindo entre 768–900px | o breakpoint do `index.html` já é 900px, que é onde a sidebar vira off-canvas. O remendo `TABLET_MENU_FIX` existia só por causa do 768 do bloco injetado |
+| Carrinho desalinhado | o `.cart-panel` do `index.html` usa `left: var(--sidebar-w)`; o `left:240px` hardcoded era do bloco injetado |
+| `.main`, `.nav-badge*` | zero uso no markup — código morto |
+| `DRAWER_ZINDEX_FIX` (`z-index:9999 !important`) | existia porque o `.drawer` injetado nascia com z-index 201 e ficava debaixo de coisa. O do `index.html` é 300, acima do overlay (299) e abaixo do modal (400): a pilha já é coerente sem remendo |
+| `MODAIS ACIMA DOS DRAWERS` | os dois overlays já carregam `z-index:99999` inline |
+| `.semaforo-card` duplicado | a versão injetada era **anterior ao split de 6 situações** (20/08) — só tinha borda-esquerda para ruptura/crítico/baixo/OK, e estoque morto e sem giro ficavam sem. Com ela fora, os 6 cards ficaram consistentes |
+
+> ⚠️ **Uma armadilha que quase voltou junto.** O esconderijo do drawer **tem de ser
+> `transform: translateX(100%)`, nunca `right: -Npx`** — é a correção de 26/07 registrada acima.
+> Os drawers têm larguras diferentes e maiores que a regra genérica (`#produto-drawer` 820px,
+> `#imp-drawer`/`#forn-drawer`/`#mv-drawer` 720px, `#pedido-drawer` 760px), então qualquer
+> `right` negativo fixo deixa o mais largo vazar pra dentro da tela — 120px no caso do produto.
+> Ao remover o bloco injetado o mecanismo do `index.html` (que era `right: -600px`) voltaria a
+> valer e traria o bug de volta; por isso ele foi trocado por `transform` na mesma mudança.
+
+O `.drawer` do `index.html` também passou de 580px para **680px**: era o valor do bloco injetado,
+ou seja, o que a equipe via na prática. Limpeza não é hora de estreitar o drawer.
 
 ---
 
