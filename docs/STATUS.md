@@ -101,6 +101,18 @@ Regras que o Leo fixou:
 - **Falsos fornecedores** no ranking (notas de retorno / empresas do grupo). Existe `IDS_INTERGRUPO_FORN`; falta levantar os ids dos falsos.
 - Monolito grande — quebra gradual ao mexer.
 
+## Documentação
+
+Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`,
+`DIVIDA-TECNICA.md`, `PLANO-DE-ACAO.md`, `2026-09-14-design-system.md`,
+`2026-09-14-fornecedor-importacao.md`) continuam valendo. Os três que faltavam no índice:
+
+| Arquivo | Conteúdo | Quando abrir |
+|---|---|---|
+| `docs/README.md` | índice da pasta. Declara que ela **substitui** os contextos de compras dispersos em outras sessões e arquivos | ao chegar no repo, para não caçar contexto fora daqui |
+| `docs/GUIA-DE-USO.md` | guia prático para a **equipe**, em linguagem direta, sem termo técnico | antes de mudar rótulo, fluxo de tela ou mensagem que o comprador lê — e para atualizar depois, porque a tela é que manda |
+| `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
+
 ## Dev-log
 - 2026-09-14 — **Importação: a observação de cada pagamento agora aparece na própria tabela** (pedido do Leo). Antes só existia dentro do modal que o lápis abre. Entrou como **sub-linha de largura total** colada na linha do pagamento, não como coluna: é texto livre de tamanho variável e numa coluna espremeria os números, que precisam continuar alinhados. Pagamento sem observação não ganha espaço nenhum. A query já trazia o campo (`select('*')`), então não houve mudança de backend. Junto veio um `escHtml()` no módulo — a observação é texto digitado indo pra `innerHTML`, e sem escape um `<` na anotação quebraria o HTML da tela; testado com `<img src=x onerror=...>`, que renderiza como texto. De passagem, o cabeçalho da tabela saiu de 10.5px para 11px, o piso do DS.
 - 2026-09-14 — **CSS de shell antigo removido do `compras.js`** (9,6 KB, 55 seletores, 32 colidindo). Ele era anexado ao `<head>` DEPOIS do `<style>` do `index.html`, então vencia todo empate — na prática o app era estilizado por ele e 32 regras do index nunca valiam. O exclusivo e usado (`.chat-*`, `.toggle-*`, `.drawer-title/-sub/-close`, `.content`) foi absorvido pelo index; `.main` e `.nav-badge*` eram código morto. Saíram os 3 remendos junto: o `z-index:9999` do drawer (a pilha do index já é coerente: drawer 300 > overlay 299 < modal 400), o breakpoint 768 do hambúrguer (o do index já é 900) e o z-index dos modais (já é inline). Efeitos visíveis: carrinho deixou de ficar desalinhado e os **6 cards do semáforo ficaram consistentes** — a regra injetada era anterior ao split de 6 situações e só dava borda a 4. ⚠️ O esconderijo do drawer teve de virar `transform: translateX(100%)` no index: os drawers têm largura própria maior (820/760/720px) e qualquer `right` negativo fixo faz o mais largo vazar pra tela — é a correção de 26/07, que voltaria a quebrar sem isso. Detalhe: `docs/DIVIDA-TECNICA.md` §1.
