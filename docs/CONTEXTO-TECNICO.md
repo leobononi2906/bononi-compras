@@ -1,24 +1,49 @@
 # Contexto Técnico — Bononi Compras
 
-**Atualizado:** 20/08/2026
+**Atualizado:** 15/09/2026
 **Substitui:** todos os contextos de compras dispersos em outras sessões.
-**Base:** commit `794c7e4` (`main`) + mapeamento completo do `compras.js`.
+**Base:** `main` em 15/09/2026 + mapeamento completo do `compras.js`.
 **Status:** produção, uso diário.
 
 - **Repo:** github.com/leobononi2906/bononi-compras
 - **Deploy:** https://bononi-compras.vercel.app — auto-deploy a cada push na `main`
 - **Supabase:** `vishxwdxqiygbxmtpfoy` (sa-east-1)
-- **Stack:** HTML + JS puro — `index.html` (shell) + `compras.js` (~3.612 linhas)
+- **Stack:** HTML + JS puro — `index.html` (shell, 736 linhas) + `compras.js` (5.377 linhas)
 
 ---
 
 ## 1. Como o módulo é montado (arquitetura de carregamento)
 
 1. `index.html` é o **shell**: login (Supabase Auth), sidebar, topbar, todo o CSS do layout, e os helpers globais (`window.sb`, `fmt`, `fmtFull`, `getNomeEmpresa`, etc.).
-2. Na 1ª navegação, o shell injeta `compras.js` dinamicamente (`<script src="compras.js?v=...">`, index.html:439-444) e chama `window.ModuloCompras.showPage()`.
-3. `showPage()` (compras.js:3541-3568) roda **uma vez** (`_iniciado`): instancia os templates de `PAGINAS_HTML` e distribui os elementos:
-   - IDs em `FIXED_IDS` (compras.js:3548) → movidos para `document.body`.
+2. Na 1ª navegação, o shell injeta `compras.js` dinamicamente (`<script src="compras.js?v=...">`, index.html:656) e chama `window.ModuloCompras.showPage()`.
+3. `showPage()` (compras.js:5299) roda **uma vez** (`_iniciado`): instancia os templates de `PAGINAS_HTML` e distribui os elementos:
+   - IDs em `FIXED_IDS` (compras.js:5305) → movidos para `document.body`.
    - Todo o resto → dentro de `<div id="compras-pages">`, que fica em `#content-area`.
+
+### 🚨 O arquivo inteiro é um IIFE — `onclick` precisa de export explícito
+
+`compras.js` abre com `;(function() { 'use strict';` (linha 1) e fecha com
+`})();` (linha 5377). **Nada existe no escopo global a menos que seja exportado
+de propósito**, na sequência de `window.X = X` e nos dois `Object.assign(window, {…})`
+do fim do arquivo (a partir da linha ~5240; o segundo tem o comentário
+`DRAWER_GLOBAL_EXPORTS_PATCH`, linha 5354).
+
+**Por que isso morde:** `onclick` no HTML é avaliado no **escopo global**. Uma
+tela nova monta perfeitamente — o loader dela é chamado de dentro do módulo, via
+`CMP_PAGE_LOADERS` — e **todo clique vira um `ReferenceError` mudo**. Sem erro na
+tela, sem nada quebrado visualmente: a lista aparece e os botões não fazem nada.
+
+Aconteceu com a tela **Peças da Garantia**, que ficou um dia no ar assim
+(14→15/09/2026).
+
+> **Checagem obrigatória antes de publicar tela nova:** listar os
+> `onclick="nome("` do template e conferir um a um. No navegador,
+> `typeof window.nome === 'function'` é a prova. **O arquivo carregar não é
+> prova** — `ModuloCompras` existir só diz que o IIFE rodou até o fim.
+
+Consequência irmã: `let` e `const` de topo do IIFE (`_container`, `_iniciado`,
+`CMP_PAGE_LOADERS`, `solLista`…) **também não estão em `window`**. Isso é
+esperado; só atrapalha na hora de depurar pelo console.
 
 > **`FIXED_IDS`** = `chat-overlay, chat-panel, modal-historico-overlay, drawer-overlay, produto-drawer, cart-panel, toast`.
 > **Não estão na lista** (e por isso vivem dentro de `#compras-pages`): `imp-drawer`, `forn-drawer`, seus overlays e `modal-processo-overlay`. Isso tem consequência de layout — ver [DIVIDA-TECNICA.md](DIVIDA-TECNICA.md).
@@ -27,55 +52,82 @@
 
 ## 2. Mapa do código (`compras.js`, por faixa de linha)
 
-> ⚠️ Faixas de linha abaixo são de antes de 20/08/2026 (split Estoque Morto/Sem Giro + tela Movimentações de Estoque somaram ~250 linhas) — nomes de função e ordem das seções continuam certos, só os números deslocaram um pouco pra baixo a partir da seção de Alertas em diante.
+> Refeito em **15/09/2026** a partir dos cabeçalhos de seção do próprio arquivo
+> (`// ====` + título em caixa alta), com 5.377 linhas. Os números deslocam a cada
+> mudança — **procure pelo título da seção, não pela linha**.
 
-| Faixa | Seção |
+| Linha | Seção |
 |---|---|
-| 1-12 | IIFE que injeta o CSS (linha 8) + 3 remendos de CSS (z-index / modais) |
-| 15-280 | `PAGINAS_HTML` — templates das 6 páginas + chat |
-| 282-291 | Constantes — `IDS_INTERGRUPO_FORN` |
-| 293-308 | Variáveis globais (alertas, carrinho, charts) |
-| 310-339 | Utilitários — `fmt`, `fmtQtd`, `fmtData`, `badgeSituacao`, `badgeABC` |
-| 341-379 | `loadAll` / cache de fornecedores |
-| 381-648 | **Alertas** — load, filtros, render, paginação |
-| 650-737 | **Drawer de produto** — abrir/fechar/abas/resumo |
-| 739-886 | `loadDrawerGiro` (12 meses + gráfico) |
-| 888-1039 | `loadDrawerFornecedores` |
-| 1040-1177 | Abas do drawer: histórico / estoque / pedido |
-| 1179-1267 | **Carrinho** — add/remover/render/exportar CSV |
-| 1270-1360 | **Totais de estoque** |
-| 1362-1424 | **Fornecedores** — ranking |
-| 1426-1516 | Drawer de fornecedor |
-| 1517-1970 | **Balanço** — sessões, contagem cega, modais, CSV |
-| 1972-2046 | **Importação** — load, KPIs, views, `IMP_STATUS` |
-| 2048-2302 | Importação: produtos / kanban / lista + saves inline |
-| 2304-2333 | Drawer de importação |
-| 2335-2532 | Abas imp: info / pagamentos |
-| 2533-2660 | Modais de processo (novo / editar / excluir / status) |
-| 2661-2797 | Modal de vincular pedido ERP |
-| 2798-2931 | **Pagamentos** — add/editar/remover |
-| 2932-3024 | **Documentos** — upload/remover (Storage) |
-| 3026-3149 | **Chat IA** |
-| 3151-3157 | Mobile (`toggleSidebar`) |
-| 3159-3173 | Init do módulo (`CMP_PAGE_LOADERS`) |
-| 3175-3220 | **Auditoria** (`auditLog`) + captura global de erros |
-| 3222-3437 | **Configurações** — ignorados + logs |
-| 3439-3574 | Exports `window.*` + `ModuloCompras.showPage` |
-| 3576-3612 | Patches finais (clique delegado + exports duplicados) |
+| 1 | `;(function() { 'use strict';` — **o arquivo inteiro é um IIFE** (ver §1) |
+| 9-491 | `PAGINAS_HTML` — templates de todas as páginas + chat |
+| 492-523 | Constantes e remendos de CSS |
+| 524-568 | Variáveis globais (alertas, carrinho, charts) |
+| 569-682 | Utilitários — `fmt`, `fmtQtd`, `fmtData`, `badgeSituacao`, `badgeABC` |
+| 683-1251 | **Alertas/Compras** — load, filtros, render, paginação · inclui Comprar Agora (1034) e Estoque Parado (1156) |
+| 1252-1900 | **Drawer de produto** — abas, giro 12 meses, fornecedores, histórico |
+| 1901-2321 | **Carrinho** e **Pedidos de compra** (`loadPedidos`, 2203) |
+| 2322-2417 | **Totais de estoque** |
+| 2418-2865 | **Fornecedores** — ranking · e **Movimentações de Estoque** (`loadMovEstoque`, 2548) |
+| 2866-2956 | Drawer de fornecedor |
+| 2957-3411 | **Balanço físico** — sessões, contagem cega, modais, CSV |
+| 3412-3487 | **Importação** — load, KPIs, `IMP_STATUS` |
+| 3488-4650 | Importação: produtos, kanban, lista, drawer, pagamentos, documentos |
+| 4525-4650 | **Chat/Assistente IA** (dentro do bloco acima) |
+| 4651-4658 | Mobile — `toggleSidebar` |
+| 4659-4879 | **Init/módulo** — e, dentro dele, **Peças da Garantia** (4664-4879) |
+| 4880-4940 | `CMP_PAGE_LOADERS` — id da página → função que carrega |
+| 4941-5157 | **Configurações** — produtos ignorados, logs |
+| 5158-5376 | **EXPORTS GLOBAIS** — `window.X = X` e os dois `Object.assign(window, {…})`. **Tela nova precisa entrar aqui** (ver §1) |
+| 5298 | `window.ModuloCompras = { showPage, onFiltroChange, destroy }` |
+| 5377 | `})();` — fecha o IIFE |
 
----
+> **Peças da Garantia caiu dentro do bloco Init/módulo** por ter sido inserida
+> antes do `let _iniciado`. Funciona, mas o lugar natural dela é antes de
+> `// MOBILE`. Se alguém for reorganizar, é uma mudança segura — mover o bloco
+> inteiro (4664-4879) e conferir que os exports continuam lá embaixo.
 
-## 3. As 6 telas (+ chat)
+## 3. As telas (+ chat)
+
+> Linhas conferidas em **15/09/2026** (`compras.js` com 5.377 linhas). Elas
+> deslocam a cada mudança — o nome da função é o que dura.
 
 | ID | Tela | Funções-chave (linha) |
 |---|---|---|
-| `cmp-alertas` | Alertas e Reposição | `loadAlertas` (384), `renderAlertas` (565), `atualizarKPIs` (520) |
-| `cmp-totais` | Totais de Estoque **(+ Fornecedores incorporado)** | `loadTotais` (1274, chama `loadFornecedores`), `renderTotGrupos` (1327), `renderFornecedores` |
-| `cmp-balanco` | Balanço Físico | `loadBalanco` (1522), `abrirSessaoContagem` (1767), `renderContagem` (1799) |
-| `cmp-importacao` | Importação | `loadImportacao` (2002), `renderImpKanban` (2169), `renderImpLista` (2217) |
+| `cmp-alertas` | Compras / Reposição | `loadAlertas` (685), `atualizarKPIs` (844), `renderAlertas` (934) |
+| `cmp-comprar` | Comprar Agora *(fora do menu, página viva)* | `loadComprarAgora` (1034) |
+| `cmp-parado` | Estoque Parado | `loadEstoqueParado` (1156) |
+| `cmp-pedidos` | Pedidos de Compra | `loadPedidos` (2203) |
+| `cmp-totais` | Totais de Estoque **(+ Fornecedores incorporado)** | `loadTotais` (2326, chama `loadFornecedores`), `renderTotGrupos` (2382), `renderFornecedores` (2445) |
+| `cmp-ajustes` | Movimentações de Estoque | `loadMovEstoque` (2548) — ver seção 9 |
+| `cmp-balanco` | Balanço Físico | `loadBalanco` (2961), `abrirSessaoContagem` (3206), `renderContagem` (3238) |
+| `cmp-importacao` | Importação | `loadImportacao` (3441), `renderImpKanban` (3608), `renderImpLista` (3656) |
+| `cmp-solicitacoes` | **Peças da Garantia** | `loadSolicitacoes` (4700), `renderSolicitacoes`, `abrirModalSolicitacao`, `salvarSolicitacao` |
 | `cmp-fornecedores` | *(incorporado em Totais — só o `forn-drawer` no DOM)* | `loadFornecedores`, `abrirFornDrawer` |
-| `cmp-config` | Configurações | `loadConfiguracoes` (3229), `cfgBuscarProdutos` (3250), `loadCfgLogs` (3374) |
-| `cmp-chat` | Assistente IA | `abrirChat` (3026), `enviarChat` (3058) |
+| `cmp-config` | Configurações | `loadConfiguracoes` (4947), `cfgBuscarProdutos` (4968), `loadCfgLogs` (5092) |
+| `cmp-chat` | Assistente IA | `abrirChat` (4525), `enviarChat` (4557) |
+
+### `cmp-solicitacoes` — Peças da Garantia (14/09/2026)
+
+Única tela que lê tabela **de outro domínio**: `prt_solicitacao_peca`, do app
+**Assistência Stonni**. A Garantia registra a peça que faltou no estoque; aqui
+ela é comprada.
+
+- **Ciclo:** a Garantia cria → o Compras informa `pago_em`, `previsao_chegada`
+  (o prazo de entrega), `numero_pedido` e `resposta` → a Garantia lê. O carimbo
+  `visto_em`, do lado de lá, faz o contador do menu dela acender e apagar.
+- **`numero_pedido` é INTEGER**, porque é o tipo de `import_pedidos.numero_pedido`.
+  Nasceu `text` e o JOIN da previsão nunca resolvia — a tela mostrava o número e
+  nunca a data, sem erro. Corrigido em 14/09 com a tabela ainda vazia.
+- **A previsão é resolvida em duas consultas para a lista inteira**
+  (`solCarregarPrevisoes`), nunca uma por linha: `numero_pedido` → `import_pedidos`
+  → `import_processos.data_prev_chegada`.
+- **O prazo digitado vence a data do processo.** Medido em 14/09: das 25
+  previsões de processo, 15 já estavam vencidas e **nenhum processo tem
+  `data_chegada_real`**. O processo virou complemento, com link "usar como prazo".
+- **Acesso:** a tabela tem RLS com policy só para `authenticated`. Este app entra
+  com `signInWithPassword`, então passa. Um teste sem sessão devolve
+  `PGRST205 — table not found in the schema cache`, que é o que o PostgREST
+  responde quando o papel não tem grant — não é tabela faltando.
 
 ### Detalhes que já custaram tempo
 - **Alertas — carregamento:** 12 páginas paralelas de 1.000 registros (`range(i*1000, ...)`) → até 12.000 produtos. Catálogo ~10.150 ativos. `alertasConsolidado[]` é a base em memória de todas as buscas.
@@ -104,6 +156,7 @@
 | `comp_consumo_limpo` / `comp_saidas_limpo` / `comp_compras_hist_limpo` / `comp_pedidos_compra_limpo` | Views **nossas** que deduplicam o fan-out das views do ERP (ver §10). Adicionadas 17/08/2026 — ver detalhe completo lá. |
 | `comp_estoque_mov` | View **nossa** — movimentação de estoque linha a linha normalizada (categoria limpa + `is_principal`), sem fan-out, sem dupla contagem. Motor da tela Movimentações de Estoque (§9). Adicionada 20/08/2026. |
 | `vw_fb_saidas_estoque` | Tabela de **landing** nova (venda de todo tipo + peça de O.S. que baixa estoque), lida direto de tabelas-base do Firebird sem fan-out. Fonte de Venda/O.S. de `comp_estoque_mov` — entra no job diário do replicador (`refresh-all.js`). Adicionada 20/08/2026. |
+| `prt_solicitacao_peca` | **Não é nossa** — é do app Assistência Stonni, e este módulo é a outra ponta do ciclo (tela Peças da Garantia, §3). Escrita daqui: `status`, `pago_em`, `previsao_chegada`, `numero_pedido`, `resposta`. **Não mexer** em `visto_em` (é o carimbo do contador de lá) nem nos campos do pedido original. RLS ligada, policy só para `authenticated`. Adicionada 14/09/2026. |
 
 **Tipos de pagamento da importação:**
 ```
