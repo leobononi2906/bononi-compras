@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-08-29
+> Atualizado: 2026-09-15
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,42 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 14–15/09/2026 — Tela nova: **Peças da Garantia** (`cmp-solicitacoes`)
+
+Fila das peças que a Garantia (app **Assistência Stonni**) registrou como em
+falta. Entre *Pedidos* e *Estoque Parado* no menu. Tabela `prt_solicitacao_peca`
+(RLS ligada, policy só para `authenticated` — este app entra logado, então passa).
+
+**O ciclo, em três mãos:** a Garantia registra a peça → o Compras compra, marca
+**quando pagou** e informa o **prazo de entrega** → a Garantia lê e passa ao
+cliente. Antes isso era WhatsApp nos dois sentidos, sem registro.
+
+- Em **Atender**: situação, *Pago em*, *Prazo de entrega*, número do pedido de
+  compra e um recado de volta.
+- **O prazo digitado vence o do processo de importação.** Nasceu ao contrário —
+  a data viria sempre de `import_processos` — e um dia de uso desmentiu:
+  das 25 previsões de processo, **15 já estavam vencidas**, **nenhum processo tem
+  `data_chegada_real`**, e peça que falta é compra rápida que muitas vezes nem
+  entra em processo. O processo virou complemento, com link "usar como prazo".
+- **Previsão vencida sai em laranja**, escrita "· vencida". Do lado de lá a
+  Garantia promete a data a um cliente.
+
+**Duas armadilhas que custaram um dia:**
+
+1. **Este arquivo inteiro é um IIFE** — `;(function(){ 'use strict'; … })()`.
+   Nada existe no escopo global a menos que esteja na lista de `window.X = X`
+   perto do fim. As funções da tela não foram exportadas: a fila montava
+   certinho (o loader é chamado de dentro do módulo) e **todo `onclick` era um
+   ReferenceError mudo** — filtros, Atender, Salvar. Um dia no ar assim.
+   → **Antes de subir tela nova: listar os `onclick="nome("` e conferir um a um
+   que `nome` está exportado. `typeof window.nome` no navegador é a prova.**
+2. **`numero_pedido` é INTEGER** (é o tipo de `import_pedidos.numero_pedido`).
+   Nasceu `text` e o JOIN da previsão nunca resolveria — a tela mostraria o
+   número e nunca a data, sem erro nenhum.
+
+Datas renderizadas **por recorte de texto**, nunca `new Date('2026-09-14')`, que
+vira meia-noite UTC e aparece como 13/09 no fuso de Brasília.
 
 ## Estado atual (produção)
 Telas: **Compras** (ex-"Alertas e Reposição": semáforo agora com 6 situações — Ruptura/Crítico/Baixo/OK/⚫Estoque Morto/⚪Sem Giro —, ordenação por coluna, cabeçalho fixo, badge "🚚 a caminho", "📉 demanda reprimida", **filtro "🔴 Vai faltar (prazo do fornecedor)"** — ver abaixo), **Comprar Agora** (worklist por fornecedor — fora do menu, página viva no código), **Estoque Parado** (encalhe por capital parado), **Totais de Estoque** (incorporou KPIs+ranking de Fornecedores), **📋 Pedidos** (persistente: `comp_pedidos`+`comp_pedido_itens`, carrinho salva em localStorage), **🔄 Movimentações de Estoque** (ex-"Ajustes de Estoque" — conferência estilo relatório do ERP: entradas/saídas por categoria, período e empresa configuráveis, drill-down por produto, saldo Principal/Garantia/Consolidado), **Importação** (com histórico auditado via `comp_audit_log`).
