@@ -16,6 +16,7 @@ Tudo gira em torno disso. As outras telas são apoio.
 - **Quer ver o quadro geral do estoque?** → Totais de Estoque.
 - **Contagem no depósito?** → Balanço Físico.
 - **Acompanhar mercadoria vindo de fora?** → Importação.
+- **A assistência está esperando alguma peça?** → 🔧 Peças da Garantia.
 - **Ver com quem a gente mais compra?** → Fornecedores.
 - **Esconder produto que não interessa nos alertas?** → Configurações.
 
@@ -119,13 +120,60 @@ O resumo financeiro soma os pagamentos normais, ajusta com o que foi **recebido*
 
 ---
 
-## 7. Fornecedores
+## 7. 🔧 Peças da Garantia — *o que a assistência está esperando*
+
+Fila das peças que a equipe da **Garantia** precisa e não tem no estoque. Elas
+não são pedidas por WhatsApp: a Garantia registra no sistema dela (Assistência
+Stonni) e cai aqui.
+
+**Por que existe:** antes o pedido vinha por mensagem e, dias depois, vinha a
+segunda mensagem — *"e a previsão?"*. Ninguém tinha onde olhar, e quem estava
+atendendo o cliente ficava sem resposta.
+
+### Como atender
+
+Clique em **Atender** na linha. São quatro campos:
+
+| Campo | O que preencher |
+|---|---|
+| **Situação** | Aberta → Em compra → A caminho → Recebida (ou Cancelada) |
+| **Pago em** | a data em que você pagou a peça |
+| **Prazo de entrega** | **até quando ela chega** |
+| **Número do pedido de compra** | o número, como está na Importação |
+| **Recado para a Garantia** | opcional — ex.: *"fornecedor sem estoque até março"* |
+
+### O prazo de entrega é o campo que mais importa
+
+**É essa data que a Garantia promete ao cliente.** Por isso:
+
+- **Não souber ainda? Deixe vazio.** Data errada é pior que data nenhuma — a
+  Garantia prefere dizer "estou confirmando" do que marcar um dia e furar.
+- Prazo que **já passou** aparece em **laranja**, escrito *"vencida"*, nos dois
+  lados. Isso não é defeito da tela: é o aviso de que aquela data precisa ser
+  revista.
+
+Se o pedido estiver num **processo de importação**, a data de lá aparece logo
+abaixo do campo do número, com um link **"usar como prazo"** — um clique copia.
+Mas quem decide é você: a data do processo envelhece sozinha, e o prazo que você
+digita vale mais.
+
+### O que acontece do outro lado
+
+Assim que você salva, acende um **contador no menu da Garantia**. Ela abre, lê o
+que você escreveu, e o contador zera. Se você responder de novo depois — atrasou,
+mudou o prazo — acende outra vez.
+
+Ou seja: **preencher aqui é o que substitui a mensagem de volta.**
+
+---
+
+## 8. Fornecedores
 
 Ranking de com quem a gente mais compra. Abre um painel com o detalhe e o histórico de cada fornecedor. Bom para negociar e para enxergar dependência.
 
 ---
 
-## 8. Configurações
+## 9. Configurações
 
 - **Ignorar Produtos:** tem item que nunca vai ser reposto por aqui e só polui os alertas? Marque para **ignorar**. Ele some da tela de Alertas. Pode ignorar um produto, um subgrupo inteiro ou um grupo inteiro.
 - **Ignorados:** a lista do que está escondido — dá pra remover e trazer de volta.
@@ -143,6 +191,19 @@ Era um bug de layout — corrigido. Se acontecer de novo, avise.
 
 **"Não consigo abrir o menu no tablet/celular."**
 Corrigido em 28/07 — o botão de menu (☰) agora aparece em qualquer tamanho de tela (antes sumia numa faixa de largura de tablet). Se ainda não aparecer, dê um **Ctrl+Shift+R**.
+
+**"Não sei o prazo de entrega da peça da Garantia. O que coloco?"**
+Nada. Deixe vazio e escreva o motivo no recado — *"aguardando retorno do
+fornecedor"*. A Garantia usa essa data para prometer ao cliente; chutar um dia e
+furar é pior do que dizer que ainda não sabe.
+
+**"Preenchi a peça da Garantia. Preciso avisar alguém?"**
+Não. Ao salvar, acende um contador no menu da Garantia. É o aviso.
+
+**"A previsão que veio da Importação está laranja / vencida."**
+Significa que a data já passou e ninguém a atualizou — acontece bastante. Trate
+como "não confirmada": ou você confirma com o fornecedor e digita um prazo novo,
+ou deixa vazio. Não repasse a data vencida como se valesse.
 
 ---
 
