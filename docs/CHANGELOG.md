@@ -4,6 +4,25 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 15/09/2026 — A peça agora vem com foto
+
+O código que chega nesta fila muitas vezes **não existe em lugar nenhum**: peça
+que falta é peça sem cadastro, e o que a Garantia digita é o da etiqueta ou o do
+fornecedor. Quem compra procurava no ERP, não achava, e voltava a perguntar por
+WhatsApp.
+
+A Garantia passou a anexar **até 3 fotos** ao pedido. Aqui:
+
+- **ícone de imagem** ao lado do código, na fila;
+- **miniaturas no Atender**, logo abaixo do cabeçalho — clique abre em tamanho
+  original.
+
+Bucket privado `assist-pecas-fotos`, link assinado de 1 hora, gerado só quando o
+modal abre (`createSignedUrls`, uma chamada para todas as fotos do pedido).
+Nenhum campo novo para preencher: a foto é só leitura deste lado.
+
+---
+
 ## 15/09/2026 — Peças da Garantia: a tela não funcionava, e faltava "pago" e prazo
 
 **O defeito: nenhum botão da tela respondia.** `compras.js` inteiro é um IIFE

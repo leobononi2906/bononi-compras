@@ -15,6 +15,20 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 15/09/2026 — Foto da peça na fila da Garantia
+
+O código que chega aqui muitas vezes **não existe no catálogo nem no ERP** —
+peça que falta é peça sem cadastro. A Garantia passou a anexar até 3 fotos ao
+pedido (`prt_solicitacao_peca.fotos`, jsonb), e este app **lê**: ícone de imagem
+na fila e miniaturas no *Atender*.
+
+Bucket **privado** `assist-pecas-fotos` (não é o `assist-parceiros-docs`, que
+guarda NFS-e e comprovante das autorizadas — leitura dele aqui entregaria isso
+tudo junto). Link assinado de 1 h por `createSignedUrls`, uma chamada para todas
+as fotos, disparada **depois** que o modal já está na tela.
+
+Nada a preencher deste lado: a foto é só leitura aqui.
+
 ## 14–15/09/2026 — Tela nova: **Peças da Garantia** (`cmp-solicitacoes`)
 
 Fila das peças que a Garantia (app **Assistência Stonni**) registrou como em

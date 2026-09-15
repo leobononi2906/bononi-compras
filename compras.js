@@ -4684,6 +4684,44 @@ const SOL_SITUACAO = {
 };
 const SOL_ORIGEM = { autorizada: 'Autorizada', demanda: 'Demanda', tecnico: 'Técnico', outro: 'Outro' };
 
+// A foto vem junto com o pedido porque peça que falta é, quase sempre, peça sem
+// cadastro: o código que chega aqui não existe no catálogo nem no ERP, e é a
+// imagem que permite comprar assim mesmo. Bucket PRIVADO -- o link é assinado na
+// hora de abrir e expira em 1 hora.
+const SOL_FOTOS_BUCKET = 'assist-pecas-fotos';
+
+function solFotosDe(r) { return Array.isArray(r && r.fotos) ? r.fotos : []; }
+
+// Uma chamada só para as fotos todas do pedido (createSignedUrls, no plural).
+async function solAssinarFotos(fotos) {
+  const paths = fotos.map(f => f && f.path).filter(Boolean);
+  if (!paths.length) return [];
+  const { data, error } = await sb.storage.from(SOL_FOTOS_BUCKET).createSignedUrls(paths, 3600);
+  if (error) throw error;
+  // O supabase-js devolve `signedUrl`; a API REST crua devolve `signedURL`, e é
+  // essa a grafia que o core.js do app da Garantia usa. Aceitar as duas custa
+  // nada e evita a falha mais chata possível: miniatura em branco, sem erro.
+  return (data || []).map(d => d && (d.signedUrl || d.signedURL)).filter(Boolean);
+}
+
+// Carrega as miniaturas DEPOIS que o modal já está na tela: assinar antes
+// deixaria o botão "Atender" parado esperando a rede sem nada explicando.
+async function solCarregarFotos(id) {
+  const box = document.getElementById('sol-fotos-box');
+  if (!box) return;
+  try {
+    const urls = await solAssinarFotos(solFotosDe(solLista.find(x => Number(x.id) === Number(id))));
+    if (!urls.length) { box.innerHTML = ''; return; }
+    box.innerHTML = urls.map(u =>
+      `<a href="${u}" target="_blank" rel="noopener" title="Abrir em tamanho original">
+         <img src="${u}" alt="Foto da peça" style="width:96px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--border);display:block">
+       </a>`).join('');
+  } catch (e) {
+    console.error('fotos da peça:', e);
+    box.innerHTML = '<div style="font-size:11px;color:var(--orange)">Não deu para carregar a foto. Recarregue a página (F5) e abra de novo.</div>';
+  }
+}
+
 function solEsc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
 // Por recorte do texto, não new Date(): '2026-09-14' vira meia-noite UTC e
 // apareceria como 13/09 no fuso de Brasília. Previsão errada por um dia é o
@@ -4768,7 +4806,7 @@ function renderSolicitacoes() {
   body.innerHTML = solLista.map(r => {
     const s = SOL_SITUACAO[r.status] || { label: r.status, cor: 'var(--text-muted)' };
     return `<tr>
-      <td><div style="font-weight:600">${solEsc(r.codigo)}</div>
+      <td><div style="font-weight:600">${solEsc(r.codigo)}${solFotosDe(r).length ? ` <i class="ic ic-sm" data-ic="image" title="Tem foto — abra em Atender" style="color:var(--text-muted)"></i>` : ''}</div>
           ${r.nome_peca ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.nome_peca)}</div>` : ''}
           ${r.observacao ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.observacao)}</div>` : ''}</td>
       <td class="right mono">${r.quantidade}</td>
@@ -4812,7 +4850,9 @@ function abrirModalSolicitacao(id) {
     <div id="modal-solicitacao" style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;display:flex;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this)this.remove()">
       <div style="background:var(--surface);border-radius:var(--radius-md);padding:22px;width:520px;max-width:94vw;box-shadow:var(--shadow-lg)">
         <div style="font-size:15px;font-weight:600;margin-bottom:2px">${solEsc(r.codigo)}${r.nome_peca ? ' — ' + solEsc(r.nome_peca) : ''}</div>
-        <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">${r.quantidade} un · pedido por ${solEsc(r.solicitante_nome || r.solicitante_email || '—')} em ${solData(r.criado_em)}${r.observacao ? ' · ' + solEsc(r.observacao) : ''}</div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:${solFotosDe(r).length ? 10 : 16}px">${r.quantidade} un · pedido por ${solEsc(r.solicitante_nome || r.solicitante_email || '—')} em ${solData(r.criado_em)}${r.observacao ? ' · ' + solEsc(r.observacao) : ''}</div>
+        ${solFotosDe(r).length ? `<div style="font-size:11px;color:var(--text-muted);margin-bottom:4px">Foto que a Garantia mandou — o código pode não existir no cadastro, a peça é esta:</div>
+        <div id="sol-fotos-box" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px"><div style="font-size:11px;color:var(--text-muted)">Carregando a foto...</div></div>` : ''}
 
         <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Situação</label>
         <select id="sol-f-status" class="filter-select" style="width:100%;height:36px;margin-bottom:12px">
@@ -4844,6 +4884,9 @@ function abrirModalSolicitacao(id) {
         </div>
       </div>
     </div>`);
+  // Depois de a janela estar na tela: o link assinado leva uma ida à rede, e
+  // esperar por ele antes deixaria o botão "Atender" parado sem explicação.
+  if (solFotosDe(r).length) solCarregarFotos(r.id);
 }
 
 async function salvarSolicitacao(id) {
@@ -5289,6 +5332,7 @@ window.cfgToggleResolvido        = cfgToggleResolvido;
 // certinho e TODO botão dela era um ReferenceError silencioso -- o onclick roda
 // no global, e lá dentro não havia nada com esses nomes.
 window.setSolFiltro              = setSolFiltro;
+window.solCarregarFotos          = solCarregarFotos;
 window.loadSolicitacoes          = loadSolicitacoes;
 window.renderSolicitacoes        = renderSolicitacoes;
 window.abrirModalSolicitacao     = abrirModalSolicitacao;

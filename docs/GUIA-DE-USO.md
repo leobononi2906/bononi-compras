@@ -130,6 +130,23 @@ Stonni) e cai aqui.
 segunda mensagem — *"e a previsão?"*. Ninguém tinha onde olhar, e quem estava
 atendendo o cliente ficava sem resposta.
 
+### A foto da peça
+
+Peça que falta é, quase sempre, peça que **não tem cadastro**. O código que
+chega aqui é o da etiqueta, ou o do fornecedor, ou o que o técnico ditou por
+telefone — e você procura no sistema e não acha nada.
+
+Por isso a Garantia pode anexar **até 3 fotos** ao pedido (a peça e a etiqueta
+com o código, em geral). Onde elas aparecem:
+
+- na fila, um **ícone de imagem** ao lado do código avisa que tem foto;
+- no **Atender**, as miniaturas ficam logo abaixo do cabeçalho. Clique para
+  abrir em tamanho original.
+
+Serve de base para comprar sem cadastro e para cadastrar depois. **Não tem
+foto e você precisa de uma?** Peça à Garantia — ela anexa pelo botão *Foto* na
+tela dela, e a imagem aparece aqui sem precisar de mensagem.
+
 ### Como atender
 
 Clique em **Atender** na linha. São quatro campos:
@@ -199,6 +216,11 @@ furar é pior do que dizer que ainda não sabe.
 
 **"Preenchi a peça da Garantia. Preciso avisar alguém?"**
 Não. Ao salvar, acende um contador no menu da Garantia. É o aviso.
+
+**"O código da peça não existe no sistema. Como compro?"**
+Olhe a foto: ela existe para isso. Se o pedido não tiver foto, peça à Garantia
+— o botão *Foto* na tela dela anexa a qualquer momento, e a imagem aparece aqui
+na hora. Se der para cadastrar a peça depois, a foto também serve de base.
 
 **"A previsão que veio da Importação está laranja / vencida."**
 Significa que a data já passou e ninguém a atualizou — acontece bastante. Trate

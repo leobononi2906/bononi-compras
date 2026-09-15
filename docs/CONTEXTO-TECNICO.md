@@ -156,7 +156,7 @@ ela é comprada.
 | `comp_consumo_limpo` / `comp_saidas_limpo` / `comp_compras_hist_limpo` / `comp_pedidos_compra_limpo` | Views **nossas** que deduplicam o fan-out das views do ERP (ver §10). Adicionadas 17/08/2026 — ver detalhe completo lá. |
 | `comp_estoque_mov` | View **nossa** — movimentação de estoque linha a linha normalizada (categoria limpa + `is_principal`), sem fan-out, sem dupla contagem. Motor da tela Movimentações de Estoque (§9). Adicionada 20/08/2026. |
 | `vw_fb_saidas_estoque` | Tabela de **landing** nova (venda de todo tipo + peça de O.S. que baixa estoque), lida direto de tabelas-base do Firebird sem fan-out. Fonte de Venda/O.S. de `comp_estoque_mov` — entra no job diário do replicador (`refresh-all.js`). Adicionada 20/08/2026. |
-| `prt_solicitacao_peca` | **Não é nossa** — é do app Assistência Stonni, e este módulo é a outra ponta do ciclo (tela Peças da Garantia, §3). Escrita daqui: `status`, `pago_em`, `previsao_chegada`, `numero_pedido`, `resposta`. **Não mexer** em `visto_em` (é o carimbo do contador de lá) nem nos campos do pedido original. RLS ligada, policy só para `authenticated`. Adicionada 14/09/2026. |
+| `prt_solicitacao_peca` | **Não é nossa** — é do app Assistência Stonni, e este módulo é a outra ponta do ciclo (tela Peças da Garantia, §3). Escrita daqui: `status`, `pago_em`, `previsao_chegada`, `numero_pedido`, `resposta`. **Não mexer** em `visto_em` (é o carimbo do contador de lá) nem nos campos do pedido original. RLS ligada, policy só para `authenticated`. Adicionada 14/09/2026. Desde 15/09 traz `fotos` (jsonb) — **só leitura daqui**; os arquivos ficam no bucket privado `assist-pecas-fotos`, abertos por `createSignedUrls` (1 h). |
 
 **Tipos de pagamento da importação:**
 ```
