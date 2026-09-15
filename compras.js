@@ -349,8 +349,8 @@ const PAGINAS_HTML = {
       </div>
     </div>
     <div class="table-card"><div style="overflow-x:auto"><table class="data-table">
-      <thead><tr><th>Peça</th><th class="right">Qtd</th><th>Origem</th><th>Pedido por</th><th>Situação</th><th>Pedido de compra</th><th class="right">Chegada Prev.</th><th></th></tr></thead>
-      <tbody id="sol-body"><tr class="loading-row"><td colspan="8">Carregando pedidos...</td></tr></tbody>
+      <thead><tr><th>Peça</th><th class="right">Qtd</th><th>Origem</th><th>Pedido por</th><th>Situação</th><th>Pedido de compra</th><th>Pago</th><th class="right">Prazo de entrega</th><th></th></tr></thead>
+      <tbody id="sol-body"><tr class="loading-row"><td colspan="9">Carregando pedidos...</td></tr></tbody>
     </table></div></div>
   </div>`,
 
@@ -4699,7 +4699,7 @@ function setSolFiltro(f, btn) {
 
 async function loadSolicitacoes() {
   const body = document.getElementById('sol-body');
-  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="8">Carregando pedidos...</td></tr>';
+  if (body) body.innerHTML = '<tr class="loading-row"><td colspan="9">Carregando pedidos...</td></tr>';
   try {
     let q = sb.from('prt_solicitacao_peca').select('*').order('criado_em', { ascending: false });
     if (solFiltro === 'pendentes') q = q.in('status', ['aberta', 'em_compra', 'a_caminho']);
@@ -4711,7 +4711,7 @@ async function loadSolicitacoes() {
     renderSolicitacoes();
   } catch (e) {
     console.error(e);
-    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="8">Não deu para carregar: ${solEsc(e.message || e)}</td></tr>`;
+    if (body) body.innerHTML = `<tr class="loading-row"><td colspan="9">Não deu para carregar: ${solEsc(e.message || e)}</td></tr>`;
   }
 }
 
@@ -4750,9 +4750,11 @@ function solDataPrev(iso, rodape) {
 function solPrevisaoHtml(r) {
   const proc = r.numero_pedido != null ? solPrev[String(r.numero_pedido)] : null;
   if (proc && proc.data_chegada_real) return `<span class="green">chegou ${solData(proc.data_chegada_real)}</span>`;
-  if (proc && proc.data_prev_chegada) return solDataPrev(proc.data_prev_chegada, solEsc(proc.codigo || ''));
-  if (r.previsao_chegada) return solDataPrev(r.previsao_chegada, 'nacional');
-  if (r.numero_pedido) return '<span style="color:var(--text-muted)">sem processo</span>';
+  // O prazo DIGITADO vence o do processo. Quem digitou olhou o caso; a data do
+  // processo envelhece sozinha -- 15 das 25 estavam vencidas em 14/09/2026.
+  if (r.previsao_chegada) return solDataPrev(r.previsao_chegada, 'prazo do Compras');
+  if (proc && proc.data_prev_chegada) return solDataPrev(proc.data_prev_chegada, 'processo ' + solEsc(proc.codigo || ''));
+  if (r.numero_pedido) return '<span style="color:var(--text-muted)">sem prazo</span>';
   return '<span style="color:var(--text-muted)">—</span>';
 }
 
@@ -4760,7 +4762,7 @@ function renderSolicitacoes() {
   const body = document.getElementById('sol-body');
   if (!body) return;
   if (!solLista.length) {
-    body.innerHTML = `<tr class="loading-row"><td colspan="8">${solFiltro === 'pendentes' ? 'Nenhuma peça em aberto — a Garantia não está esperando nada.' : 'Nada neste filtro.'}</td></tr>`;
+    body.innerHTML = `<tr class="loading-row"><td colspan="9">${solFiltro === 'pendentes' ? 'Nenhuma peça em aberto — a Garantia não está esperando nada.' : 'Nada neste filtro.'}</td></tr>`;
     return;
   }
   body.innerHTML = solLista.map(r => {
@@ -4775,10 +4777,31 @@ function renderSolicitacoes() {
       <td><span style="color:${s.cor};font-weight:600">${solEsc(s.label)}</span>
           ${r.resposta ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.resposta)}</div>` : ''}</td>
       <td class="mono">${r.numero_pedido ? solEsc(r.numero_pedido) : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td>${r.pago_em ? `<span class="green">${solData(r.pago_em)}</span>` : '<span style="color:var(--text-muted)">não</span>'}</td>
       <td class="right">${solPrevisaoHtml(r)}</td>
       <td class="right">${r.status === 'cancelada' ? '' : `<button class="btn btn-outline" style="height:28px;font-size:12px" onclick="abrirModalSolicitacao(${r.id})">Atender</button>`}</td>
     </tr>`;
   }).join('');
+}
+
+// O processo de importação vira COMPLEMENTO, não fonte. Se houver processo para
+// este pedido, mostra a data de lá e um botão para copiá-la para o prazo -- mas
+// quem decide é quem está digitando. Em 14/09/2026, 15 das 25 previsões de
+// processo estavam vencidas e nenhuma chegada real tinha sido registrada: a data
+// do processo envelhece e ninguém a corrige.
+function solBlocoProcesso(r) {
+  const proc = r.numero_pedido != null ? solPrev[String(r.numero_pedido)] : null;
+  if (!proc) return 'Se este pedido estiver num processo de importação, a data de lá aparece aqui.';
+  if (!proc.data_prev_chegada) return `Processo <strong>${solEsc(proc.codigo || '')}</strong>, sem previsão cadastrada.`;
+  const venceu = String(proc.data_prev_chegada) < solHoje();
+  return `Processo <strong>${solEsc(proc.codigo || '')}</strong> prevê <strong>${solData(proc.data_prev_chegada)}</strong>`
+       + (venceu ? ' <span style="color:var(--orange)">(vencida)</span>' : '')
+       + ` · <a href="#" onclick="solUsarPrevisaoProcesso('${solEsc(proc.data_prev_chegada)}');return false">usar como prazo</a>`;
+}
+
+function solUsarPrevisaoProcesso(iso) {
+  const el = document.getElementById('sol-f-previsao');
+  if (el) { el.value = iso; el.focus(); }
 }
 
 function abrirModalSolicitacao(id) {
@@ -4796,13 +4819,21 @@ function abrirModalSolicitacao(id) {
           ${['aberta','em_compra','a_caminho','recebida','cancelada'].map(k => `<option value="${k}"${k === r.status ? ' selected' : ''}>${SOL_SITUACAO[k].label}</option>`).join('')}
         </select>
 
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px">
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Pago em</label>
+            <input id="sol-f-pago" type="date" class="filter-select" style="width:100%;height:36px" value="${solEsc(r.pago_em || '')}" />
+          </div>
+          <div>
+            <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Prazo de entrega</label>
+            <input id="sol-f-previsao" type="date" class="filter-select" style="width:100%;height:36px" value="${solEsc(r.previsao_chegada || '')}" />
+          </div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin:0 0 12px">É este prazo que a Garantia promete ao cliente. Deixe vazio enquanto não souber — data errada é pior que data nenhuma.</div>
+
         <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Número do pedido de compra</label>
         <input id="sol-f-pedido" type="number" step="1" min="0" class="filter-select" style="width:100%;height:36px" placeholder="Só o número, como está em Importação" value="${r.numero_pedido != null ? r.numero_pedido : ''}" />
-        <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">Com o número, a <strong>previsão de chegada vem sozinha</strong> do processo de importação. Não precisa digitar data.</div>
-
-        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Previsão (só compra nacional)</label>
-        <input id="sol-f-previsao" type="date" class="filter-select" style="width:100%;height:36px" value="${solEsc(r.previsao_chegada || '')}" />
-        <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">Use só quando não houver processo de importação. Se o pedido estiver num processo, deixe vazio — a data de lá vale mais.</div>
+        <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">${solBlocoProcesso(r)}</div>
 
         <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Recado para a Garantia</label>
         <input id="sol-f-resposta" class="filter-select" style="width:100%;height:36px" placeholder="Ex.: fornecedor sem estoque até março" value="${solEsc(r.resposta || '')}" />
@@ -4827,6 +4858,7 @@ async function salvarSolicitacao(id) {
       numero_pedido:    (function () { const v = (document.getElementById('sol-f-pedido').value || '').trim();
                                        return v === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null); })(),
       previsao_chegada: document.getElementById('sol-f-previsao').value || null,
+      pago_em:          document.getElementById('sol-f-pago').value || null,
       resposta:         (document.getElementById('sol-f-resposta').value || '').trim() || null,
       atualizado_em:    new Date().toISOString(),
       atualizado_por:   u.nome || u.email || null
@@ -5251,6 +5283,17 @@ window.cfgRemover                = cfgRemover;
 window.renderCfgTabela           = renderCfgTabela;
 window.loadCfgLogs               = loadCfgLogs;
 window.cfgToggleResolvido        = cfgToggleResolvido;
+
+// Peças da Garantia. ESTE ARQUIVO INTEIRO É UM IIFE: nada existe no escopo
+// global a menos que seja exportado aqui. Sem estas linhas a tela montava
+// certinho e TODO botão dela era um ReferenceError silencioso -- o onclick roda
+// no global, e lá dentro não havia nada com esses nomes.
+window.setSolFiltro              = setSolFiltro;
+window.loadSolicitacoes          = loadSolicitacoes;
+window.renderSolicitacoes        = renderSolicitacoes;
+window.abrirModalSolicitacao     = abrirModalSolicitacao;
+window.salvarSolicitacao         = salvarSolicitacao;
+window.solUsarPrevisaoProcesso   = solUsarPrevisaoProcesso;
 
 window.ModuloCompras = {
   showPage(paginaId, container, usuario, filtros) {
