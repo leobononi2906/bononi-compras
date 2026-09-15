@@ -4,6 +4,92 @@ Registro de mudanças, mais recente no topo. Datas em DD/MM/AAAA.
 
 ---
 
+## 15/09/2026 — Peças da Garantia: a tela não funcionava, e faltava "pago" e prazo
+
+**O defeito: nenhum botão da tela respondia.** `compras.js` inteiro é um IIFE
+(`;(function(){ 'use strict'; … })()`) e nada existe no escopo global sem estar
+na lista de `window.X = X` do fim do arquivo. As funções da tela nova não foram
+exportadas. A fila montava certinho — o loader é chamado de dentro do módulo —
+e **todo `onclick` era um `ReferenceError` mudo**: filtros, Atender, Salvar.
+Ficou um dia no ar assim.
+
+> Regra que ficou: antes de publicar tela nova, listar os `onclick="nome("` e
+> conferir um a um. `typeof window.nome` no navegador é a prova; o arquivo
+> carregar não é.
+
+**Faltava dizer que pagou.** Coluna `pago_em` (data, não sim/não — "pagou" sem
+quando não ajuda a cobrar o fornecedor nem a explicar o atraso ao cliente).
+Aparece como coluna **Pago** na fila e como campo no Atender.
+
+**O prazo de entrega mudou de lugar na hierarquia.** Nasceu como saída de
+emergência ("só compra nacional"), com a data boa vindo sempre do processo de
+importação. Um dia de uso desmentiu:
+
+| medição em 14/09 | |
+|---|---|
+| processos com previsão e sem chegada | 25 |
+| destes, **com a previsão já vencida** | **15** |
+| processos com `data_chegada_real` preenchida | **0** |
+
+Peça que falta é compra rápida, que muitas vezes nem entra em processo. Então o
+prazo **digitado** passou a vencer o do processo, nos dois apps. O processo virou
+complemento, com link "usar como prazo". Previsão vencida sai em **laranja**,
+escrita *"vencida"* — do outro lado a Garantia promete essa data a um cliente.
+
+---
+
+## 14/09/2026 — Tela nova: Peças da Garantia (`cmp-solicitacoes`)
+
+Fila das peças que a equipe da **Garantia** registrou como em falta no app
+Assistência Stonni. Entre *Pedidos* e *Estoque Parado* no menu.
+
+**Por que existe:** o pedido vinha por WhatsApp e, dias depois, vinha a segunda
+mensagem — *"e a previsão?"*. Ninguém tinha onde olhar, e quem atendia o cliente
+ficava sem resposta.
+
+- Tabela `prt_solicitacao_peca` (do domínio `prt_*`, não é nossa). RLS ligada,
+  policy só para `authenticated` — este app entra com `signInWithPassword`, então
+  passa. **Sem sessão o PostgREST responde `PGRST205 — table not found`**, que
+  parece tabela faltando e é falta de grant.
+- Em **Atender**: situação, número do pedido de compra e recado para a Garantia.
+- A previsão é resolvida em **duas consultas para a lista inteira**
+  (`numero_pedido` → `import_pedidos` → `import_processos`), nunca uma por linha.
+- **`numero_pedido` é INTEGER**, porque é o tipo em `import_pedidos`. Nasceu
+  `text` e o JOIN nunca resolvia — a tela mostrava o número e nunca a data, sem
+  erro. Corrigido no mesmo dia, com a tabela ainda vazia.
+- Datas renderizadas por recorte de texto, nunca `new Date('2026-09-14')` — vira
+  meia-noite UTC e aparece como 13/09 no fuso de Brasília.
+
+**No mesmo dia, fora desta tela:** design system da marca aplicado (paleta,
+tipografia e ícones), remoção do CSS de shell antigo que o `compras.js` injetava
+(ele era anexado depois do bloco do `index.html` e vencia todo empate, com 32
+classes sobrescrevendo em silêncio), devolução de 10 ícones que a migração tinha
+apagado, e o card **Fornecedor** da Importação voltando a mostrar o fornecedor.
+
+---
+
+## 18/08 a 08/09/2026 — intervalo reconstruído a partir dos commits
+
+> ⚠️ Este bloco foi escrito em 15/09/2026 **relendo o histórico do Git**, não
+> durante o trabalho. É resumo, não relato — o detalhe está no
+> [STATUS.md](STATUS.md), que acompanhou cada uma dessas rodadas.
+
+- **20/08** — split do "Sem movimento" em **Estoque Morto × Sem Giro**; tela
+  **Movimentações de Estoque** (layout igual ao do ERP, filtro de centro,
+  paginação de 50); "Movimentação por Produto" consolidada e saldo por
+  empresa/centro no drawer; produtos fora de linha saem da tela Compras, com
+  chavinha para mostrar.
+- **29/08** — tela **"Vai Faltar"** (lead-aware: não chega a tempo pelo prazo do
+  fornecedor) + auditoria das fontes confirmando o fan-out resolvido na origem.
+- **30/08** — "Vai Faltar" **virou filtro dentro da própria tela Compras**, e a
+  aba separada saiu. Decisão do Leo: *"muita aba confunde o usuário"*.
+- **01/09** — adicionar **produto manual** ao pedido (cotação de item que não
+  está no estoque).
+- **08/09** — categoria **Transferência de unidade** na Movimentação, separada de
+  Compra/Venda (entrada + saída).
+
+---
+
 ## 17/08/2026 (2ª rodada) — estoque/pedido também estavam fanados (5×); status por checkbox; sazonalidade; fornecedor principal
 
 Continuação da investigação do fan-out (ver seção abaixo). Depois de corrigir consumo/saída/compra, o Charles reportou que a **quantidade do pedido** também duplicava (print do app: pedido 2102 aparecendo 5×) — e junto o **estoque** também estava errado (print do ERP: `Estoque Produto` mostrando os mesmos campos repetidos).
