@@ -5,6 +5,86 @@
 // index.html em 14/09/2026. Ele era anexado DEPOIS daquele bloco, entao vencia
 // todo empate e 32 classes daqui sobrescreviam as de la em silencio.
 
+// ── Paginacao: buscarTudo ──
+// Linhas por requisicao. Medido em 16/09/2026 contra os 21.727 leads de 6 meses do
+// e-commerce: 1.000 -> 22 req / 14.450 ms · 2.000 -> 11 req / 8.966 ms · 5.000 -> 5 req /
+// 5.462 ms. Paginar re-executa a consulta inteira a cada pagina (o PostgREST vira
+// LIMIT/OFFSET), entao pagina pequena e cara. 5.000 tem folga de 2x sobre o teto de 10.000
+// do servidor — e buscarTudo continua correto se esse teto mudar.
+const PAGINA_BUSCA = 5000;
+
+// Teto de sanidade: 50 requisicoes (250 mil linhas). Se bater aqui, o filtro esta errado —
+// melhor estourar alto e visivel do que devolver meio resultado calado.
+const MAX_REQUISICOES_BUSCA = 50;
+
+/** Erros que a tentativa seguinte costuma vencer.
+ *
+ *  As views do ERP (`vw_fb_*`, `vw_os_*`) estouram o statement_timeout de 8 s na chamada
+ *  com cache frio e respondem na segunda. Isto importa mais depois de paginar do que antes:
+ *  onde havia 1 requisicao agora ha 3 ou 4, entao sao 3 ou 4 chances de pegar a chamada
+ *  fria, e sem retry uma delas derruba a busca inteira. Erro de schema/sintaxe nao passa
+ *  nunca: repetir so atrasaria a mensagem. */
+function _valeRepetir(e) {
+  const code = String(e && e.code || '');
+  if (code === '57014' || code === '57P01' || code === '08006') return true;
+  return e instanceof TypeError;   // fetch que nao completou (rede/DNS)
+}
+
+const _ESPERA_MS = [400, 1200];
+
+async function _paginaComRetry(paginar, de, ate) {
+  for (let i = 0; ; i++) {
+    const r = await paginar(de, ate);
+    if (!r.error || i >= _ESPERA_MS.length || !_valeRepetir(r.error)) return r;
+    await new Promise(res => setTimeout(res, _ESPERA_MS[i]));
+  }
+}
+
+/**
+ * Busca TODAS as linhas de uma consulta, em paginas.
+ *
+ * Substitui o `.range(0, 9999)` espalhado por este arquivo. Aquilo **nao era paginacao, era
+ * um teto**: passando de 10.000 linhas o PostgREST corta e responde 200, sem erro e sem
+ * aviso, com o numero menor que a realidade. Em 16/09/2026 isso ja acontecia aqui —
+ * `vw_os_base` tem 17.892 linhas, `vw_fb_produtos_compras` com localizacao tem 17.485 e
+ * `comp_produtos_consolidado` tem 10.311; as tres consultas recebiam 10.000.
+ *
+ * `.range(0, 99999)` e o MESMO bug: o servidor mede 10.000 por requisicao de qualquer jeito,
+ * e o numero grande so faz parecer seguro.
+ *
+ * `paginar` recebe o intervalo e devolve a consulta ja montada. **Ela precisa terminar com um
+ * `.order()` por chave estavel**: sem ordenacao garantida o Postgres pode repetir uma linha
+ * numa pagina e pular outra — que e um jeito pior de errar do que truncar, porque nao aparece
+ * na contagem. Era exatamente o que a paginacao a mao de `loadFornProdCache` fazia.
+ *
+ * O avanco e pelo que a resposta REALMENTE trouxe, nao por `pagina x tamanho`. Assim, se o
+ * servidor tiver teto por requisicao menor que PAGINA_BUSCA, a busca continua correta em vez
+ * de parar achando que acabou.
+ */
+async function buscarTudo(paginar) {
+  const tudo = [];
+  let de = 0;
+  let maiorLote = 0;
+
+  for (let i = 0; i < MAX_REQUISICOES_BUSCA; i++) {
+    const { data, error } = await _paginaComRetry(paginar, de, de + PAGINA_BUSCA - 1);
+    if (error) throw error;
+    const lote = data || [];
+    tudo.push(...lote);
+
+    if (!lote.length) return tudo;
+    // Veio menos do que o servidor ja provou que entrega -> acabaram os dados.
+    // (Na primeira volta maiorLote ainda e 0, entao nao corta cedo por engano.)
+    if (lote.length < maiorLote) return tudo;
+    maiorLote = Math.max(maiorLote, lote.length);
+    de += lote.length;
+  }
+  throw new Error(
+    `buscarTudo: passou de ${MAX_REQUISICOES_BUSCA} requisicoes (${tudo.length} linhas). ` +
+    `O filtro da consulta provavelmente esta amplo demais.`
+  );
+}
+
 
 const PAGINAS_HTML = {
   'cmp-pedidos': `<div class="page-content" id="page-cmp-pedidos">
@@ -631,27 +711,30 @@ async function loadAll() {
 
 async function loadFornProdCache() {
   try {
-    // Busca paginada — cada página retorna até 1000 linhas
-    // Faz páginas em série para não sobrecarregar; para no primeiro retorno vazio
+    // Esta paginação era feita à mão e tinha os dois defeitos que buscarTudo existe para
+    // evitar: (1) sem `.order()`, então o Postgres não garantia a mesma ordem entre as
+    // páginas e podia repetir uma linha numa e pular outra na seguinte — erro que não
+    // aparece na contagem, ao contrário do truncamento; (2) avançava por `página × 1000`
+    // em vez de pelo que a resposta trouxe, então um teto por requisição menor que 1.000
+    // faria a busca parar achando que acabou. Página de 1.000 também era a lenta (14.450 ms
+    // contra 5.462 ms com 5.000, medido em 16/09/2026).
     fornProdMap = {};
-    let pagina = 0;
-    while (true) {
-      const { data, error } = await sb.from('vw_fb_forn_prod')
+    const fprod = await buscarTudo((de, ate) =>
+      sb.from('vw_fb_forn_prod')
         .select('id_produto,id_fornecedor,nome_fornecedor,preco_fornecedor,referencia_fornecedor')
-        .range(pagina * 1000, pagina * 1000 + 999);
-      if (error) throw error;
-      if (!data || data.length === 0) break;
-      data.forEach(r => {
-        if (!fornProdMap[r.id_produto]) fornProdMap[r.id_produto] = [];
-        fornProdMap[r.id_produto].push(r);
-      });
-      if (data.length < 1000) break; // última página
-      pagina++;
-      if (pagina > 50) break; // segurança: máx 50.000 registros
-    }
+        .order('id')
+        .range(de, ate)
+    );
+    fprod.forEach(r => {
+      if (!fornProdMap[r.id_produto]) fornProdMap[r.id_produto] = [];
+      fornProdMap[r.id_produto].push(r);
+    });
     // marcação manual de "fornecedor principal" feita no app pelo comprador
     fornPrincipalMap = {};
-    const { data: fp } = await sb.from('comp_fornecedor_principal').select('id_produto,id_fornecedor,nome_fornecedor').range(0, 99999);
+    // Sem `.range()`: são 30 linhas. O `.range(0, 99999)` que estava aqui não protegia de
+    // nada — o servidor mede 10.000 por requisição de qualquer jeito, e o número grande só
+    // fazia parecer que havia folga.
+    const { data: fp } = await sb.from('comp_fornecedor_principal').select('id_produto,id_fornecedor,nome_fornecedor');
     (fp || []).forEach(r => { fornPrincipalMap[r.id_produto] = { id_fornecedor: r.id_fornecedor, nome_fornecedor: r.nome_fornecedor }; });
   } catch(e) { console.error('Erro ao carregar fornecedores:', e); }
 }
@@ -1792,7 +1875,17 @@ async function loadDrawerHistorico(idProduto) {
         .order('data_compra', { ascending: false })
         .range(0, 499),
       sb.from('vw_fb_mov_estoque').select('data_mov,tipo_mov,tipo_es,empresa,qtd,id_os,cancelada').eq('id_produto', idProduto).eq('cancelada', 'N').in('tipo_mov', ['A', 'T', 'R']).order('data_mov', { ascending: false }).range(0, 499),
-      sb.from('vw_os_base').select('id_os,status_os,tipo_os').range(0, 9999),
+      // `vw_os_base` tem 17.892 linhas e o `.range(0, 9999)` daqui trazia 10.000: faltava
+      // 44% das O.S. no mapa, então movimento cuja O.S. caísse fora era contado como
+      // "não encontrada" e sumia do total de O.S. abertas — sem erro nenhum.
+      //
+      // PENDÊNCIA: isto carrega a base inteira de O.S. para consultar as poucas (<499) que
+      // aparecem em `rMov`. O formato certo é buscar `rMov` primeiro e pedir só esses ids
+      // com `.in('id_os', ...)`. Ficou fora agora para não mexer no Promise.all junto com
+      // a correção do teto — ver docs/STATUS.md.
+      buscarTudo((de, ate) =>
+        sb.from('vw_os_base').select('id_os,status_os,tipo_os').order('id').range(de, ate)
+      ).then(data => ({ data })),
     ]);
 
     const osMap = {};
@@ -2336,8 +2429,15 @@ async function loadTotais() {
   try {
     let rows = alertasConsolidado.length > 0 ? alertasConsolidado : null;
     if (!rows) {
-      const { data } = await sb.from('comp_produtos_consolidado').select('grupo,subgrupo,id_produto,estoque_total,preco_compra,situacao_estoque,curva_abc_valor').range(0, 9999);
-      rows = data || [];
+      // 10.311 produtos — o `.range(0, 9999)` daqui já cortava 311 fora dos totais por
+      // grupo/subgrupo e da curva ABC. `id_produto` é único nesta view (10.311 linhas para
+      // 10.311 produtos), então serve de chave estável para paginar.
+      rows = await buscarTudo((de, ate) =>
+        sb.from('comp_produtos_consolidado')
+          .select('grupo,subgrupo,id_produto,estoque_total,preco_compra,situacao_estoque,curva_abc_valor')
+          .order('id_produto')
+          .range(de, ate)
+      );
     }
     rows = rows.filter(r => !itemIgnorado(r)); // Totais desconsidera produtos ignorados (Configurações)
     const totalSkus = rows.length;
@@ -3127,15 +3227,17 @@ async function criarSessaoBalanco() {
     if (errSessao) throw errSessao;
 
     // 2. Busca itens da vw_fb_estoque_centro
-    let query = sb.from('vw_fb_estoque_centro')
-      .select('id_produto,nome,referencia,subgrupo,empresa,centro_estoque,estoque')
-      .neq('estoque', 0)
-      .range(0, 9999);
-    if (empresa) query = query.eq('empresa', empresa);
-    if (ce)      query = query.ilike('centro_estoque', '%' + ce + '%');
-
-    const { data: estoques } = await query;
-    let itensBase = estoques || [];
+    // 6.007 linhas com estoque != 0 hoje — 60% do teto de 10.000. Ainda não trunca, mas
+    // isto monta a lista de contagem de um balanço: item que não vier aqui simplesmente
+    // não é contado, e ninguém percebe pela tela.
+    let itensBase = await buscarTudo((de, ate) => {
+      let q = sb.from('vw_fb_estoque_centro')
+        .select('id_produto,nome,referencia,subgrupo,empresa,centro_estoque,estoque')
+        .neq('estoque', 0);
+      if (empresa) q = q.eq('empresa', empresa);
+      if (ce)      q = q.ilike('centro_estoque', '%' + ce + '%');
+      return q.order('id').range(de, ate);
+    });
 
     // 3. Filtro por grupo/subgrupo/ref no JS
     if (grupo || subgrupo || ref) {
@@ -3153,11 +3255,17 @@ async function criarSessaoBalanco() {
 
     // 4. Filtro por localização de-até (busca em vw_fb_produtos_compras)
     if (locDe || locAte) {
-      const { data: locProds } = await sb.from('vw_fb_produtos_compras')
-        .select('id_produto,localizacao')
-        .not('localizacao', 'is', null)
-        .range(0, 9999);
-      
+      // 17.485 produtos têm localização preenchida — o `.range(0, 9999)` trazia 10.000 e
+      // o filtro de-até descartava em silêncio 43% dos produtos que deveriam entrar no
+      // balanço, sempre os mesmos (os do fim da ordenação do servidor).
+      const locProds = await buscarTudo((de, ate) =>
+        sb.from('vw_fb_produtos_compras')
+          .select('id_produto,localizacao')
+          .not('localizacao', 'is', null)
+          .order('id')
+          .range(de, ate)
+      );
+
       // Extrai prefixo numérico da primeira localização (antes do |)
       const extraiPrefixo = (loc) => {
         if (!loc) return '';
