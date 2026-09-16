@@ -1,0 +1,20 @@
+# A Vercel publica o repo INTEIRO, não só o que o app carrega. Sem este
+# arquivo, tudo aqui era baixável por qualquer um:
+#
+#   bononi-compras.vercel.app/docs/DIVIDA-TECNICA.md          200
+#   bononi-compras.vercel.app/sql/comp_pedidos_fase1.sql      200
+#   bononi-compras.vercel.app/CLAUDE.md                       200
+#
+# Não era vazamento de credencial — a chave anon já sai no index.html por
+# design. O que ficava exposto era o schema e as notas internas.
+#
+# O QUE NÃO PODE ENTRAR NESTA LISTA: `index.html`, `compras.js`, `ds/` e
+# `assets/`. São o app — e `ds/geral-acesso.js` é carregado por script
+# tag, então sair daqui o quebraria em silêncio.
+#
+# Isto NÃO apaga nada do git — só deixa de mandar para o deploy.
+
+docs/
+sql/
+CLAUDE.md
+.claude/
