@@ -401,6 +401,7 @@ const PAGINAS_HTML = {
       <button class="drawer-tab active" id="cfg-tab-ignorar" onclick="setCfgTab('ignorar',this)"><i class="ic ic-sm" data-ic="plus"></i> Ignorar Produtos</button>
       <button class="drawer-tab" id="cfg-tab-lista" onclick="setCfgTab('lista',this);renderCfgTabela()"><i class="ic ic-sm" data-ic="clipboard-list"></i> Ignorados</button>
       <button class="drawer-tab" id="cfg-tab-logs" onclick="setCfgTab('logs',this);loadCfgLogs()"><i class="ic ic-sm" data-ic="search"></i> Logs</button>
+      <button class="drawer-tab" id="cfg-tab-acessos" onclick="setCfgTab('acessos',this);carregarQuemTemAcesso()"><i class="ic ic-sm" data-ic="shield-check"></i> Acessos</button>
     </div>
 
     <!-- ABA IGNORAR -->
@@ -471,6 +472,14 @@ const PAGINAS_HTML = {
             <tbody id="cfg-log-body"><tr class="loading-row"><td colspan="6">Selecione um tipo de log</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- ABA ACESSOS — só leitura. Quem muda, muda no Hub (ver ds/geral-acesso.js) -->
+    <div id="cfg-panel-acessos" style="display:none">
+      <div id="cmp-quem-tem-acesso"></div>
+      <div id="cmp-acesso-vazio" style="display:none;padding:24px;text-align:center;color:var(--text-muted);font-size:13px">
+        Só o administrador global e o administrador de Compras veem quem tem acesso aqui.
       </div>
     </div>
 
@@ -2845,7 +2854,7 @@ function abrirMovDrawer(idProduto) {
 
   const body = document.getElementById('mv-drawer-body');
   if (body) body.innerHTML = linhas.length ? linhas.map(r => `<tr>
-      <td class="mono">${fmtDate ? fmtDate(r.data_mov) : (r.data_mov || '—')}</td>
+      <td class="mono">${fmtData(r.data_mov)}</td>
       <td style="font-size:12px">${r.empresa || '—'}</td>
       <td style="font-size:12px">${r.centro_estoque || '—'}</td>
       <td style="font-size:12px">${mvCatLabel(r.categoria, r.tipo_es)} <span style="color:${r.tipo_es === 'E' ? 'var(--green)' : 'var(--red)'}">${r.tipo_es === 'E' ? '<i class="ic ic-sm" data-ic="arrow-up"></i>' : '<i class="ic ic-sm" data-ic="arrow-down"></i>'}</span></td>
@@ -5123,8 +5132,22 @@ async function cfgRemover(id) {
   showToast('Removido', 'success');
 }
 
+// "Quem tem acesso aqui" — só leitura, pelo módulo compartilhado. A RPC
+// decide quem pode ver (admin global ou admin de Compras) pelo JWT; se ela
+// recusar, ou se a migration 0003 ainda não estiver no banco, o painel não
+// desenha e a aba mostra a explicação em vez de uma caixa quebrada.
+async function carregarQuemTemAcesso() {
+  const vazio = document.getElementById('cmp-acesso-vazio');
+  if (typeof GeralAcesso === 'undefined') { if (vazio) vazio.style.display = 'block'; return; }
+  const ok = await GeralAcesso.montar({
+    alvo: 'cmp-quem-tem-acesso', modulo: 'compras',
+    url: SUPA_URL, key: SUPA_KEY, sb,
+  });
+  if (vazio) vazio.style.display = ok ? 'none' : 'block';
+}
+
 function setCfgTab(tab, btn) {
-  ['ignorar','lista','logs'].forEach(t => {
+  ['ignorar','lista','logs','acessos'].forEach(t => {
     const panel = document.getElementById(`cfg-panel-${t}`);
     const tabEl = document.getElementById(`cfg-tab-${t}`);
     if (panel) panel.style.display = t === tab ? 'block' : 'none';
@@ -5318,6 +5341,7 @@ window.salvarPrevChegada         = salvarPrevChegada;
 window.auditLog                  = auditLog;
 window._flushErrosFila           = _flushErrosFila;
 window.setCfgTab                 = setCfgTab;
+window.carregarQuemTemAcesso     = carregarQuemTemAcesso;
 window.cfgBuscarProdutos         = cfgBuscarProdutos;
 window.cfgMarcarTodos            = cfgMarcarTodos;
 window.cfgToggleProd             = cfgToggleProd;
