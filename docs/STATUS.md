@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-09-16
+> Atualizado: 2026-09-17
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -115,6 +115,10 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-17 — **A marca passou a aparecer na aba do navegador.** Não tinha favicon nenhum.
+  Adicionado `assets/favicon-32.png` e `assets/favicon-64.png`, gerados do símbolo isolado
+  (`mark-bononi.png`), na aba junto com o logo que já existia na tela de login. Conferido no
+  navegador: as duas tags resolvem com 200.
 - 2026-09-16 — **Três telas mostravam número menor que a realidade por causa do `.range(0, 9999)`, e uma paginação à mão repetia/pulava linha.** Não era paginação, era teto: passando de 10.000 linhas o PostgREST corta, responde **200** e não avisa — o número na tela fica menor, sempre para menos, sem erro nenhum. Medido contra produção, já estava cortando em três lugares: `vw_os_base` **17.898** linhas (recebia 9.999), `vw_fb_produtos_compras` com localização **17.485** (recebia 9.999) e `comp_produtos_consolidado` **10.311** (recebia 9.999). Os efeitos: O.S. que caía fora do mapa era contada como "não encontrada" e sumia do total de O.S. abertas; o filtro de localização do balanço descartava 43% dos produtos em silêncio; e os totais por grupo/subgrupo e a curva ABC ignoravam 312 produtos.
   - **A paginação à mão do `loadFornProdCache` era o caso pior.** Ela já paginava `vw_fb_forn_prod` (16.983 linhas) de 1.000 em 1.000, mas **sem `.order()`** — e sem ordem garantida o Postgres pode devolver uma linha em duas páginas e nenhuma vez uma terceira. Isso é pior que truncar, porque a contagem fecha e o erro não aparece. Além disso avançava por `página × 1.000` em vez de pelo que a resposta trouxe, então um teto por requisição menor que 1.000 faria a busca parar achando que acabou.
   - **O que entrou:** helper `buscarTudo()` no topo do `compras.js`, copiado do `bononiecommerce/src/lib/query.ts`. Página de **5.000** (medido: 1.000 → 14.450 ms, 5.000 → 5.462 ms; paginar re-executa a consulta a cada página, então página pequena é cara), avanço pelo que a resposta trouxe, e teto de sanidade de 50 requisições. Toda consulta paginada leva `.order()` por chave estável — `id` onde existe, `id_produto` em `comp_produtos_consolidado` (verificado único: 10.311 linhas para 10.311 produtos).
