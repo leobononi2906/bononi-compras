@@ -115,6 +115,13 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-17 — **Item ativo da sidebar estava com o texto em cinza, sobra do azul da versão
+  antiga.** O `--blue-light` já tinha virado `var(--bnn-gray-600)` numa migração anterior (nem
+  azul, nem o vermelho que o DS pede para o único destaque por tela), e o item ativo não tinha
+  régua nenhuma — só um fundo mais claro. Ficou igual ao padrão de Expedição/Frete/Cobrança:
+  régua de 3px em `var(--bnn-red-400)` na esquerda, texto em `var(--text-inverse)` (branco).
+  Token `--blue-light` (agora sem nenhum uso) removido. Não conferido em operação — a tela
+  fica atrás do login.
 - 2026-09-17 — **A marca passou a aparecer na aba do navegador.** Não tinha favicon nenhum.
   Adicionado `assets/favicon-32.png` e `assets/favicon-64.png`, gerados do símbolo isolado
   (`mark-bononi.png`), na aba junto com o logo que já existia na tela de login. Conferido no
