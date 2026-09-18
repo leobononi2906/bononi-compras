@@ -15,6 +15,13 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 18/09/2026 — App parava de lembrar a tela do usuário
+
+`iniciarApp()` sempre reabria em **Compras** (`cmp-alertas`), mesmo que o
+usuário estivesse em outra aba, toda vez que a página recarregava. Agora a
+última página visitada é salva em `localStorage` (`cmp-ultima-pagina`) e o
+app reabre nela. Commit `a4c477a`.
+
 ## 18/09/2026 — Campo Invoice no atender peça da Garantia
 
 Coluna `prt_solicitacao_peca.invoice` (text, nullable) nova em produção. Campo
