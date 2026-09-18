@@ -4992,6 +4992,9 @@ function abrirModalSolicitacao(id) {
         <input id="sol-f-pedido" type="number" step="1" min="0" class="filter-select" style="width:100%;height:36px" placeholder="Só o número, como está em Importação" value="${r.numero_pedido != null ? r.numero_pedido : ''}" />
         <div style="font-size:11px;color:var(--text-muted);margin:4px 0 12px">${solBlocoProcesso(r)}</div>
 
+        <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Invoice</label>
+        <input id="sol-f-invoice" class="filter-select" style="width:100%;height:36px;margin-bottom:12px" placeholder="Número/identificação do invoice do fornecedor" value="${solEsc(r.invoice || '')}" />
+
         <label style="font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px">Recado para a Garantia</label>
         <input id="sol-f-resposta" class="filter-select" style="width:100%;height:36px" placeholder="Ex.: fornecedor sem estoque até março" value="${solEsc(r.resposta || '')}" />
 
@@ -5019,6 +5022,7 @@ async function salvarSolicitacao(id) {
                                        return v === '' ? null : (Number.isFinite(Number(v)) ? Number(v) : null); })(),
       previsao_chegada: document.getElementById('sol-f-previsao').value || null,
       pago_em:          document.getElementById('sol-f-pago').value || null,
+      invoice:          (document.getElementById('sol-f-invoice').value || '').trim() || null,
       resposta:         (document.getElementById('sol-f-resposta').value || '').trim() || null,
       atualizado_em:    new Date().toISOString(),
       atualizado_por:   u.nome || u.email || null
