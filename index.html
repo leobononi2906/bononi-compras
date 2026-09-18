@@ -650,6 +650,7 @@ async function navegarPara(paginaId) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.querySelector(`.nav-item[data-pagina="${paginaId}"]`)?.classList.add('active');
   paginaAtiva = paginaId;
+  try { localStorage.setItem('cmp-ultima-pagina', paginaId); } catch {}
 
   const slot = document.getElementById('slot-compras');
   if (!moduloCarregado) {
@@ -731,7 +732,9 @@ async function iniciarApp() {
   document.getElementById('user-name').textContent   = usuarioAtual.nome;
   document.getElementById('login-wrap').classList.remove('show');
   document.getElementById('app-shell').style.display = 'flex';
-  await navegarPara('cmp-alertas');
+  let ultima = null;
+  try { ultima = localStorage.getItem('cmp-ultima-pagina'); } catch {}
+  await navegarPara(PAGINAS[ultima] ? ultima : 'cmp-alertas');
 }
 
 iniciarApp();
