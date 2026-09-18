@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-09-17
+> Atualizado: 2026-09-18
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,12 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 18/09/2026 — Campo Invoice no atender peça da Garantia
+
+Coluna `prt_solicitacao_peca.invoice` (text, nullable) nova em produção. Campo
+livre no modal *Atender*, junto de "Número do pedido de compra" e "Recado para
+a Garantia" — pra anotar o invoice do fornecedor. Commit `a8040a3`.
 
 ## 15/09/2026 — Foto da peça na fila da Garantia
 
