@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-09-18
+> Atualizado: 2026-09-23
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -128,6 +128,10 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-23 — **`geral-central.js` v2: botão vira ícone com tooltip, formulário estruturado.**
+  Antes era uma pílula de texto fixa; agora é um ícone circular pequeno, com "Sugerir melhoria"
+  só no hover. Formulário diferencia "não funcionou" (3 perguntas) de "ideia de melhoria", e
+  captura a tela sozinho. Depende da migration `0008` (`tipo`/`tela` em `geral_pedidos_melhoria`).
 - 2026-09-23 — **Piloto do `geral-central.js` (Painel de Desenvolvimento).** Botão flutuante
   "Sugerir melhoria" no canto inferior direito, chamado logo após o login em `iniciarApp()`.
   Testado local: FAB monta, modal abre, envio trata sucesso/erro. Original em
