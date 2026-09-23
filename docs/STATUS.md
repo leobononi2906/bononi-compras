@@ -128,6 +128,10 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-23 — **Piloto do `geral-central.js` (Painel de Desenvolvimento).** Botão flutuante
+  "Sugerir melhoria" no canto inferior direito, chamado logo após o login em `iniciarApp()`.
+  Testado local: FAB monta, modal abre, envio trata sucesso/erro. Original em
+  `bononi-hub/ds/geral-central.js` — mudança futura precisa ser feita lá e recopiada aqui.
 - 2026-09-17 — **Item ativo da sidebar estava com o texto em cinza, sobra do azul da versão
   antiga.** O `--blue-light` já tinha virado `var(--bnn-gray-600)` numa migração anterior (nem
   azul, nem o vermelho que o DS pede para o único destaque por tela), e o item ativo não tinha

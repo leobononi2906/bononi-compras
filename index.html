@@ -575,6 +575,7 @@ input.search-input {
 <!-- "Quem tem acesso aqui" (Configurações → Acessos). Cópia verbatim de
      bononi-hub/ds/geral-acesso.js — subir o ?v= junto ao trocar o arquivo. -->
 <script src="ds/geral-acesso.js?v=2"></script>
+<script src="ds/geral-central.js?v=1"></script>
 <script>
 'use strict';
 
@@ -728,6 +729,9 @@ async function iniciarApp() {
     return;
   }
   usuarioAtual = { id: session.user.id, email: session.user.email, nome: meta.nome || session.user.email.split('@')[0], admin: meta.admin === true };
+  if (window.GeralCentral) {
+    GeralCentral.iniciar({ appId: 'compras', url: SUPA_URL, key: SUPA_KEY, sb, usuario: { email: usuarioAtual.email, nome: usuarioAtual.nome } });
+  }
   document.getElementById('user-avatar').textContent = usuarioAtual.nome.charAt(0).toUpperCase();
   document.getElementById('user-name').textContent   = usuarioAtual.nome;
   document.getElementById('login-wrap').classList.remove('show');
