@@ -5529,7 +5529,7 @@ document.addEventListener('click', function(ev) {
   switchDrawerTab(match[1], tabEl);
 }, true);
 
-Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao });
+Object.assign(window, { abrirProduto, fecharDrawer, switchDrawerTab, setHistFiltro, toggleCarrinho, adicionarAoCarrinho, removerDoCarrinho, exportarPedido, abrirFornDrawer, fecharFornDrawer, switchFornTab, setImpView, abrirImpDrawer, fecharImpDrawer, switchImpTab, abrirModalNovoProcesso, fecharModalProcesso, novasSessao, abrirModalItemManual, fecharModalItemManual, adicionarItemManual });
 
 // DRAWER_GLOBAL_EXPORTS_PATCH
 // Inline onclick handlers need these functions on window scope.

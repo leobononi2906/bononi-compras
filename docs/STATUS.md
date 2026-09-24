@@ -15,6 +15,12 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 24/09/2026 — Botão "Produto manual" do carrinho não fazia nada
+
+`abrirModalItemManual`, `fecharModalItemManual` e `adicionarItemManual` (recurso de 01/09)
+nunca entraram no `Object.assign(window, …)` do IIFE — o `onclick` dava `ReferenceError` mudo
+e o botão parecia morto. Incluídas na lista de export. Achado do pente fino de 24/09.
+
 ## 18/09/2026 — App parava de lembrar a tela do usuário
 
 `iniciarApp()` sempre reabria em **Compras** (`cmp-alertas`), mesmo que o
