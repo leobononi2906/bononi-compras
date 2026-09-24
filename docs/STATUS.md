@@ -128,6 +128,12 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-24 — **Correção do FAB "Sugerir melhoria": z-index:150 não era baixo o suficiente.** A
+  correção anterior (mesmo dia, `z-index:9997` → `150`) partiu do que resolvia no `com_stonni`
+  (drawer com `z-index:200/201`), mas testando ao vivo no `bononi-exped` e no `bononi-cobranca`
+  (que usam escala Tailwind `z-20`/`z-30`/`z-50` para nav/drawer/painel) o FAB continuava por
+  cima — `150 > 50`. Baixado de novo, agora para `z-index:10`, valor seguro em todos os apps que
+  usam este arquivo (abaixo até do menor caso encontrado, `z-20`). `?v=` bumpado de 8 pra 9.
 - 2026-09-24 — **FAB "Sugerir melhoria" não fica mais em cima de drawer/modal aberto.** `.gc-fab-wrap` (`ds/geral-central.js`) tinha `z-index:9997`, acima de qualquer drawer/modal/painel lateral do app — risco de tampar um botão de ação no canto inferior direito quando algum estivesse aberto (bug confirmado assim no `com_stonni`, no `bononi-exped` e no `bononi-cobranca`). Baixado para `z-index:150` por precaução, mesma correção aplicada em todos os apps que usam este arquivo. `?v=` bumpado de 7 pra 8 no `index.html`.
 - 2026-09-24 — `geral-central.js` v7: aviso aceita HTML simples. Mensagem do aviso passa por
   `escHtmlSimples` (escapa tudo e libera só `<b>`, `<i>`, `<u>`, `<br>`, `<a href="https://...">`)
