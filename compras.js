@@ -1028,14 +1028,26 @@ function atualizarKPIs() {
   set('kpi-baixo', count('BAIXO')); set('kpi-ok', count('OK'));
   set('kpi-morto', count('ESTOQUE_MORTO'));
   set('kpi-sem_mov', count('SEM_GIRO'));
-  const badge = document.getElementById('badge-ruptura');
-  if (badge) badge.textContent = count('RUPTURA');
+}
+
+// Selo do item "Compras" na sidebar (contagem de ruptura). Só o total real,
+// sem os filtros da tela (atualizarBadgeSidebar): selo de menu que muda com o
+// filtro de quem está olhando esconde ruptura que existe.
+function marcarSeloRuptura(qtd) {
+  const el = document.getElementById('badge-ruptura');
+  if (!el) return;
+  el.textContent = qtd;
+  el.style.display = qtd > 0 ? '' : 'none';
+  el.setAttribute('aria-label', qtd + (qtd === 1 ? ' produto em ruptura' : ' produtos em ruptura'));
 }
 
 function atualizarBadgeSidebar() {
-  const rupturas = alertasConsolidado.filter(r => r.situacao_estoque === 'RUPTURA' && r.fora_linha !== 'S').length;
-  const el = document.getElementById('badge-ruptura');
-  if (el) el.textContent = rupturas;
+  // Mesma base do card "Ruptura" sem filtro: tira fora de linha E o que a equipe
+  // marcou para ignorar (grupo, subgrupo, produto) em Configurações.
+  const ign = setsIgnorados();
+  const rupturas = alertasConsolidado.filter(r => r.situacao_estoque === 'RUPTURA' && r.fora_linha !== 'S'
+    && !ign.grupo.has(r.grupo) && !ign.subgrupo.has(r.subgrupo) && !ign.produto.has(r.id_produto)).length;
+  marcarSeloRuptura(rupturas);
 }
 
 function onFilterChange() {
@@ -4933,7 +4945,12 @@ function setSolFiltro(f, btn) {
   loadSolicitacoes();
 }
 
+// Duas leituras podem correr juntas (abrir a tela + trocar o filtro, ou o link
+// do sino chegando com a tela aberta): só a MAIS RECENTE preenche a tabela —
+// senão a que responde por último, com o filtro velho, sobrescreve a lista.
+let solSeq = 0;
 async function loadSolicitacoes() {
+  const seq = ++solSeq;
   const body = document.getElementById('sol-body');
   if (body) body.innerHTML = '<tr class="loading-row"><td colspan="9">Carregando pedidos...</td></tr>';
   try {
@@ -4941,9 +4958,11 @@ async function loadSolicitacoes() {
     if (solFiltro === 'pendentes') q = q.in('status', ['aberta', 'em_compra', 'a_caminho']);
     else if (solFiltro === 'recebidas') q = q.eq('status', 'recebida');
     const { data, error } = await q;
+    if (seq !== solSeq) return; // chegou atrasada: outra leitura já foi pedida
     if (error) throw error;
     solLista = data || [];
     await solCarregarPrevisoes();
+    if (seq !== solSeq) return;
     renderSolicitacoes();
   } catch (e) {
     console.error(e);
@@ -5112,6 +5131,8 @@ async function salvarSolicitacao(id) {
     document.getElementById('modal-solicitacao')?.remove();
     showToast('Pedido atualizado. A Garantia já vê.');
     loadSolicitacoes();
+    window.atualizarBadgeSolicitacoes && window.atualizarBadgeSolicitacoes();
+    window.GeralCentral && window.GeralCentral.recarregarPendencias && window.GeralCentral.recarregarPendencias();
   } catch (e) {
     console.error(e);
     showToast('Não deu para salvar: ' + (e.message || e), 'error');

@@ -146,6 +146,7 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-28 — **Sino de pendências + selos no menu.** "Peças da Garantia" ganhou selo (`prt_solicitacao_peca` aberta), que acompanha a releitura do sino (`gc:pendencias`). O `#badge-ruptura` que `atualizarBadgeSidebar()` escrevia nunca existiu no HTML: agora existe, no item Compras, com o total real (sem filtro da tela e sem os ignorados). `?abrir=cmp-solicitacoes` (sino do grupo, `geral-central.js` v14) abre a página em "Em aberto"; `loadSolicitacoes` só aceita a leitura mais recente (duas corriam juntas e a de filtro velho sobrescrevia). `geral-central.js?v=14`. Não testado com login real.
 - 2026-09-28 — **Auto-login em ambiente de TESTE.** `iniciarApp()` tenta a Edge Function
   `auto-login-teste` (do `bononi-hub`, publicada só no projeto de teste) antes de mostrar login,
   só quando `SUPA_URL` já é a de teste (via `serve-staging.py`). Em produção não muda nada. Mesmo

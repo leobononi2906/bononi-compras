@@ -519,9 +519,9 @@ input.search-input {
         </div>
         <div class="nav-module-items">
           <!-- Comprar Agora oculto temporariamente (entender melhor antes de usar) — página mantida, só saiu do menu -->
-          <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Compras</a>
+          <a class="nav-item" data-pagina="cmp-alertas"      onclick="navegarPara('cmp-alertas')">      <span class="nav-dot"></span>Compras<span class="badge badge-red" id="badge-ruptura" style="display:none;margin-left:auto" aria-label="0 produtos em ruptura"></span></a>
           <a class="nav-item" data-pagina="cmp-pedidos"      onclick="navegarPara('cmp-pedidos')">      <span class="nav-dot"></span><i class="ic ic-sm" data-ic="clipboard-list"></i> Pedidos</a>
-          <a class="nav-item" data-pagina="cmp-solicitacoes" onclick="navegarPara('cmp-solicitacoes')"> <span class="nav-dot"></span><i class="ic ic-sm" data-ic="wrench"></i> Peças da Garantia</a>
+          <a class="nav-item" data-pagina="cmp-solicitacoes" onclick="navegarPara('cmp-solicitacoes')"> <span class="nav-dot"></span><i class="ic ic-sm" data-ic="wrench"></i> Peças da Garantia<span class="badge badge-red" id="badge-solicitacoes" style="display:none;margin-left:auto" aria-label="0 peças da garantia em aberto"></span></a>
           <a class="nav-item" data-pagina="cmp-parado"       onclick="navegarPara('cmp-parado')">       <span class="nav-dot"></span><i class="ic ic-sm" data-ic="package-x"></i> Estoque Parado</a>
           <a class="nav-item" data-pagina="cmp-totais"       onclick="navegarPara('cmp-totais')">       <span class="nav-dot"></span>Totais de Estoque</a>
           <a class="nav-item" data-pagina="cmp-ajustes"      onclick="navegarPara('cmp-ajustes')">      <span class="nav-dot"></span><i class="ic ic-sm" data-ic="arrow-left-right"></i> Movimentações de Estoque</a>
@@ -577,7 +577,7 @@ input.search-input {
 <!-- "Quem tem acesso aqui" (Configurações → Acessos). Cópia verbatim de
      bononi-hub/ds/geral-acesso.js — subir o ?v= junto ao trocar o arquivo. -->
 <script src="ds/geral-acesso.js?v=2"></script>
-<script src="ds/geral-central.js?v=12"></script>
+<script src="ds/geral-central.js?v=14"></script>
 <script>
 'use strict';
 
@@ -702,6 +702,59 @@ function onRefresh() {
   window.setLastUpdate();
 }
 
+// ── Deep-link do sino de pendências (?abrir=<data-pagina>) ────────────────────
+// Duas entradas possíveis: (1) a URL já chega assim (link de outro app / e-mail
+// / recarregou a aba com o link) — lida no arranque, abaixo; (2) clique no sino
+// com o app JÁ aberto — o GeralCentral chama isto como `aoAbrir`, sem recarregar
+// a página. Por isso é síncrona e devolve true/false na hora (a navegação em si
+// roda em segundo plano): o contrato do sino olha o retorno pra decidir se cai
+// para `location.href` (documentado em ds/geral-central.js).
+function abrirPeloParam(params) {
+  const alvo = params && params.abrir;
+  if (!alvo || !PAGINAS[alvo]) return false;
+  navegarPara(alvo).then(() => aplicarFiltroDeepLink(alvo));
+  return true;
+}
+
+// Solicitações de peça: o link do sino é sempre sobre o que está aberto. Sem
+// isto, se a pessoa tivesse deixado o toggle em "Recebidas"/"Todas" numa
+// navegação anterior desta mesma sessão, o deep-link abriria a tela filtrada
+// no lugar errado (solFiltro é variável de módulo, não reseta ao trocar de página).
+function aplicarFiltroDeepLink(pagina) {
+  if (pagina !== 'cmp-solicitacoes') return;
+  const btn = document.querySelector('#sol-view-toggle .toggle-btn');
+  if (window.setSolFiltro && btn) window.setSolFiltro('pendentes', btn);
+}
+
+// Selo do item "Peças da Garantia": quantas a Assistência está esperando agora.
+// Fica em index.html (não em compras.js) porque precisa valer já no login, antes
+// do módulo de Compras carregar. Silencioso em erro — sem selo é melhor que
+// travar a sidebar por uma falha de rede.
+async function atualizarBadgeSolicitacoes() {
+  const badge = document.getElementById('badge-solicitacoes');
+  if (!badge) return;
+  try {
+    const { count, error } = await sb.from('prt_solicitacao_peca')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'aberta');
+    if (error) throw error;
+    const qtd = count || 0;
+    badge.textContent = qtd;
+    badge.style.display = qtd > 0 ? '' : 'none';
+    badge.setAttribute('aria-label', qtd + (qtd === 1 ? ' peça da garantia em aberto' : ' peças da garantia em aberto'));
+  } catch (e) { /* silencioso — ver comentário acima */ }
+}
+window.atualizarBadgeSolicitacoes = atualizarBadgeSolicitacoes;
+// O sino relê a cada 3 min: o selo acompanha a mesma leitura (sem consulta extra).
+window.addEventListener('gc:pendencias', (ev) => {
+  const badge = document.getElementById('badge-solicitacoes');
+  if (!badge || !Array.isArray(ev.detail)) return;
+  const item = ev.detail.find(p => p.app === 'compras' && p.chave === 'pecas-garantia');
+  const qtd = item ? item.qtd : 0;
+  badge.textContent = qtd;
+  badge.style.display = qtd > 0 ? '' : 'none';
+});
+
 function toggleNavModule(id) {
   document.getElementById(`nav-module-${id}`)?.classList.toggle('collapsed');
 }
@@ -757,15 +810,33 @@ async function iniciarApp() {
   }
   usuarioAtual = { id: session.user.id, email: session.user.email, nome: meta.nome || session.user.email.split('@')[0], admin: meta.admin === true };
   if (window.GeralCentral) {
-    GeralCentral.iniciar({ appId: 'compras', url: SUPA_URL, key: SUPA_KEY, sb, usuario: { email: usuarioAtual.email, nome: usuarioAtual.nome } });
+    GeralCentral.iniciar({ appId: 'compras', url: SUPA_URL, key: SUPA_KEY, sb, usuario: { email: usuarioAtual.email, nome: usuarioAtual.nome }, aoAbrir: abrirPeloParam });
   }
   document.getElementById('user-avatar').textContent = usuarioAtual.nome.charAt(0).toUpperCase();
   document.getElementById('user-name').textContent   = usuarioAtual.nome;
   document.getElementById('login-wrap').classList.remove('show');
   document.getElementById('app-shell').style.display = 'flex';
-  let ultima = null;
-  try { ultima = localStorage.getItem('cmp-ultima-pagina'); } catch {}
-  await navegarPara(PAGINAS[ultima] ? ultima : 'cmp-alertas');
+
+  // Deep-link (?abrir=<data-pagina>, ex.: vindo do sino de pendências de outro
+  // app) vence a última página lembrada — por isso é conferido ANTES de cair
+  // no fallback de localStorage.
+  const paramsURL = new URLSearchParams(location.search);
+  const abrirInicial = paramsURL.get('abrir');
+  if (abrirInicial && PAGINAS[abrirInicial]) {
+    await navegarPara(abrirInicial);
+    aplicarFiltroDeepLink(abrirInicial);
+  } else {
+    let ultima = null;
+    try { ultima = localStorage.getItem('cmp-ultima-pagina'); } catch {}
+    await navegarPara(PAGINAS[ultima] ? ultima : 'cmp-alertas');
+  }
+  // ?abrir=/?de= não devem sobreviver a um F5 nem virar "última página" errada.
+  if (paramsURL.has('abrir') || paramsURL.has('de')) {
+    paramsURL.delete('abrir'); paramsURL.delete('de');
+    const resto = paramsURL.toString();
+    history.replaceState(null, '', location.pathname + (resto ? '?' + resto : '') + location.hash);
+  }
+  atualizarBadgeSolicitacoes();
 }
 
 iniciarApp();
