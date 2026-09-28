@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-09-24
+> Atualizado: 2026-09-28
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -134,6 +134,7 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-28 — **Sair limpa a página guardada.** `sair()` passou a limpar `cmp-ultima-pagina`: o próximo usuário no mesmo navegador não herda a página do anterior. **Decisão em aberto para o dono:** o rascunho do carrinho (`compras_cart_draft_v1`) continua sobrevivendo ao Sair, e quem entra depois vê o pedido do anterior. Skill `manter-tela-ao-atualizar`.
 - 2026-09-24 — **Correção do FAB "Sugerir melhoria": z-index:150 não era baixo o suficiente.** A
   correção anterior (mesmo dia, `z-index:9997` → `150`) partiu do que resolvia no `com_stonni`
   (drawer com `z-index:200/201`), mas testando ao vivo no `bononi-exped` e no `bononi-cobranca`

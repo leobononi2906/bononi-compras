@@ -690,6 +690,7 @@ function toggleSidebar() {
 
 async function sair() {
   await sb.auth.signOut();
+  try { localStorage.removeItem('cmp-ultima-pagina'); } catch {}
   document.getElementById('app-shell').style.display = 'none';
   document.getElementById('login-wrap').classList.add('show');
 }
