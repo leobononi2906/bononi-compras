@@ -15,7 +15,7 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
-## 24/09/2026 — Botão "Produto manual" do carrinho não fazia nada
+## 24/09/2026 — Botão "Produto manual" do carrinho não fazia nada (`501fb2c`)
 
 `abrirModalItemManual`, `fecharModalItemManual` e `adicionarItemManual` (recurso de 01/09)
 nunca entraram no `Object.assign(window, …)` do IIFE — o `onclick` dava `ReferenceError` mudo
@@ -134,7 +134,12 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-09-28 — **Auto-login em ambiente de TESTE.** `iniciarApp()` tenta a Edge Function
+  `auto-login-teste` (do `bononi-hub`, publicada só no projeto de teste) antes de mostrar login,
+  só quando `SUPA_URL` já é a de teste (via `serve-staging.py`). Em produção não muda nada. Mesmo
+  padrão em mais 6 apps do grupo (dev-log do `bononi-hub`, 28/09).
 - 2026-09-28 — **Sair limpa a página guardada.** `sair()` passou a limpar `cmp-ultima-pagina`: o próximo usuário no mesmo navegador não herda a página do anterior. **Decisão em aberto para o dono:** o rascunho do carrinho (`compras_cart_draft_v1`) continua sobrevivendo ao Sair, e quem entra depois vê o pedido do anterior. Skill `manter-tela-ao-atualizar`.
+- 2026-09-24 — (`bdbd6fb`) **`geral-central.js` v10: aviso de prazo de treinamento fora do app.** Cartão no canto inferior esquerdo quando há grupo de treinamento vencendo em até 3 dias ou vencido; `?v=` 9 → 10. Detalhe no dev-log do `bononi-hub`.
 - 2026-09-24 — **Correção do FAB "Sugerir melhoria": z-index:150 não era baixo o suficiente.** A
   correção anterior (mesmo dia, `z-index:9997` → `150`) partiu do que resolvia no `com_stonni`
   (drawer com `z-index:200/201`), mas testando ao vivo no `bononi-exped` e no `bononi-cobranca`
