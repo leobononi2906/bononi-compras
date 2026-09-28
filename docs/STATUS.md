@@ -15,6 +15,18 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 28/09/2026 — Tela Compras lenta: carga pela metade e fim do travamento por tecla (`9ec9c3b`)
+
+Medido com dados de produção. **Carga** 5,6–9,7 s → 2,7–4,8 s: novo `buscarTudoParalelo`
+(conta com `head` e pede todas as páginas juntas; qualquer resposta fora do esperado cai no
+`buscarTudo` sequencial). O maior gargalo era `comp_produto_lead` em 8 idas de 1.000 **em fila**.
+A lista (`comp_produtos_consolidado`) vinha em 12 páginas fixas **sem `.order()`** — teto calado
+de 12.000 (10.322 hoje) e podia repetir/pular produto; agora ordenada por `id_produto`.
+**Por tecla/clique:** o filtro dos 1.799 ignorados era `.find` por produto, 371 ms × 2 por render;
+virou `Set` (`setsIgnorados`, ~1 ms). **Menu:** voltar para Compras reaproveita os dados por
+5 min; o botão de atualizar do topo zera a validade. Cuidado: rodadas seguidas de teste de carga
+em produção levaram o banco a statement timeout (500) por alguns minutos — medir pouco.
+
 ## 24/09/2026 — Botão "Produto manual" do carrinho não fazia nada (`501fb2c`)
 
 `abrirModalItemManual`, `fecharModalItemManual` e `adicionarItemManual` (recurso de 01/09)
