@@ -85,6 +85,53 @@ async function buscarTudo(paginar) {
   );
 }
 
+/**
+ * Mesmo resultado de buscarTudo, mas pede todas as paginas de uma vez.
+ *
+ * buscarTudo so sabe que acabou quando uma pagina vem curta, entao as idas sao em fila: com
+ * 17 mil linhas sao 4 idas de ~1 s uma depois da outra. Aqui a contagem (~0,3 s, `head`)
+ * diz quantas paginas existem e elas saem juntas — o tempo passa a ser o da pagina mais
+ * lenta, nao a soma. Medido em 28/09/2026: `comp_produto_lead` saiu de ~9 s (8 idas de
+ * 1.000 em fila) para ~2,5 s.
+ *
+ * `contar` devolve a consulta com `{ count: 'exact', head: true }` e o MESMO filtro de
+ * `paginar`. Qualquer coisa fora do esperado — contagem que falhou, pagina do meio curta
+ * (teto do servidor menor que PAGINA_BUSCA), menos linhas do que a contagem — cai no
+ * buscarTudo sequencial: mais lento, mas nunca devolve meio resultado calado.
+ */
+async function buscarTudoParalelo(paginar, contar) {
+  const { count, error: erroContagem } = await contar();
+  if (erroContagem || typeof count !== 'number') return buscarTudo(paginar);
+  if (count === 0) return [];
+
+  const inicios = [];
+  for (let de = 0; de < count; de += PAGINA_BUSCA) inicios.push(de);
+  if (inicios.length > MAX_REQUISICOES_BUSCA) {
+    throw new Error(`buscarTudoParalelo: ${count} linhas passam de ${MAX_REQUISICOES_BUSCA} requisicoes.`);
+  }
+  const lotes = await Promise.all(inicios.map(de => _paginaComRetry(paginar, de, de + PAGINA_BUSCA - 1)));
+
+  const tudo = [];
+  for (let i = 0; i < lotes.length; i++) {
+    const { data, error } = lotes[i];
+    if (error) throw error;
+    const lote = data || [];
+    if (i < lotes.length - 1 && lote.length < PAGINA_BUSCA) return buscarTudo(paginar);
+    tudo.push(...lote);
+  }
+  if (tudo.length < count) return buscarTudo(paginar);
+
+  // Ultima pagina cheia: a tabela pode ter crescido depois da contagem. Segue em fila dali.
+  let ultimo = lotes[lotes.length - 1].data?.length || 0;
+  for (let i = 0; ultimo === PAGINA_BUSCA && i < MAX_REQUISICOES_BUSCA; i++) {
+    const { data, error } = await _paginaComRetry(paginar, tudo.length, tudo.length + PAGINA_BUSCA - 1);
+    if (error) throw error;
+    ultimo = (data || []).length;
+    tudo.push(...(data || []));
+  }
+  return tudo;
+}
+
 
 const PAGINAS_HTML = {
   'cmp-pedidos': `<div class="page-content" id="page-cmp-pedidos">
@@ -698,15 +745,35 @@ function badgeABC(abc) {
 async function loadAll() {
   // Descarrega erros que ocorreram antes do sb estar pronto
   _flushErrosFila();
-  // Carregar ignorados primeiro (se ainda não carregou)
-  if (!compIgnorados.length) {
-    const { data } = await sb.from('comp_ignorados').select('*');
-    compIgnorados = data || [];
-  }
-  await Promise.all([loadAlertas(), loadFornProdCache(), loadLeadMap()]);
+  // Ignorados (1.799 em 28/09/2026) vêm junto com o resto, não antes: a fila custava uma
+  // ida inteira. loadAlertas espera por eles só na hora de desenhar a tabela.
+  const ignorados = compIgnorados.length ? null
+    : sb.from('comp_ignorados').select('*').then(({ data }) => { compIgnorados = data || []; });
+  await Promise.all([ignorados, loadAlertas(ignorados), loadFornProdCache(), loadLeadMap()]);
   popularFiltroFornecedores();
   atualizarBadgeSidebar();
   renderAlertas();
+  if (alertasConsolidado.length) _alertasCarregadoEm = Date.now();
+}
+
+// Voltar para "Compras" pelo menu (ou pelo Comprar Agora / Estoque Parado) recarregava as
+// três fontes inteiras toda vez. Dentro desta validade, redesenha com o que já está em
+// memória; o botão de atualizar do topo zera a validade e força a busca.
+const ALERTAS_VALIDADE_MS = 5 * 60 * 1000;
+let _alertasCarregadoEm = 0;
+
+function loadAlertasOuCache() {
+  if (alertasConsolidado.length && Date.now() - _alertasCarregadoEm < ALERTAS_VALIDADE_MS) {
+    renderAlertas();
+    return;
+  }
+  return loadAll();
+}
+
+if (typeof window.onRefresh === 'function' && !window.onRefresh._zeraCacheAlertas) {
+  const onRefreshOriginal = window.onRefresh;
+  window.onRefresh = function () { _alertasCarregadoEm = 0; return onRefreshOriginal.apply(this, arguments); };
+  window.onRefresh._zeraCacheAlertas = true;
 }
 
 async function loadFornProdCache() {
@@ -718,13 +785,15 @@ async function loadFornProdCache() {
     // em vez de pelo que a resposta trouxe, então um teto por requisição menor que 1.000
     // faria a busca parar achando que acabou. Página de 1.000 também era a lenta (14.450 ms
     // contra 5.462 ms com 5.000, medido em 16/09/2026).
-    fornProdMap = {};
-    const fprod = await buscarTudo((de, ate) =>
-      sb.from('vw_fb_forn_prod')
+    // 17.062 vínculos em 28/09/2026: 4 páginas, agora pedidas juntas (buscarTudoParalelo).
+    const fprod = await buscarTudoParalelo(
+      (de, ate) => sb.from('vw_fb_forn_prod')
         .select('id_produto,id_fornecedor,nome_fornecedor,preco_fornecedor,referencia_fornecedor')
         .order('id')
-        .range(de, ate)
+        .range(de, ate),
+      () => sb.from('vw_fb_forn_prod').select('id', { count: 'exact', head: true })
     );
+    fornProdMap = {};
     fprod.forEach(r => {
       if (!fornProdMap[r.id_produto]) fornProdMap[r.id_produto] = [];
       fornProdMap[r.id_produto].push(r);
@@ -774,16 +843,18 @@ async function marcarFornecedorPrincipal(idProduto, idForn, nome) {
 // ═══════════════════════════════════════════════════════════
 // ALERTAS
 // ═══════════════════════════════════════════════════════════
-async function loadAlertas() {
+async function loadAlertas(antesDeDesenhar) {
   const el = document.getElementById('alertas-body');
   if (el) el.innerHTML = '<tr class="loading-row"><td colspan="9">Carregando dados...</td></tr>';
   try {
-    const pages = await Promise.all(
-      [0,1,2,3,4,5,6,7,8,9,10,11].map(i =>
-        sb.from('comp_produtos_consolidado').select('*').range(i * 1000, i * 1000 + 999)
-      )
+    // Eram 12 páginas fixas de 1.000 sem `.order()`: teto calado de 12.000 (10.322 produtos
+    // em 28/09/2026) e, sem ordem garantida, uma página podia repetir o produto que outra
+    // pulava. Página com erro também sumia sem aviso (`r.data || []`).
+    alertasConsolidado = await buscarTudoParalelo(
+      (de, ate) => sb.from('comp_produtos_consolidado').select('*').order('id_produto').range(de, ate),
+      () => sb.from('comp_produtos_consolidado').select('id_produto', { count: 'exact', head: true })
     );
-    alertasConsolidado = pages.flatMap(r => r.data || []);
+    if (antesDeDesenhar) await antesDeDesenhar;
     popularFiltroGrupos();
     renderAlertas();
     atualizarKPIs();
@@ -911,6 +982,24 @@ function onGrupoChange() {
   onFilterChange();
 }
 
+// Ignorados como Set, montados uma vez por lista. Eram três `.find` nos 1.799 ignorados para
+// cada um dos 10 mil produtos, duas vezes por render (tabela + KPIs): ~100 milhões de
+// comparações a cada tecla na busca. Toda mudança em compIgnorados troca o array inteiro
+// (atribuição, nunca push), então comparar a referência basta para saber se mudou.
+let _ignSets = null;
+function setsIgnorados() {
+  if (!_ignSets || _ignSets.fonte !== compIgnorados) {
+    const lista = Array.isArray(compIgnorados) ? compIgnorados : [];
+    _ignSets = {
+      fonte: compIgnorados,
+      grupo:    new Set(lista.filter(x => x.tipo === 'grupo').map(x => x.valor)),
+      subgrupo: new Set(lista.filter(x => x.tipo === 'subgrupo').map(x => x.valor)),
+      produto:  new Set(lista.filter(x => x.tipo === 'produto').map(x => x.id_produto)),
+    };
+  }
+  return _ignSets;
+}
+
 // Base de filtros compartilhada entre a tabela e os KPIs (semáforo).
 // Aplica ignorados + busca + grupo + subgrupo + fornecedor, MAS não o filtro de situação —
 // assim os cards do semáforo mostram a contagem dentro do mesmo recorte da tabela.
@@ -919,12 +1008,10 @@ function baseFiltradaAlertas() {
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
   const mostrarForaLinha = document.getElementById('chk-fora-linha')?.checked || false;
+  const ign = setsIgnorados();
   let dados = alertasConsolidado.filter(r => {
     if (!mostrarForaLinha && r.fora_linha === 'S') return false; // produto descontinuado no ERP — escondido por padrão
-    if (compIgnorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
-    if (compIgnorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
-    if (compIgnorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
-    return true;
+    return !ign.grupo.has(r.grupo) && !ign.subgrupo.has(r.subgrupo) && !ign.produto.has(r.id_produto);
   });
   if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
   if (grupo) dados = dados.filter(r => r.grupo === grupo);
@@ -1166,10 +1253,8 @@ function itemCoberto(r) {
 // item marcado como ignorado em Configurações (por produto, subgrupo ou grupo).
 // Usado para tirar do estoque parado e dos totais o que a equipe já decidiu não repor.
 function itemIgnorado(r) {
-  return !!(compIgnorados || []).find(x =>
-    (x.tipo === 'grupo'    && x.valor === r.grupo)    ||
-    (x.tipo === 'subgrupo' && x.valor === r.subgrupo) ||
-    (x.tipo === 'produto'  && x.id_produto === r.id_produto));
+  const ign = setsIgnorados();
+  return ign.grupo.has(r.grupo) || ign.subgrupo.has(r.subgrupo) || ign.produto.has(r.id_produto);
 }
 
 function renderComprarAgora() {
@@ -1181,14 +1266,9 @@ function renderComprarAgora() {
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, ESTOQUE_MORTO: 5, SEM_GIRO: 6 };
   const qtdComprar = r => Math.ceil(Number(r.qtd_sugerida) || 0);
   const custoItem  = r => qtdComprar(r) * (Number(r.preco_compra) || 0);
-  const ignorados = Array.isArray(compIgnorados) ? compIgnorados : [];
-
   let itens = (alertasConsolidado ?? []).filter(r => {
     if ((Number(r.qtd_sugerida) || 0) <= 0) return false;
-    if (ignorados.find(x => x.tipo === 'grupo'    && x.valor === r.grupo))          return false;
-    if (ignorados.find(x => x.tipo === 'subgrupo' && x.valor === r.subgrupo))       return false;
-    if (ignorados.find(x => x.tipo === 'produto'  && x.id_produto === r.id_produto)) return false;
-    return true;
+    return !itemIgnorado(r);
   });
   if (!incluiEsp) itens = itens.filter(r => !itemEsporadico(r));
   if (busca) itens = itens.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
@@ -2075,16 +2155,17 @@ let filtroVaiFaltar = false;
 
 async function loadLeadMap() {
   try {
-    const out = {}; let off = 0;
-    for (let i = 0; i < 20; i++) {
-      const { data, error } = await sb.from('comp_produto_lead')
+    // Eram páginas de 1.000 em fila e sem `.order()`: 8 idas de ~1,2 s (~9 s), a maior
+    // espera da tela Compras, e um erro no meio parava calado com o mapa pela metade.
+    const linhas = await buscarTudoParalelo(
+      (de, ate) => sb.from('comp_produto_lead')
         .select('id_produto,lead_time_dias,origem,nome_fornecedor,principal_marcado')
-        .range(off, off + 999);
-      if (error) break;
-      (data || []).forEach(r => { out[r.id_produto] = r; });
-      if (!data || data.length < 1000) break;
-      off += 1000;
-    }
+        .order('id_produto')
+        .range(de, ate),
+      () => sb.from('comp_produto_lead').select('id_produto', { count: 'exact', head: true })
+    );
+    const out = {};
+    linhas.forEach(r => { out[r.id_produto] = r; });
     leadMap = out;
   } catch (e) { console.warn('loadLeadMap', e); }
 }
@@ -5046,7 +5127,7 @@ const CMP_PAGE_LOADERS = {
   'cmp-pedidos':      () => loadPedidos(),
   'cmp-comprar':      () => loadComprarAgora(),
   'cmp-parado':       () => loadEstoqueParado(),
-  'cmp-alertas':      () => loadAll(),
+  'cmp-alertas':      () => loadAlertasOuCache(),
   'cmp-totais':       () => loadTotais(),
   'cmp-ajustes':      () => loadMovEstoque(),
   'cmp-balanco':      () => loadBalanco(),
