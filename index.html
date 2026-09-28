@@ -611,6 +611,29 @@ const SUPA_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
 
+const BONONI_TEST_MODE = SUPA_URL.includes('gxzhuewczlixksqrmjuk');
+
+async function bononiAutoLoginTeste(sb) {
+  if (!BONONI_TEST_MODE) return null;
+  try {
+    const resp = await fetch(SUPA_URL + '/functions/v1/auto-login-teste', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPA_KEY },
+      body: '{}',
+    });
+    const data = await resp.json();
+    if (!data.ok) return null;
+    const { data: sessionData, error } = await sb.auth.setSession({
+      access_token: data.access_token,
+      refresh_token: data.refresh_token,
+    });
+    if (error) return null;
+    return sessionData.session;
+  } catch (e) {
+    return null;
+  }
+}
+
 let usuarioAtual = null;
 let paginaAtiva  = null;
 let moduloCarregado = false;
@@ -715,7 +738,8 @@ async function fazerLogin() {
 }
 
 async function iniciarApp() {
-  const { data: { session } } = await sb.auth.getSession();
+  let { data: { session } } = await sb.auth.getSession();
+  if (!session) session = await bononiAutoLoginTeste(sb);
   document.getElementById('auth-loading').style.display = 'none';
   if (!session) {
     document.getElementById('login-wrap').classList.add('show');
