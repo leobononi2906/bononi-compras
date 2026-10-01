@@ -577,7 +577,7 @@ input.search-input {
 <!-- "Quem tem acesso aqui" (Configurações → Acessos). Cópia verbatim de
      bononi-hub/ds/geral-acesso.js — subir o ?v= junto ao trocar o arquivo. -->
 <script src="ds/geral-acesso.js?v=2"></script>
-<script src="ds/geral-central.js?v=14"></script>
+<script src="ds/geral-central.js?v=15"></script>
 <script>
 'use strict';
 
@@ -676,6 +676,7 @@ async function navegarPara(paginaId) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
   document.querySelector(`.nav-item[data-pagina="${paginaId}"]`)?.classList.add('active');
   paginaAtiva = paginaId;
+  window.GeralCentral && GeralCentral.tela(paginaId); // caminho (geral-central v15)
   try { localStorage.setItem('cmp-ultima-pagina', paginaId); } catch {}
 
   const slot = document.getElementById('slot-compras');
