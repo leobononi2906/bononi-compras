@@ -469,10 +469,13 @@ const PAGINAS_HTML = {
         <div style="font-size:15px;font-weight:600">Peças pedidas pela Garantia</div>
         <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Informe o número do pedido de compra — a previsão de chegada vem sozinha do processo de importação</div>
       </div>
-      <div class="toggle-group" id="sol-view-toggle">
-        <button class="toggle-btn active" onclick="setSolFiltro('pendentes',this)">Em aberto</button>
-        <button class="toggle-btn" onclick="setSolFiltro('recebidas',this)">Recebidas</button>
-        <button class="toggle-btn" onclick="setSolFiltro('todas',this)">Todas</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <input type="text" id="sol-busca" class="search-input" placeholder="Buscar invoice, fornecedor, peça ou pedido..." oninput="renderSolicitacoes()" style="width:300px" />
+        <div class="toggle-group" id="sol-view-toggle">
+          <button class="toggle-btn active" onclick="setSolFiltro('pendentes',this)">Em aberto</button>
+          <button class="toggle-btn" onclick="setSolFiltro('recebidas',this)">Recebidas</button>
+          <button class="toggle-btn" onclick="setSolFiltro('todas',this)">Todas</button>
+        </div>
       </div>
     </div>
     <div class="table-card"><div style="overflow-x:auto"><table class="data-table">
@@ -4979,7 +4982,7 @@ async function solCarregarPrevisoes() {
     const { data: vinc } = await sb.from('import_pedidos').select('numero_pedido,processo_id').in('numero_pedido', nums);
     const ids = [...new Set((vinc || []).map(v => v.processo_id).filter(Boolean))];
     if (!ids.length) return;
-    const { data: procs } = await sb.from('import_processos').select('id,codigo,data_prev_chegada,data_chegada_real').in('id', ids);
+    const { data: procs } = await sb.from('import_processos').select('id,codigo,nome_fornecedor,data_prev_chegada,data_chegada_real').in('id', ids);
     const porId = {}; (procs || []).forEach(p => { porId[p.id] = p; });
     (vinc || []).forEach(v => { const p = porId[v.processo_id]; if (p) solPrev[String(v.numero_pedido)] = p; });
   } catch (e) { console.error('previsão:', e); }
@@ -5020,7 +5023,19 @@ function renderSolicitacoes() {
     body.innerHTML = `<tr class="loading-row"><td colspan="9">${solFiltro === 'pendentes' ? 'Nenhuma peça em aberto — a Garantia não está esperando nada.' : 'Nada neste filtro.'}</td></tr>`;
     return;
   }
-  body.innerHTML = solLista.map(r => {
+  // A peça não guarda fornecedor: ele vem do processo de importação ligado ao
+  // número do pedido de compra (o mesmo que dá a previsão de chegada).
+  const busca = (document.getElementById('sol-busca')?.value || '').trim().toLowerCase();
+  const lista = !busca ? solLista : solLista.filter(r => {
+    const proc = r.numero_pedido != null ? solPrev[String(r.numero_pedido)] : null;
+    return [r.invoice, proc?.nome_fornecedor, proc?.codigo, r.codigo, r.nome_peca, r.numero_pedido]
+      .some(v => v != null && String(v).toLowerCase().includes(busca));
+  });
+  if (!lista.length) {
+    body.innerHTML = `<tr class="loading-row"><td colspan="9">Nada encontrado para "${solEsc(busca)}"${solFiltro !== 'todas' ? ' neste filtro — tente em Todas.' : '.'}</td></tr>`;
+    return;
+  }
+  body.innerHTML = lista.map(r => {
     const s = SOL_SITUACAO[r.status] || { label: r.status, cor: 'var(--text-muted)' };
     return `<tr>
       <td><div style="font-weight:600">${solEsc(r.codigo)}${solFotosDe(r).length ? ` <i class="ic ic-sm" data-ic="image" title="Tem foto — abra em Atender" style="color:var(--text-muted)"></i>` : ''}</div>
@@ -5031,7 +5046,10 @@ function renderSolicitacoes() {
       <td><div>${solData(r.criado_em)}</div><div style="font-size:11px;color:var(--text-muted)">${solEsc(r.solicitante_nome || r.solicitante_email || '')}</div></td>
       <td><span style="color:${s.cor};font-weight:600">${solEsc(s.label)}</span>
           ${r.resposta ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(r.resposta)}</div>` : ''}</td>
-      <td class="mono">${r.numero_pedido ? solEsc(r.numero_pedido) : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td><span class="mono">${r.numero_pedido ? solEsc(r.numero_pedido) : '<span style="color:var(--text-muted)">—</span>'}</span>
+          ${(() => { const f = r.numero_pedido != null ? solPrev[String(r.numero_pedido)]?.nome_fornecedor : null;
+                     return f ? `<div style="font-size:11px;color:var(--text-muted)">${solEsc(f)}</div>` : ''; })()}
+          ${r.invoice ? `<div style="font-size:11px;color:var(--text-muted)">Invoice ${solEsc(r.invoice)}</div>` : ''}</td>
       <td>${r.pago_em ? `<span class="green">${solData(r.pago_em)}</span>` : '<span style="color:var(--text-muted)">não</span>'}</td>
       <td class="right">${solPrevisaoHtml(r)}</td>
       <td class="right">${r.status === 'cancelada' ? '' : `<button class="btn btn-outline" style="height:28px;font-size:12px" onclick="abrirModalSolicitacao(${r.id})">Atender</button>`}</td>

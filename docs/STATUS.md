@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-09-28
+> Atualizado: 2026-10-01
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,15 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 01/10/2026 — Busca por invoice/fornecedor em Peças da Garantia
+
+Pedido de melhoria #9 (Leonardo Vieira Bononi). Campo de busca na tela *Peças da
+Garantia*: casa invoice, fornecedor, código/nome da peça, nº do pedido de compra e
+código do processo — dentro do filtro ativo (Em aberto/Recebidas/Todas). A peça não
+guarda fornecedor: vem de `import_processos.nome_fornecedor` pelo nº do pedido
+(`import_pedidos`), então peça sem nº de pedido não acha por fornecedor. Fornecedor e
+invoice passaram a aparecer na coluna "Pedido de compra".
 
 ## 28/09/2026 — Tela Compras lenta: carga pela metade e fim do travamento por tecla (`9ec9c3b`)
 
