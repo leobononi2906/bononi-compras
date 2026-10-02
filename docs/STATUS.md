@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-01
+> Atualizado: 2026-10-02
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,15 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 02/10/2026 — Busca nos processos de Importação
+
+Pedido do Gustavo. Caixa de busca ao lado de "Processos de Importação", filtrando Kanban e
+Lista enquanto digita: casa código do processo, fornecedor, importadora, nº de pedido,
+observações (onde ficam as linhas de produto do card) e status — sem acento/caixa, todos os
+termos precisam bater. Com busca, a coluna Concluída aparece sozinha se houver resultado nela.
+Na sub-aba Produtos a caixa some (ela já tem busca própria). Filtro só em memória
+(`impProcessosFiltrados`), sem consulta nova. Não conferido com login real.
 
 ## 01/10/2026 — Busca por invoice/fornecedor em Peças da Garantia
 
@@ -155,6 +164,7 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-10-02 — **Busca nos processos de Importação.** Caixa no cabeçalho filtra Kanban e Lista (código, fornecedor, importadora, pedido, observações, status); detalhe na seção de 02/10 acima.
 - 2026-10-01 — **Caminho dentro do app (geral-central v15).** Cada sessão passa a gravar qual app e qual tela abriu (RPC `geral_registrar_navegacao`, migration 0031 do `bononi-hub`), e a tela "Acessos fora do horário" do painel-dev mostra o caminho. Pedido do Gustavo depois de não dar para saber em qual app o Henrique Trombini entrou em 05/09 10:55. Gancho em `navegarPara(paginaId)`. Commit 33484a2.
 - 2026-09-28 — **Sino de pendências + selos no menu.** "Peças da Garantia" ganhou selo (`prt_solicitacao_peca` aberta), que acompanha a releitura do sino (`gc:pendencias`). O `#badge-ruptura` que `atualizarBadgeSidebar()` escrevia nunca existiu no HTML: agora existe, no item Compras, com o total real (sem filtro da tela e sem os ignorados). `?abrir=cmp-solicitacoes` (sino do grupo, `geral-central.js` v14) abre a página em "Em aberto"; `loadSolicitacoes` só aceita a leitura mais recente (duas corriam juntas e a de filtro velho sobrescrevia). `geral-central.js?v=14`. Não testado com login real.
 - 2026-09-28 — **Auto-login em ambiente de TESTE.** `iniciarApp()` tenta a Edge Function

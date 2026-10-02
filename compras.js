@@ -486,7 +486,7 @@ const PAGINAS_HTML = {
 
   'cmp-importacao': `<div class="page-content" id="page-cmp-importacao">
     <div class="cards-grid cards-grid-4"><div class="card"><div class="card-label">Em Produção</div><div class="card-value blue" id="imp-kpi-producao">—</div></div><div class="card"><div class="card-label">Em Transporte</div><div class="card-value" id="imp-kpi-transporte">—</div></div><div class="card"><div class="card-label">A Pagar Fornec.</div><div class="card-value orange" id="imp-kpi-apagar">—</div><div class="card-sub" id="imp-kpi-apagar-sub">—</div></div><div class="card"><div class="card-label">Chegada Próxima</div><div class="card-value" style="font-size:16px" id="imp-kpi-proxima">—</div><div class="card-sub" id="imp-kpi-proxima-forn">—</div></div></div>
-    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="font-size:13px;font-weight:600">Processos de Importação</div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)"><i class="ic ic-sm" data-ic="package"></i> Produtos</button></div><button id="btn-concluidos" class="btn btn-outline" style="height:32px;font-size:12px" onclick="toggleConcluidos(this)">Concluídos</button><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
+    <div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><div style="font-size:13px;font-weight:600">Processos de Importação</div><input id="imp-busca" type="search" class="filter-select" style="width:280px;height:32px" placeholder="Buscar código, fornecedor, pedido, obs..." oninput="renderImportacao()" /><span id="imp-busca-total" style="font-size:12px;color:var(--text-muted)"></span></div><div style="display:flex;gap:8px"><div class="toggle-group" id="imp-view-toggle"><button class="toggle-btn active" onclick="setImpView('kanban',this)">Kanban</button><button class="toggle-btn" onclick="setImpView('lista',this)">Lista</button><button class="toggle-btn" onclick="setImpView('produtos',this)"><i class="ic ic-sm" data-ic="package"></i> Produtos</button></div><button id="btn-concluidos" class="btn btn-outline" style="height:32px;font-size:12px" onclick="toggleConcluidos(this)">Concluídos</button><button class="btn btn-primary" onclick="abrirModalNovoProcesso()">+ Novo Processo</button></div></div>
     <div id="imp-kanban" style="display:flex;gap:12px;overflow-x:auto;padding-bottom:12px"></div>
     <div id="imp-lista" style="display:none"><div class="table-card"><div style="overflow-x:auto"><table class="data-table"><thead><tr><th>Código</th><th>Fornecedor</th><th>Importadora</th><th>Status</th><th class="right">Pedidos</th><th class="right">Chegada Prev.</th><th class="right">Total USD</th><th class="right">Pago BRL</th><th class="right">A Pagar Forn.</th><th></th></tr></thead><tbody id="imp-lista-body"></tbody></table></div></div></div>
     <div id="imp-produtos" style="display:none">
@@ -3685,9 +3685,36 @@ function setImpView(view, btn) {
   document.getElementById('imp-kanban').style.display   = view === 'kanban'   ? 'flex'  : 'none';
   document.getElementById('imp-lista').style.display    = view === 'lista'    ? 'block' : 'none';
   document.getElementById('imp-produtos').style.display = view === 'produtos' ? 'block' : 'none';
+  // Produtos tem busca própria
+  const busca = document.getElementById('imp-busca');
+  if (busca) busca.style.display = view === 'produtos' ? 'none' : '';
+  const buscaTotal = document.getElementById('imp-busca-total');
+  if (buscaTotal) buscaTotal.style.display = view === 'produtos' ? 'none' : '';
   if (view === 'lista') renderImpLista();
   else if (view === 'produtos') loadImpProdutos();
   else renderImpKanban();
+}
+
+// Busca dos processos (Kanban e Lista): sem acento, sem caixa, todos os termos precisam bater
+function impNormBusca(s) {
+  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+function impProcessosFiltrados() {
+  const termos = impNormBusca(document.getElementById('imp-busca')?.value).trim().split(/\s+/).filter(Boolean);
+  if (!termos.length) return impProcessos;
+  return impProcessos.filter(p => {
+    const texto = impNormBusca([
+      p.codigo, p.nome_fornecedor, p.importadora, (p.pedidos || []).join(' '),
+      p.observacoes, IMP_STATUS[p.status]?.label,
+    ].join(' '));
+    return termos.every(t => texto.includes(t));
+  });
+}
+function impAtualizarTotalBusca(lista) {
+  const el = document.getElementById('imp-busca-total');
+  if (!el) return;
+  const temBusca = !!document.getElementById('imp-busca')?.value.trim();
+  el.textContent = temBusca ? `${lista.length} processo${lista.length !== 1 ? 's' : ''}` : '';
 }
 
 function renderImportacao() {
@@ -3821,10 +3848,15 @@ function renderImpProdutos() {
 function renderImpKanban() {
   const kanban = document.getElementById('imp-kanban');
   if (!kanban) return;
-  const statusKanban = impMostrarConcluidos ? IMP_STATUS_ORDER : IMP_STATUS_ORDER.filter(s => s !== 'CONCLUIDA');
+  const base = impProcessosFiltrados();
+  const temBusca = base !== impProcessos;
+  // Com busca, a coluna Concluída aparece se tiver resultado nela (senão o processo some sem aviso)
+  const mostrarConcl = impMostrarConcluidos || (temBusca && base.some(p => p.status === 'CONCLUIDA'));
+  const statusKanban = mostrarConcl ? IMP_STATUS_ORDER : IMP_STATUS_ORDER.filter(s => s !== 'CONCLUIDA');
+  impAtualizarTotalBusca(base.filter(p => statusKanban.includes(p.status)));
   kanban.innerHTML = statusKanban.map(status => {
     const { label, color, bg } = IMP_STATUS[status];
-    const procsRaw = impProcessos.filter(p => p.status === status);
+    const procsRaw = base.filter(p => p.status === status);
     // Ordenação: data_prev_chegada ASC, sem data vai por criado_em ASC
     const procs = procsRaw.slice().sort((a, b) => {
       const da = a.data_prev_chegada || null;
@@ -3870,7 +3902,10 @@ function renderImpLista() {
   const tbody = document.getElementById('imp-lista-body');
   if (!tbody) return;
   if (!impProcessos.length) { tbody.innerHTML='<tr class="loading-row"><td colspan="10">Nenhum processo cadastrado</td></tr>'; return; }
-  tbody.innerHTML = impProcessos.map(p => {
+  const lista = impProcessosFiltrados();
+  impAtualizarTotalBusca(lista);
+  if (!lista.length) { tbody.innerHTML='<tr class="loading-row"><td colspan="10">Nenhum processo encontrado para a busca</td></tr>'; return; }
+  tbody.innerHTML = lista.map(p => {
     const {label,color,bg} = IMP_STATUS[p.status]||IMP_STATUS.PROGRAMADA;
     const quitado = p.quitado_fornecedor === true;
     const aPagarForn = parseFloat(p.total_a_pagar_fornecedor_brl || p.total_a_pagar_brl || 0);
