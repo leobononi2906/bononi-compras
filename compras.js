@@ -5561,6 +5561,7 @@ window.removerDocumento       = removerDocumento;
 window.setImpView             = setImpView;
 window.loadImpProdutos        = loadImpProdutos;
 window.renderImpProdutos      = renderImpProdutos;
+window.renderImportacao       = renderImportacao;
 window.abrirImpDrawer         = abrirImpDrawer;
 window.fecharImpDrawer        = fecharImpDrawer;
 window.switchImpTab           = switchImpTab;
