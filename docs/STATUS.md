@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-02
+> Atualizado: 2026-10-05
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -164,6 +164,9 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-10-05 — (`de28292`, publicado) **Link no aviso do Painel Dev aparece como link.** O estilo base do app zera cor e sublinhado do `<a>`, então o link escrito no aviso (`<a href="https://...">`) já funcionava mas saía igual ao resto do texto e ninguém via que dava para clicar. Caso que revelou: o aviso das notas paradas há 24h na Expedição, com "abrir as notas paradas".
+  - `geral-central.js` recopiado do `bononi-hub` (mesma v15, só a linha do link em `escHtmlSimples` muda: vermelho `#c11f25`, sublinhado, negrito). `?v=16` no `index.html`.
+  - Conferido no ar: o `geral-central.js` publicado já traz o estilo novo. Não visto na tela (o aviso só aparece com login).
 - 2026-10-02 — **Busca nos processos de Importação.** Caixa no cabeçalho filtra Kanban e Lista (código, fornecedor, importadora, pedido, observações, status); detalhe na seção de 02/10 acima. Commit c9c0841 subiu sem `window.renderImportacao` (IIFE): o `oninput` dava ReferenceError mudo e a busca não filtrava nada — export adicionado no commit seguinte.
 - 2026-10-01 — **Caminho dentro do app (geral-central v15).** Cada sessão passa a gravar qual app e qual tela abriu (RPC `geral_registrar_navegacao`, migration 0031 do `bononi-hub`), e a tela "Acessos fora do horário" do painel-dev mostra o caminho. Pedido do Gustavo depois de não dar para saber em qual app o Henrique Trombini entrou em 05/09 10:55. Gancho em `navegarPara(paginaId)`. Commit 33484a2.
 - 2026-09-28 — **Sino de pendências + selos no menu.** "Peças da Garantia" ganhou selo (`prt_solicitacao_peca` aberta), que acompanha a releitura do sino (`gc:pendencias`). O `#badge-ruptura` que `atualizarBadgeSidebar()` escrevia nunca existiu no HTML: agora existe, no item Compras, com o total real (sem filtro da tela e sem os ignorados). `?abrir=cmp-solicitacoes` (sino do grupo, `geral-central.js` v14) abre a página em "Em aberto"; `loadSolicitacoes` só aceita a leitura mais recente (duas corriam juntas e a de filtro velho sobrescrevia). `geral-central.js?v=14`. Não testado com login real.
