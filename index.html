@@ -766,6 +766,7 @@ function toggleSidebar() {
 }
 
 async function sair() {
+  try { localStorage.removeItem('compras_cart_draft_v1'); } catch {}   // rascunho do carrinho (LS_CART em compras.js)
   await sb.auth.signOut();
   try { localStorage.removeItem('cmp-ultima-pagina'); } catch {}
   document.getElementById('app-shell').style.display = 'none';
