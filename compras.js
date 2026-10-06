@@ -4368,7 +4368,7 @@ async function salvarNovoProcesso() {
     showToast('Processo criado!');
     fecharModalProcesso();
     await loadImportacao();
-  } catch(e) { showToast('Erro: '+e.message,'error'); }
+  } catch(e) { showToast(e?.code === '23505' ? 'Já existe um processo com esse código.' : 'Erro: '+e.message,'error'); }
   finally { _salvandoProcesso = false; _travarBtnProcesso(false); }
 }
 
@@ -4386,7 +4386,7 @@ async function salvarEdicaoProcesso(id) {
     fecharModalProcesso();
     await loadImportacao();
     if (impProcessoAtual?.id === id) { impProcessoAtual = impProcessos.find(x => x.id === id); if (impProcessoAtual) loadImpTabInfo(impProcessoAtual); }
-  } catch(e) { showToast('Erro: '+e.message,'error'); }
+  } catch(e) { showToast(e?.code === '23505' ? 'Já existe um processo com esse código.' : 'Erro: '+e.message,'error'); }
   finally { _salvandoProcesso = false; _travarBtnProcesso(false); }
 }
 

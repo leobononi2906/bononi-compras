@@ -610,6 +610,8 @@ document.documentElement.style.setProperty('--ic-busca', `url(${LUCIDE}search.sv
 const SUPA_URL = 'https://vishxwdxqiygbxmtpfoy.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpc2h4d2R4cWl5Z2J4bXRwZm95Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI0Njg2MjIsImV4cCI6MjA4ODA0NDYyMn0.J647m3ieDHahNQYBWMRESl0aPFXsT_zt_7ZcDvyB-SA';
 const sb = supabase.createClient(SUPA_URL, SUPA_KEY);
+// sessão encerrada/expirada: apaga o rascunho do carrinho (LS_CART em compras.js)
+sb.auth.onAuthStateChange((evento) => { if (evento === 'SIGNED_OUT') { try { localStorage.removeItem('compras_cart_draft_v1'); } catch {} } });
 
 const BONONI_TEST_MODE = SUPA_URL.includes('gxzhuewczlixksqrmjuk');
 
