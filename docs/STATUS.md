@@ -15,6 +15,21 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 06/10/2026 — Processo em dobro e rascunho do carrinho (`6c4ea07`, `7374bbb`, `1dcf660`)
+
+Processo de importação criado em dobro (Jhonatan, 09:53 e 09:54).
+- **Trava de clique duplo:** `salvarNovoProcesso` e `salvarEdicaoProcesso` usam o flag
+  `_salvandoProcesso` e desabilitam o botão do modal enquanto gravam; o `finally` sempre libera.
+- **Código único:** índice `import_processos_codigo_uniq` em `lower(trim(codigo))` (ignora nulo
+  e vazio), aplicado em produção em 06/10 (`sql/import_processos__codigo_unico.sql`; volta =
+  `drop index`). Na aplicação havia 32 processos e 32 códigos distintos. Erro 23505 vira o aviso
+  "Já existe um processo com esse código."
+- **Rascunho do carrinho** (`compras_cart_draft_v1`): apagado no `sair()` e, via
+  `onAuthStateChange`, no `SIGNED_OUT` (sessão expirada). Decisão do usuário: rascunho não
+  sobrevive à saída.
+
+Conferido no `compras.js` publicado; telas não abertas com login.
+
 ## 06/10/2026 — Situações de estoque explicadas nos cards (commit 5e5f120)
 
 Pedido do Gustavo ("o que significa ruptura?"). Os 6 cards do topo de Compras ganharam apelido
