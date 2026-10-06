@@ -213,12 +213,12 @@ const PAGINAS_HTML = {
   </div>`,
   'cmp-alertas': `<div class="page-content" id="page-cmp-alertas">
     <div class="cards-grid cards-grid-6">
-      <div class="semaforo-card ruptura" onclick="filtrarSituacao('RUPTURA', this)"><div class="card-label">Ruptura</div><div class="card-value red" id="kpi-ruptura">—</div><div class="card-sub">Estoque zerado com giro</div></div>
-      <div class="semaforo-card critico" onclick="filtrarSituacao('CRITICO', this)"><div class="card-label">Crítico</div><div class="card-value orange" id="kpi-critico">—</div><div class="card-sub">Cobertura &lt; lead time</div></div>
-      <div class="semaforo-card baixo" onclick="filtrarSituacao('BAIXO', this)"><div class="card-label">Baixo</div><div class="card-value" style="color:var(--yellow)" id="kpi-baixo">—</div><div class="card-sub">Cobertura &lt; 30 dias</div></div>
-      <div class="semaforo-card ok" onclick="filtrarSituacao('OK', this)"><div class="card-label">OK</div><div class="card-value green" id="kpi-ok">—</div><div class="card-sub">Estoque adequado</div></div>
-      <div class="semaforo-card morto" onclick="filtrarSituacao('ESTOQUE_MORTO', this)"><div class="card-label">Estoque Morto</div><div class="card-value" style="color:var(--bnn-blue-500)" id="kpi-morto">—</div><div class="card-sub">Teve estoque os últimos 90d e não vendeu nada</div></div>
-      <div class="semaforo-card sem_mov" onclick="filtrarSituacao('SEM_GIRO', this)"><div class="card-label">Sem Giro</div><div class="card-value" style="color:var(--text-muted)" id="kpi-sem_mov">—</div><div class="card-sub">Sem venda, mas ficou sem estoque em algum momento</div></div>
+      <div class="semaforo-card ruptura" onclick="filtrarSituacao('RUPTURA', this)" title="Ruptura = produto em falta: o estoque zerou e ele costuma vender. Cada dia assim é venda perdida."><div class="card-label">Ruptura · em falta</div><div class="card-value red" id="kpi-ruptura">—</div><div class="card-sub">Acabou o estoque de um produto que vende — comprar já</div></div>
+      <div class="semaforo-card critico" onclick="filtrarSituacao('CRITICO', this)" title="Crítico = o estoque que sobra acaba antes de o fornecedor conseguir entregar um pedido novo."><div class="card-label">Crítico · vai faltar</div><div class="card-value orange" id="kpi-critico">—</div><div class="card-sub">Acaba antes de o fornecedor entregar — pedir agora</div></div>
+      <div class="semaforo-card baixo" onclick="filtrarSituacao('BAIXO', this)" title="Baixo = no ritmo atual de venda, o estoque dura menos de 30 dias."><div class="card-label">Baixo · acabando</div><div class="card-value" style="color:var(--yellow)" id="kpi-baixo">—</div><div class="card-sub">Dura menos de 30 dias — programar compra</div></div>
+      <div class="semaforo-card ok" onclick="filtrarSituacao('OK', this)" title="OK = estoque suficiente para o ritmo de venda."><div class="card-label">OK · tranquilo</div><div class="card-value green" id="kpi-ok">—</div><div class="card-sub">Estoque suficiente — não precisa comprar</div></div>
+      <div class="semaforo-card morto" onclick="filtrarSituacao('ESTOQUE_MORTO', this)" title="Estoque morto = teve estoque nos últimos 90 dias e não vendeu nenhuma unidade."><div class="card-label">Estoque Morto · parado</div><div class="card-value" style="color:var(--bnn-blue-500)" id="kpi-morto">—</div><div class="card-sub">Tem estoque e não vendeu nada em 90 dias — não recomprar</div></div>
+      <div class="semaforo-card sem_mov" onclick="filtrarSituacao('SEM_GIRO', this)" title="Sem giro = não teve venda recente, mas ficou sem estoque em algum momento — pode ser que não vendeu por falta."><div class="card-label">Sem Giro · sem venda</div><div class="card-value" style="color:var(--text-muted)" id="kpi-sem_mov">—</div><div class="card-sub">Não vendeu, mas faltou estoque em algum momento — avaliar</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;margin-top:16px;flex-wrap:wrap">
       <input type="text" id="busca-produto" class="search-input" placeholder="Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
@@ -733,7 +733,15 @@ function fmtDataHora(d) {
 function badgeSituacao(s) {
   const map = { 'RUPTURA': 'badge-ruptura', 'CRITICO': 'badge-critico', 'BAIXO': 'badge-baixo', 'OK': 'badge-ok', 'ESTOQUE_MORTO': 'badge-morto', 'SEM_GIRO': 'badge-sem_mov' };
   const label = { 'RUPTURA': 'Ruptura', 'CRITICO': 'Crítico', 'BAIXO': 'Baixo', 'OK': 'OK', 'ESTOQUE_MORTO': 'Morto', 'SEM_GIRO': 'Sem Giro' };
-  return `<span class="badge ${map[s] || 'badge-sem_mov'}">${label[s] || s}</span>`;
+  const dica = {
+    'RUPTURA': 'Em falta: estoque zerado num produto que vende. Comprar já.',
+    'CRITICO': 'Vai faltar: o estoque acaba antes de o fornecedor entregar.',
+    'BAIXO': 'Estoque dura menos de 30 dias.',
+    'OK': 'Estoque suficiente para o ritmo de venda.',
+    'ESTOQUE_MORTO': 'Parado: teve estoque nos últimos 90 dias e não vendeu nada.',
+    'SEM_GIRO': 'Sem venda recente, mas ficou sem estoque em algum momento.'
+  };
+  return `<span class="badge ${map[s] || 'badge-sem_mov'}" title="${dica[s] || ''}">${label[s] || s}</span>`;
 }
 
 function badgeABC(abc) {
