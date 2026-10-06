@@ -4348,11 +4348,20 @@ function selecionarFornecedorImport(id, nome) {
   document.getElementById('imp-forn-suggestions').style.display = 'none';
 }
 
+// Trava de duplo clique: um flag só para criar/editar processo (o modal é o mesmo).
+let _salvandoProcesso = false;
+function _travarBtnProcesso(sim) {
+  const btn = document.querySelector('#modal-processo-body .btn-primary');
+  if (btn) btn.disabled = !!sim;
+}
+
 async function salvarNovoProcesso() {
+  if (_salvandoProcesso) return;
   const codigo = document.getElementById('imp-f-codigo')?.value?.trim();
   if (!codigo) { showToast('Informe o código.','error'); return; }
   const fornId   = document.getElementById('imp-f-fornecedor-id')?.value || null;
   const fornNome = document.getElementById('imp-f-fornecedor-nome')?.value || document.getElementById('imp-f-fornecedor-busca')?.value || null;
+  _salvandoProcesso = true; _travarBtnProcesso(true);
   try {
     const { error } = await sb.from('import_processos').insert({ codigo, id_fornecedor: fornId ? parseInt(fornId) : null, nome_fornecedor: fornNome, importadora: document.getElementById('imp-f-importadora')?.value || null, status: document.getElementById('imp-f-status')?.value || 'PROGRAMADA', data_embarque: document.getElementById('imp-f-embarque')?.value || null, data_prev_chegada: document.getElementById('imp-f-chegada')?.value || null, valor_total_usd: parseFloat(document.getElementById('imp-f-usd')?.value) || null, status_pgto: document.getElementById('imp-f-pgto')?.value || 'NAO_PAGO', observacoes: document.getElementById('imp-f-obs')?.value || null, criado_por: window.getUsuario?.()?.nome || 'Comprador' });
     if (error) throw error;
@@ -4360,13 +4369,16 @@ async function salvarNovoProcesso() {
     fecharModalProcesso();
     await loadImportacao();
   } catch(e) { showToast('Erro: '+e.message,'error'); }
+  finally { _salvandoProcesso = false; _travarBtnProcesso(false); }
 }
 
 async function salvarEdicaoProcesso(id) {
+  if (_salvandoProcesso) return;
   const codigo = document.getElementById('imp-f-codigo')?.value?.trim();
   if (!codigo) { showToast('Informe o código.','error'); return; }
   const fornId   = document.getElementById('imp-f-fornecedor-id')?.value || null;
   const fornNome = document.getElementById('imp-f-fornecedor-nome')?.value || document.getElementById('imp-f-fornecedor-busca')?.value || null;
+  _salvandoProcesso = true; _travarBtnProcesso(true);
   try {
     const { error } = await sb.from('import_processos').update({ codigo, id_fornecedor: fornId ? parseInt(fornId) : null, nome_fornecedor: fornNome, importadora: document.getElementById('imp-f-importadora')?.value || null, status: document.getElementById('imp-f-status')?.value || 'PROGRAMADA', data_embarque: document.getElementById('imp-f-embarque')?.value || null, data_prev_chegada: document.getElementById('imp-f-chegada')?.value || null, valor_total_usd: parseFloat(document.getElementById('imp-f-usd')?.value) || null, status_pgto: document.getElementById('imp-f-pgto')?.value || 'NAO_PAGO', observacoes: document.getElementById('imp-f-obs')?.value || null, atualizado_em: new Date().toISOString() }).eq('id', id);
     if (error) throw error;
@@ -4375,6 +4387,7 @@ async function salvarEdicaoProcesso(id) {
     await loadImportacao();
     if (impProcessoAtual?.id === id) { impProcessoAtual = impProcessos.find(x => x.id === id); if (impProcessoAtual) loadImpTabInfo(impProcessoAtual); }
   } catch(e) { showToast('Erro: '+e.message,'error'); }
+  finally { _salvandoProcesso = false; _travarBtnProcesso(false); }
 }
 
 async function excluirProcesso(id) {
