@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-05
+> Atualizado: 2026-10-06
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,15 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 06/10/2026 — Situações de estoque explicadas nos cards (commit 5e5f120)
+
+Pedido do Gustavo ("o que significa ruptura?"). Os 6 cards do topo de Compras ganharam apelido
+no título (Ruptura · em falta, Crítico · vai faltar, Baixo · acabando, OK · tranquilo, Estoque
+Morto · parado, Sem Giro · sem venda), frase de ação embaixo do número e explicação no `title`
+(passar o mouse). O selo da coluna Situação (`badgeSituacao`) também ganhou `title`. Só texto:
+regra de classificação, filtros e números iguais. Conferido no `compras.js` publicado (texto novo
+presente, antigo ausente); tela não aberta com login.
 
 ## 02/10/2026 — Busca nos processos de Importação
 
