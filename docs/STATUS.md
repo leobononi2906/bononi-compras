@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-06
+> Atualizado: 2026-10-07
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -188,6 +188,7 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-10-07 — (`2a8ba2d`, publicado) **Sino e botões do geral-central não saem mais na impressão** (`geral-central.js` v16, `?v=17`). O módulo põe sino de Pendências, "Sugerir melhoria", cartão de treinamento e avisos em `position:fixed` sem regra de impressão, e o sino saiu no romaneio impresso da Expedição (06/10). Agora um `@media print` esconde tudo isso. Só a cópia de `ds/geral-central.js` e o `?v=` do `index.html` mudaram; este app imprime em janela própria, então não era afetado, e a cópia só mantém o arquivo igual ao do Hub (original em `bononi-hub/ds/`) (`2a8ba2d`).
 - 2026-10-05 — (`de28292`, publicado) **Link no aviso do Painel Dev aparece como link.** O estilo base do app zera cor e sublinhado do `<a>`, então o link escrito no aviso (`<a href="https://...">`) já funcionava mas saía igual ao resto do texto e ninguém via que dava para clicar. Caso que revelou: o aviso das notas paradas há 24h na Expedição, com "abrir as notas paradas".
   - `geral-central.js` recopiado do `bononi-hub` (mesma v15, só a linha do link em `escHtmlSimples` muda: vermelho `#c11f25`, sublinhado, negrito). `?v=16` no `index.html`.
   - Conferido no ar: o `geral-central.js` publicado já traz o estilo novo. Não visto na tela (o aviso só aparece com login).
