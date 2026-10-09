@@ -4105,6 +4105,7 @@ async function loadImpTabInfo(p) {
         ${IMP_STATUS_ORDER.map(s=>`<option value="${s}" ${s===p.status?'selected':''}>${IMP_STATUS[s].label}</option>`).join('')}
       </select>
       <button class="btn btn-outline" onclick="abrirModalNovoProcesso('${p.id}','editar')"><i class="ic ic-sm" data-ic="square-pen"></i> Editar</button>
+      <button class="btn btn-outline" onclick="abrirModalDuplicarProcesso('${p.id}')" title="Cria um processo igual, trocando só o nome e as datas"><i class="ic ic-sm" data-ic="copy"></i> Duplicar</button>
     </div>
 
     <!-- PEDIDOS VINCULADOS -->
@@ -4141,7 +4142,7 @@ async function loadImpTabPagamentos(p) {
     ]);
 
     // Log expansível: quem lançou/editou/removeu valores neste processo
-    const acaoLabel = { lancar_pagamento: 'Lançou pagamento', editar_pagamento: 'Editou pagamento', excluir_pagamento: 'Removeu pagamento', quitar_fornecedor: 'Quitação fornecedor' };
+    const acaoLabel = { lancar_pagamento: 'Lançou pagamento', editar_pagamento: 'Editou pagamento', excluir_pagamento: 'Removeu pagamento', quitar_fornecedor: 'Quitação fornecedor', duplicar_processo: 'Duplicou processo' };
     const logHtml = `
       <details style="margin-bottom:14px;border:1px solid var(--border);border-radius:var(--radius-lg);background:var(--surface2)">
         <summary style="cursor:pointer;padding:10px 14px;font-size:12px;font-weight:600;color:var(--text-secondary)"><i class="ic ic-sm" data-ic="history"></i> Histórico de lançamentos${logs?.length ? ` (${logs.length})` : ''}</summary>
@@ -4403,6 +4404,113 @@ async function excluirProcesso(id) {
     fecharImpDrawer();
     await loadImportacao();
   } catch(e) { showToast('Erro ao excluir: '+e.message,'error'); }
+}
+
+// Duplicar processo: copia processo, pagamentos e pedidos vinculados; a pessoa troca só o
+// nome e as datas (processo + cada pagamento). Documentos não entram. Pagamentos voltam A Pagar.
+let _dupPagamentos = [], _dupPedidos = [];
+async function abrirModalDuplicarProcesso(id) {
+  const orig = impProcessos.find(x => x.id === id);
+  if (!orig) { showToast('Processo não encontrado.','error'); return; }
+  const overlay = document.getElementById('modal-processo-overlay');
+  const body = document.getElementById('modal-processo-body');
+  document.getElementById('modal-processo-title').textContent = `Duplicar Processo — ${orig.codigo}`;
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">Carregando...</div>';
+  overlay.style.display = 'flex';
+  try {
+    const [rPag, rPed] = await Promise.all([
+      sb.from('import_pagamentos').select('*').eq('processo_id', id).order('data_pagamento'),
+      sb.from('import_pedidos').select('numero_pedido,observacao').eq('processo_id', id).order('criado_em'),
+    ]);
+    if (rPag.error) throw rPag.error;
+    if (rPed.error) throw rPed.error;
+    _dupPagamentos = rPag.data || [];
+    _dupPedidos = rPed.data || [];
+  } catch(e) { body.innerHTML = `<div style="color:var(--red);padding:16px">Erro ao carregar: ${escHtml(e.message)}</div>`; return; }
+  const lbl = 'font-size:12px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:4px';
+  const linhasPag = _dupPagamentos.map((pg, i) => {
+    const dt = (pg.data_pagamento || pg.data_vencimento || '').slice(0, 10);
+    return `<tr>
+      <td style="font-size:12px">${IMP_TIPOS_PAG[pg.tipo] || pg.tipo}</td>
+      <td class="right mono" style="font-weight:600">${pg.valor_brl ? fmt(pg.valor_brl) : '—'}</td>
+      <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd ? 'US$ ' + fmtQtd(pg.valor_usd, 2) : '—'}</td>
+      <td><input id="dup-pag-data-${i}" type="date" class="filter-select" style="height:30px" value="${dt}" /></td>
+    </tr>`;
+  }).join('');
+  body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div style="grid-column:1/-1"><label style="${lbl}">Código / Nome do processo novo *</label><input id="dup-f-codigo" class="filter-select" style="width:100%;height:36px" value="${escHtml(orig.codigo || '')}" /></div>
+      <div><label style="${lbl}">Data Embarque</label><input id="dup-f-embarque" type="date" class="filter-select" style="width:100%;height:36px" value="${orig.data_embarque?.slice(0,10) || ''}" /></div>
+      <div><label style="${lbl}">Previsão Chegada</label><input id="dup-f-chegada" type="date" class="filter-select" style="width:100%;height:36px" value="${orig.data_prev_chegada?.slice(0,10) || ''}" /></div>
+    </div>
+    <div style="margin-top:14px;font-size:12px;color:var(--text-secondary);background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 12px;line-height:1.6">
+      Copiado igual: <b>${escHtml(orig.nome_fornecedor || '—')}</b> · ${escHtml(orig.importadora || '—')} · ${IMP_STATUS[orig.status]?.label || orig.status}
+      · ${_dupPedidos.length} pedido${_dupPedidos.length !== 1 ? 's' : ''} vinculado${_dupPedidos.length !== 1 ? 's' : ''}${orig.valor_total_usd ? ' · US$ ' + fmtQtd(orig.valor_total_usd, 2) : ''}${orig.observacoes ? ' · observações' : ''}.
+    </div>
+    <div style="margin-top:14px;font-size:13px;font-weight:600">Pagamentos que serão copiados (${_dupPagamentos.length})</div>
+    ${_dupPagamentos.length ? `<div class="table-card" style="margin-top:8px"><div style="overflow-x:auto;max-height:240px;overflow-y:auto"><table class="data-table">
+      <thead><tr><th>Tipo</th><th class="right">BRL</th><th class="right">USD</th><th>Nova data</th></tr></thead>
+      <tbody>${linhasPag}</tbody></table></div></div>` : '<div style="font-size:12px;color:var(--text-muted);padding:8px 0">Nenhum pagamento no processo original.</div>'}
+    <div style="margin-top:10px;font-size:12px;color:var(--status-warn-text)"><i class="ic ic-sm" data-ic="triangle-alert"></i> Os pagamentos entram como A Pagar. Confira o processo novo depois de criar — ele abre em seguida.</div>
+    <div style="display:flex;gap:8px;margin-top:14px;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="fecharModalProcesso()">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarDuplicacaoProcesso('${orig.id}')"><i class="ic ic-sm" data-ic="copy"></i> Criar cópia</button>
+    </div>`;
+}
+
+async function salvarDuplicacaoProcesso(idOriginal) {
+  if (_salvandoProcesso) return;
+  const orig = impProcessos.find(x => x.id === idOriginal);
+  if (!orig) { showToast('Processo não encontrado.','error'); return; }
+  const codigo = document.getElementById('dup-f-codigo')?.value?.trim();
+  if (!codigo) { showToast('Informe o código.','error'); return; }
+  if (codigo === (orig.codigo || '').trim()) { showToast('Troque o nome — ele precisa ser diferente do original.','error'); return; }
+  // Não confia só no índice único do banco (o de teste não tem): confere na lista carregada
+  if (impProcessos.some(x => (x.codigo || '').trim().toLowerCase() === codigo.toLowerCase())) { showToast('Já existe um processo com esse código.','error'); return; }
+  _salvandoProcesso = true; _travarBtnProcesso(true);
+  let novoId = null;
+  try {
+    const { data: novo, error } = await sb.from('import_processos').insert({
+      codigo,
+      id_fornecedor: orig.id_fornecedor ?? null, nome_fornecedor: orig.nome_fornecedor ?? null,
+      importadora: orig.importadora ?? null, status: orig.status || 'PROGRAMADA',
+      data_embarque: document.getElementById('dup-f-embarque')?.value || null,
+      data_prev_chegada: document.getElementById('dup-f-chegada')?.value || null,
+      valor_total_usd: orig.valor_total_usd ?? null, observacoes: orig.observacoes ?? null,
+      status_pgto: 'NAO_PAGO', quitado_fornecedor: false,
+      criado_por: window.getUsuario?.()?.nome || 'Comprador',
+    }).select('id').single();
+    if (error) throw error;
+    novoId = novo.id;
+    if (_dupPagamentos.length) {
+      const pags = _dupPagamentos.map((pg, i) => ({
+        processo_id: novoId, tipo: pg.tipo, status: 'A_PAGAR',
+        data_pagamento: document.getElementById(`dup-pag-data-${i}`)?.value || null,
+        valor_brl: pg.valor_brl, valor_usd: pg.valor_usd, observacoes: pg.observacoes ?? null,
+      }));
+      const { error: ePag } = await sb.from('import_pagamentos').insert(pags);
+      if (ePag) throw ePag;
+    }
+    if (_dupPedidos.length) {
+      const peds = _dupPedidos.map(pd => ({ processo_id: novoId, numero_pedido: pd.numero_pedido, observacao: pd.observacao ?? null }));
+      const { error: ePed } = await sb.from('import_pedidos').insert(peds);
+      if (ePed) throw ePed;
+    }
+    auditLog('importacao', 'duplicar_processo', 'import_processo', novoId,
+      `Duplicado de ${orig.codigo} (${_dupPagamentos.length} pagamento(s), ${_dupPedidos.length} pedido(s))`, { origem_id: idOriginal }, { codigo });
+    showToast('Processo duplicado! Confira os dados.');
+    fecharModalProcesso();
+    await loadImportacao();
+    abrirImpDrawer(novoId);
+  } catch(e) {
+    // Não deixa cópia pela metade: desfaz o que entrou
+    if (novoId) {
+      await sb.from('import_pedidos').delete().eq('processo_id', novoId);
+      await sb.from('import_pagamentos').delete().eq('processo_id', novoId);
+      await sb.from('import_processos').delete().eq('id', novoId);
+    }
+    showToast(e?.code === '23505' ? 'Já existe um processo com esse código.' : 'Erro ao duplicar: ' + e.message, 'error');
+  } finally { _salvandoProcesso = false; _travarBtnProcesso(false); }
 }
 
 async function atualizarStatusProcesso(id, novoStatus) {
@@ -5591,6 +5699,8 @@ window.fecharModalProcesso    = fecharModalProcesso;
 window.salvarNovoProcesso     = salvarNovoProcesso;
 window.salvarEdicaoProcesso   = salvarEdicaoProcesso;
 window.excluirProcesso        = excluirProcesso;
+window.abrirModalDuplicarProcesso = abrirModalDuplicarProcesso;
+window.salvarDuplicacaoProcesso   = salvarDuplicacaoProcesso;
 window.atualizarStatusProcesso = atualizarStatusProcesso;
 window.abrirModalAddPedido    = abrirModalAddPedido;
 window.removerPedidoProcesso  = removerPedidoProcesso;

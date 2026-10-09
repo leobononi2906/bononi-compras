@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-07
+> Atualizado: 2026-10-09
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,24 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 09/10/2026 — Duplicar processo de importação
+
+Processos do mesmo fornecedor se repetem (mesma importadora, valores e parcelas); antes era tudo
+redigitado. Botão **Duplicar** na aba Informações do drawer, ao lado de "Editar"
+(`abrirModalDuplicarProcesso` / `salvarDuplicacaoProcesso`, exportadas por `window.*`).
+- A pessoa troca **nome, embarque, previsão de chegada e a data de cada pagamento**; o resto é
+  copiado igual (fornecedor, importadora, status, valor USD, observações, **pagamentos** e
+  **pedidos vinculados**). Documentos não entram.
+- Pagamentos copiados entram todos como **A Pagar**; processo novo nasce com `status_pgto NAO_PAGO`
+  e `quitado_fornecedor false`. Depois de criar, o drawer abre no processo novo para conferência.
+- Nome igual ao original ou a outro processo é barrado na tela (o staging não tem o índice
+  `import_processos_codigo_uniq`; em produção o 23505 também cobre). Se um insert filho falhar,
+  apaga o que já entrou — não fica cópia pela metade.
+- Histórico do processo novo registra "Duplicou processo" (`comp_audit_log`, ação `duplicar_processo`).
+- Conferido no banco de teste (porta 5287): 2 pagamentos (1 pago) copiados com datas novas, ambos
+  A Pagar, resumo financeiro igual; nome repetido barrado. Cópia de pedidos não exercitada (staging
+  sem processo com pedido).
 
 ## 06/10/2026 — Processo em dobro e rascunho do carrinho (`6c4ea07`, `7374bbb`, `1dcf660`)
 
