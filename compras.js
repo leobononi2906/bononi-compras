@@ -2048,7 +2048,7 @@ async function loadDrawerEstoque(idProduto) {
   const tbody = document.getElementById('dr-estoque-body');
   if (tbody) tbody.innerHTML = '<tr class="loading-row"><td colspan="5">Carregando...</td></tr>';
   try {
-    const { data: raw } = await sb.from('vw_fb_estoque_centro').select('id_empresa,id_centro_estoque,empresa,centro_estoque,estoque,preco_compra,centro_padrao,centro_situacao').eq('id_produto', idProduto).order('empresa').range(0, 199);
+    const { data: raw } = await sb.from('vw_fb_estoque_centro').select('id_empresa,id_centro_estoque,empresa,centro_estoque,estoque,preco_compra,centro_padrao,centro_situacao').eq('id_produto', idProduto).neq('id_empresa', 1).order('empresa').range(0, 199);
     // dedup do fan-out da view do ERP: 1 linha por (empresa, centro)
     const _seenCentro = new Set();
     const data = (raw || []).filter(r => { const k = `${r.id_empresa}|${r.id_centro_estoque}`; if (_seenCentro.has(k)) return false; _seenCentro.add(k); return true; });
@@ -2793,6 +2793,7 @@ async function loadMovEstoque() {
     movSaldoCentro = await fetchPaginado(sbq => {
       let q = sbq.from('vw_fb_estoque_centro')
         .select('id_empresa,empresa,id_produto,referencia,nome,id_centro_estoque,centro_estoque,centro_padrao,estoque')
+        .neq('id_empresa', 1) // Truckprest fora do estoque (pedido #11, 09/10/2026)
         .order('id');
       if (empresa) q = q.eq('empresa', empresa);
       return q;
