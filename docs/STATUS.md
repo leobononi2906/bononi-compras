@@ -15,6 +15,27 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 19/10/2026 — Ruptura sem os esporádicos (card e selo), NÃO publicado
+
+Pergunta do Gustavo: "esse número de ruptura está correto?". **Estava certo pela regra, mas a regra
+enganava.** Os seis cards da tela (248 · 12 · 24 · 1.843 · 1.651 · 2.472) batem com o banco: é a view
+materializada `comp_produtos_consolidado` (atualizada todo minuto 50) menos fora de linha e menos o que a
+equipe ignorou em Configurações. Dos 248 em ruptura, todos seguem sem estoque ao vivo (243 zerados, 5
+negativos) e 225 têm saída real em 90 dias. Mas **201 eram esporádicos** (1 a 12 unidades no ano) e 190
+venderam 3 unidades ou menos em 90 dias; 23 têm venda faturada sem nenhum movimento de estoque (itens como
+"FRETE", "EMPILHADEIRA", "CALCO TRILHO SOFA CAMA", que não são estocados); 9 têm saldo na Truckprest (de
+propósito fora desde 09/10).
+- **Mudança** (`compras.js`): interruptor **"Mostrar esporádicos"**, desligado por padrão, ao lado de "Mostrar
+  fora de linha". Desligado, os esporádicos saem de **Ruptura, Crítico e Baixo** (cards, tabela e selo do
+  menu). Estoque morto, Sem giro e OK **não mudam**: quem vendeu 2 no ano e nada em 90 dias é estoque parado.
+  Função `esporadicoEmCompra`. Com a base de produção, Ruptura passa de 248 para **47** e Baixo de 24 para
+  19; Crítico fica em 12.
+- **Provado:** regra em Node (um caso por situação, inclusive o proxy quando a view não traz a flag) e os
+  números acima por SQL em produção; tela abre sem erro e o interruptor aparece. **Não provado na tela com
+  dado real:** o banco de teste só tem 2 produtos por card, sem esporádicos.
+- **Aberto:** os 23 sem controle de estoque continuam contando como ruptura quando vendem; marcá-los como "sem
+  controle" é decisão de quem manda no processo.
+
 ## 19/10/2026 — Validador de Produto + Base China (fase 1, NÃO publicado)
 
 Grupo novo **Novos Produtos** no menu (Validador, Base China, Painel), pedido do Leo

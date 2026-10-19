@@ -243,6 +243,10 @@ const PAGINAS_HTML = {
         <span class="switch"><input type="checkbox" id="chk-fora-linha" onchange="onForaLinhaChange()"><span class="switch-slider"></span></span>
         Mostrar fora de linha
       </label>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary)" title="Esporádico = vendeu de 1 a 12 unidades no último ano. Por padrão fica fora de Ruptura, Crítico e Baixo, para o número mostrar só o que vende de verdade. Ligue pra ver também. Não muda Estoque morto, Sem giro nem OK.">
+        <span class="switch"><input type="checkbox" id="chk-esporadicos" onchange="onForaLinhaChange()"><span class="switch-slider"></span></span>
+        Mostrar esporádicos
+      </label>
       <button class="btn" onclick="abrirChat()" style="margin-left:auto;background:var(--action-primary);color:var(--text-inverse);height:34px;padding:0 14px;gap:6px"><i class="ic ic-sm" data-ic="sparkles"></i> Assistente IA</button>
     </div>
     <div style="display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap;font-size:12px;color:var(--text-secondary)">
@@ -1019,9 +1023,11 @@ function baseFiltradaAlertas() {
   const grupo = document.getElementById('filtro-grupo')?.value || '';
   const subgrupo = document.getElementById('filtro-subgrupo')?.value || '';
   const mostrarForaLinha = document.getElementById('chk-fora-linha')?.checked || false;
+  const mostrarEsporadicos = document.getElementById('chk-esporadicos')?.checked || false;
   const ign = setsIgnorados();
   let dados = alertasConsolidado.filter(r => {
     if (!mostrarForaLinha && r.fora_linha === 'S') return false; // produto descontinuado no ERP — escondido por padrão
+    if (!mostrarEsporadicos && esporadicoEmCompra(r)) return false; // vende pouco demais para contar como falta
     return !ign.grupo.has(r.grupo) && !ign.subgrupo.has(r.subgrupo) && !ign.produto.has(r.id_produto);
   });
   if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
@@ -1056,7 +1062,7 @@ function atualizarBadgeSidebar() {
   // Mesma base do card "Ruptura" sem filtro: tira fora de linha E o que a equipe
   // marcou para ignorar (grupo, subgrupo, produto) em Configurações.
   const ign = setsIgnorados();
-  const rupturas = alertasConsolidado.filter(r => r.situacao_estoque === 'RUPTURA' && r.fora_linha !== 'S'
+  const rupturas = alertasConsolidado.filter(r => r.situacao_estoque === 'RUPTURA' && r.fora_linha !== 'S' && !esporadicoEmCompra(r)
     && !ign.grupo.has(r.grupo) && !ign.subgrupo.has(r.subgrupo) && !ign.produto.has(r.id_produto)).length;
   marcarSeloRuptura(rupturas);
 }
@@ -1245,6 +1251,13 @@ async function loadComprarAgora() {
     console.error('loadComprarAgora', err);
     if (cont) cont.innerHTML = `<div class="alert alert-error">Não foi possível montar a lista de compra.${err?.message ? ' ' + err.message : ''}</div>`;
   }
+}
+
+// Esporádico só sai dos cards "de comprar" (Ruptura, Crítico, Baixo). Em Estoque morto e Sem giro ele
+// precisa ficar: quem vendeu 2 unidades no ano e não vendeu em 90 dias é justamente estoque parado.
+function esporadicoEmCompra(r) {
+  return (r.situacao_estoque === 'RUPTURA' || r.situacao_estoque === 'CRITICO' || r.situacao_estoque === 'BAIXO')
+    && itemEsporadico(r);
 }
 
 function itemEsporadico(r) {
