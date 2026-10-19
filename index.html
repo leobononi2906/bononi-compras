@@ -530,6 +530,17 @@ input.search-input {
           <a class="nav-item" data-pagina="cmp-config"       onclick="navegarPara('cmp-config')">       <span class="nav-dot"></span><i class="ic ic-sm" data-ic="settings"></i> Configurações</a>
         </div>
       </div>
+      <div class="nav-module" id="nav-module-validador">
+        <div class="nav-module-header" onclick="toggleNavModule('validador')">
+          <div class="nav-module-label"><span class="nav-module-icon"><i class="ic ic-sm" data-ic="clipboard-list"></i> </span>Novos Produtos</div>
+          <span class="nav-module-chevron"><i class="ic ic-sm" data-ic="chevron-down"></i></span>
+        </div>
+        <div class="nav-module-items">
+          <a class="nav-item" data-pagina="val-validador" onclick="navegarPara('val-validador')"> <span class="nav-dot"></span>Validador<span class="badge badge-red" id="badge-val-triado" style="display:none;margin-left:auto" aria-label="0 candidatos aguardando decisão"></span></a>
+          <a class="nav-item" data-pagina="val-china"     onclick="navegarPara('val-china')">     <span class="nav-dot"></span>Base China</a>
+          <a class="nav-item" data-pagina="val-painel"    onclick="navegarPara('val-painel')">    <span class="nav-dot"></span>Painel</a>
+        </div>
+      </div>
       <div class="nav-separator"></div>
       <a class="nav-item" onclick="window.open('https://bononi-hub.vercel.app/','_blank')"
         style="color:rgba(255,255,255,0.35);font-size:12px">
@@ -568,6 +579,7 @@ input.search-input {
       <div id="slot-compras" class="module-slot active">
         <div class="module-placeholder"><div class="spinner"></div><p>Carregando...</p></div>
       </div>
+      <div id="slot-validador" class="module-slot"></div>
     </div>
   </div>
 </div>
@@ -669,7 +681,12 @@ const PAGINAS = {
   'cmp-balanco':      { label: 'Balanço Físico',         breadcrumb: 'Compras · Balanço' },
   'cmp-importacao':   { label: 'Importação',             breadcrumb: 'Compras · Importação' },
   'cmp-config':       { label: 'Configurações',             breadcrumb: 'Compras · Configurações' },
+  'val-validador':    { label: 'Validador de Produto',   breadcrumb: 'Novos Produtos · Validador' },
+  'val-china':        { label: 'Base China',             breadcrumb: 'Novos Produtos · Base China' },
+  'val-painel':       { label: 'Painel do Validador',    breadcrumb: 'Novos Produtos · Painel' },
 };
+// Quem tem so a chave "validador" ve apenas o grupo Novos Produtos.
+let soValidador = false;
 
 async function navegarPara(paginaId) {
   const pg = PAGINAS[paginaId]; if (!pg) return;
@@ -681,6 +698,29 @@ async function navegarPara(paginaId) {
   window.GeralCentral && GeralCentral.tela(paginaId); // caminho (geral-central v15)
   try { localStorage.setItem('cmp-ultima-pagina', paginaId); } catch {}
 
+  if (paginaId.startsWith('val-')) {
+    const slotV = document.getElementById('slot-validador');
+    document.getElementById('slot-compras').classList.remove('active');
+    slotV.classList.add('active');
+    if (!window.ModuloValidador) {
+      document.getElementById('module-loading-bar').classList.add('show');
+      slotV.innerHTML = `<div class="module-placeholder"><div class="spinner"></div><p>Carregando Validador...</p></div>`;
+      await new Promise(resolve => {
+        const s = document.createElement('script');
+        s.src = 'validador.js?v=3';
+        s.onload = resolve;
+        s.onerror = () => { console.error('Erro ao carregar validador.js'); resolve(); };
+        document.head.appendChild(s);
+      });
+      document.getElementById('module-loading-bar').classList.remove('show');
+    }
+    if (window.ModuloValidador) window.ModuloValidador.showPage(paginaId, slotV, usuarioAtual);
+    else slotV.innerHTML = '<p style="padding:24px">Não consegui carregar o Validador. Recarregue a página.</p>';
+    return;
+  }
+  if (soValidador) { return navegarPara('val-validador'); }
+  document.getElementById('slot-validador')?.classList.remove('active');
+  document.getElementById('slot-compras').classList.add('active');
   const slot = document.getElementById('slot-compras');
   if (!moduloCarregado) {
     document.getElementById('module-loading-bar').classList.add('show');
@@ -804,7 +844,10 @@ async function iniciarApp() {
   }
   const meta = session.user.user_metadata || {};
   // Verifica acesso: admin ou tem 'compras' nos módulos
-  const temAcesso = meta.admin === true || (meta.modulos || []).includes('compras');
+  const temCompras = meta.admin === true || (meta.modulos || []).includes('compras');
+  const temValidador = (meta.modulos || []).includes('validador');
+  const temAcesso = temCompras || temValidador;
+  soValidador = !temCompras && temValidador;
   if (!temAcesso) {
     document.getElementById('login-wrap').classList.add('show');
     document.getElementById('login-erro').textContent = 'Você não tem acesso ao módulo de Compras.';
@@ -812,7 +855,8 @@ async function iniciarApp() {
     await sb.auth.signOut();
     return;
   }
-  usuarioAtual = { id: session.user.id, email: session.user.email, nome: meta.nome || session.user.email.split('@')[0], admin: meta.admin === true };
+  usuarioAtual = { id: session.user.id, email: session.user.email, nome: meta.nome || session.user.email.split('@')[0], admin: meta.admin === true, modulos: meta.modulos || [], admin_modulos: meta.admin_modulos || [] };
+  if (soValidador) document.getElementById('nav-module-compras')?.remove();
   if (window.GeralCentral) {
     GeralCentral.iniciar({ appId: 'compras', url: SUPA_URL, key: SUPA_KEY, sb, usuario: { email: usuarioAtual.email, nome: usuarioAtual.nome }, aoAbrir: abrirPeloParam });
   }
@@ -832,7 +876,7 @@ async function iniciarApp() {
   } else {
     let ultima = null;
     try { ultima = localStorage.getItem('cmp-ultima-pagina'); } catch {}
-    await navegarPara(PAGINAS[ultima] ? ultima : 'cmp-alertas');
+    await navegarPara(soValidador ? (ultima && ultima.startsWith('val-') ? ultima : 'val-validador') : (PAGINAS[ultima] ? ultima : 'cmp-alertas'));
   }
   // ?abrir=/?de= não devem sobreviver a um F5 nem virar "última página" errada.
   if (paramsURL.has('abrir') || paramsURL.has('de')) {
@@ -840,7 +884,19 @@ async function iniciarApp() {
     const resto = paramsURL.toString();
     history.replaceState(null, '', location.pathname + (resto ? '?' + resto : '') + location.hash);
   }
-  atualizarBadgeSolicitacoes();
+  if (!soValidador) atualizarBadgeSolicitacoes();
+  atualizarBadgeValidador();
+}
+
+// Selo "aguardando decisao" do Validador: contagem leve, sem carregar validador.js.
+// Tabelas ausentes (migration pendente) = sem selo, sem erro na tela.
+async function atualizarBadgeValidador() {
+  try {
+    const { count, error } = await sb.from('val_produtos').select('id', { count: 'exact', head: true }).eq('status', 'TRIADO');
+    if (error) return;
+    const b = document.getElementById('badge-val-triado');
+    if (b) { b.textContent = count || 0; b.style.display = count ? '' : 'none'; b.setAttribute('aria-label', (count || 0) + ' candidatos aguardando decisão'); }
+  } catch (e) { /* sem selo */ }
 }
 
 iniciarApp();

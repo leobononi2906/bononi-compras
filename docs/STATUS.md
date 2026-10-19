@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-09
+> Atualizado: 2026-10-19
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,38 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 19/10/2026 — Validador de Produto + Base China (fase 1, NÃO publicado)
+
+Grupo novo **Novos Produtos** no menu (Validador, Base China, Painel), pedido do Leo
+(`PLANO_VALIDADOR_PRODUTO.md`). Mora aqui, e não no ERP novo, porque o ERP é ambiente de testes
+e o `import_processos` e o kanban de importação existem só neste app. Detalhe, fórmula e score em
+`docs/2026-10-19-validador-base-china.md`.
+- **Código:** `validador.js` (arquivo próprio, carregado só nas páginas `val-*`; tudo pelo objeto
+  `ModuloValidador`, sem lista de export) + 4 pontos em `index.html` (grupo do menu, slot, páginas,
+  acesso). `compras.js` não foi tocado.
+- **Banco:** `sql/2026-10-19_validador_base_china.sql` (8 tabelas `val_*`/`china_*`, RLS, seed). Ensaiado
+  em produção com rollback e **aplicada em produção em 19/10/2026** após "pode aplicar" do Leo. Conferido
+  depois: 8 tabelas, RLS e 8 policies, 10 parâmetros, 3 famílias, viagem Canton, 0 candidatos; a chave
+  `anon` lê 0 linhas. Volta = bloco `drop table` no fim do arquivo (vale enquanto não houver dado real).
+- **Acesso:** módulo novo `validador` no Hub (quem é admin do módulo no Hub, `admin_modulos`, edita fatores e parâmetros). Quem só
+  tem `validador` vê apenas Novos Produtos. Falta o cartão no repo `bononi-hub`.
+- **Manual na fase 1:** fator de nacionalização por família, volume de mercado, nº de concorrentes,
+  FOB, preço-alvo. Câmbio: botão "Hoje" busca no AwesomeAPI, ou digita. Fatores do plano (1,81 / 1,80 /
+  1,52) **não têm lastro nos dados do repo**: `import_*` não guarda FOB por item nem NCM.
+- **Provado no staging (porta 5287, banco de teste):** migration aplicada pelo Leo no editor SQL
+  (o CLI daqui não alcança o staging por IPv6). Candidato validado NO-GO (margem 15,7%) e depois GO
+  (57,9%, vai a Triado), histórico com as duas linhas, mover na esteira, F5 mantém tela e dado,
+  importação de CSV (2 fornecedores e 3 produtos, repetir atualiza sem duplicar, empresa inexistente
+  vira aviso), "Validar" a partir da Base China (segunda vez abre o existente), Painel, Parâmetros
+  (gravar e restaurar), celular 375 px sem rolagem lateral. Motor e CSV também em Node.
+  **Não provado:** acesso de quem tem só `validador` (sem usuário assim no teste); nada disso em produção.
+- **Taxa e imposto de partida** (22% e 18%, do Precifica Marketplace) somam 40% de custo sobre a
+  venda: a meta de 40% de margem do plano só fecha com FOB bem baixo. O exemplo do plano (18% e 10%)
+  não bate com esses dados. Decisão do Leo: manter, ou ajustar meta/taxas na tela Parâmetros.
+- **Pendências:** publicar Compras e Hub (um push por repo; o front ainda não está no ar); cartão do
+  Validador no Hub (feito no `index.html` do `bononi-hub`, sem commit); dar `validador` ao Jonathan e
+  ao Leo; fase 2 (API do Mercado Livre, NCM), fase 3 (card GO cria `import_processos`).
 
 ## 09/10/2026 — Duplicar processo de importação
 
