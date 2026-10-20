@@ -308,7 +308,7 @@ const PAGINAS_HTML = {
           <div id="dr-pedido-aberto-info" style="flex:1;min-width:280px;display:none"></div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
-          <div class="card" style="padding:16px 18px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:26px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color:var(--blue-mid);background:var(--blue-pale);border-radius:var(--radius-sm);padding:3px 7px"></div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:26px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color: var(--text-action);background:var(--blue-pale);border-radius:var(--radius-sm);padding:3px 7px"></div></div>
           <div class="card" style="padding:16px 18px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:26px">—</div><div class="card-sub">reposição sugerida</div></div>
           <div class="card" style="padding:16px 18px"><div class="card-label">Lead Time</div><div class="card-value" id="dr-lead-time" style="font-size:26px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
         </div>
@@ -401,7 +401,7 @@ const PAGINAS_HTML = {
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Produto trocado por outro (saiu um, voltou outro)."><input type="checkbox" class="mv-col-check" value="TROCA_E,TROCA_S" checked onchange="renderMovEstoque()"> Troca</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Peça usada em Ordem de Serviço (baixa de estoque na O.S.)."><input type="checkbox" class="mv-col-check" value="OS_S" checked onchange="renderMovEstoque()"> O.S.</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Saída por venda ao cliente (loja, atacado, e-commerce, distribuidor)."><input type="checkbox" class="mv-col-check" value="VENDA_S" checked onchange="renderMovEstoque()"> Venda</label>
-      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color:var(--blue-mid);font-weight:600" title="Transferência entre unidades/empresas do grupo — a mesma mercadoria saindo de uma empresa (TRANSF. VEND INTERGR / TRANSFERÊNCIA FILIAL) e entrando na outra (fornecedor = empresa do grupo). Aparece dos dois lados: entrada e saída."><input type="checkbox" class="mv-col-check" value="TRANSFERENCIA_E,TRANSFERENCIA_S" checked onchange="renderMovEstoque()"> <i class="ic ic-sm" data-ic="arrow-left-right"></i> Transf. unidade</label>
+      <label style="display:flex;align-items:center;gap:4px;cursor:pointer;color: var(--text-action);font-weight:600" title="Transferência entre unidades/empresas do grupo — a mesma mercadoria saindo de uma empresa (TRANSF. VEND INTERGR / TRANSFERÊNCIA FILIAL) e entrando na outra (fornecedor = empresa do grupo). Aparece dos dois lados: entrada e saída."><input type="checkbox" class="mv-col-check" value="TRANSFERENCIA_E,TRANSFERENCIA_S" checked onchange="renderMovEstoque()"> <i class="ic ic-sm" data-ic="arrow-left-right"></i> Transf. unidade</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Requisição interna de material (não é venda nem O.S.)."><input type="checkbox" class="mv-col-check" value="REQUISICAO_S" checked onchange="renderMovEstoque()"> Requis.</label>
       <label style="display:flex;align-items:center;gap:4px;cursor:pointer" title="Consumo interno do produto."><input type="checkbox" class="mv-col-check" value="CONSUMO_S" checked onchange="renderMovEstoque()"> Cons.</label>
       <span style="font-size:11px;color:var(--text-muted)" title="Cancelamento de uma saída anterior. Ainda não existe fonte de dado mapeada pra essa categoria — fica sempre zerada até a TI validar de onde vem no ERP."><i class="ic ic-sm" data-ic="triangle-alert"></i> Estorno: sem dado ainda</span>
@@ -651,6 +651,25 @@ function cssVar(nome) {
   _corCache[nome] = v || '#6b7382';   // cinza neutro se o token sumir
   return _corCache[nome];
 }
+
+// Tema escuro: Chart.js nao le var() e fixa a cor na criacao do grafico. Ao trocar de tema,
+// limpa o cache do cssVar, acerta texto/grade padrao e redesenha os 3 graficos.
+function _chartDefaultsTema() {
+  if (typeof Chart === 'undefined') return;
+  const escuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  Chart.defaults.color = escuro ? '#98a0ae' : '#6b7382';
+  Chart.defaults.borderColor = escuro ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)';
+}
+_chartDefaultsTema();
+document.addEventListener('tema-mudou', () => {
+  Object.keys(_corCache).forEach(k => delete _corCache[k]);
+  _chartDefaultsTema();
+  try {
+    if (chartFornTop10) renderFornecedores();
+    if (chartABC || chartSituacao) loadTotais();
+  } catch (e) { console.error(e); }
+});
+
 
 // ═══════════════════════════════════════════════════════════
 // CONSTANTES — IDs das empresas do grupo (excluir como fornecedores)
@@ -948,7 +967,7 @@ function onFornBuscaInput(valor) {
       style="padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:8px;${sel?'background:var(--blue-pale)':''}"
       onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='${sel?'var(--blue-pale)':''}'">
       <span style="font-size:14px">${sel?'<i class="ic ic-sm" data-ic="square-check"></i>':'<i class="ic ic-sm" data-ic="square"></i>'}</span>
-      <span style="font-family:var(--font-mono);color:var(--blue-mid);font-size:11px;min-width:48px;text-align:right;font-weight:600">${id}</span>
+      <span style="font-family:var(--font-mono);color: var(--text-action);font-size:11px;min-width:48px;text-align:right;font-weight:600">${id}</span>
       <span>${nome}</span>
     </div>`;
   }).join('');
@@ -972,10 +991,10 @@ function renderFornChips() {
   if (!el) return;
   if (!fornSelecionados.size) { el.innerHTML = ''; return; }
   el.innerHTML = [...fornSelecionados.entries()].map(([id, nome]) =>
-    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:var(--radius-pill);padding:2px 8px 2px 10px;font-size:11px;font-weight:600;color:var(--blue-dark)" title="${id} · ${nome}">
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:var(--blue-pale);border:1px solid var(--blue-mid);border-radius:var(--radius-pill);padding:2px 8px 2px 10px;font-size:11px;font-weight:600;color: var(--text-action)" title="${id} · ${nome}">
       <span style="font-family:var(--font-mono)">${id}</span> ${nome.length > 18 ? nome.slice(0,18)+'...' : nome}
       <button onclick="toggleFornSelecionado(${id},'${nome.replace(/'/g,"\\'")}')"
-        style="background:none;border:none;cursor:pointer;color:var(--blue-mid);font-size:13px;padding:0;line-height:1">×</button>
+        style="background:none;border:none;cursor:pointer;color: var(--text-action);font-size:13px;padding:0;line-height:1">×</button>
     </span>`
   ).join('') + `<button onclick="limparFornSelecionados()" style="font-size:11px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:2px 4px">limpar</button>`;
 }
@@ -1192,7 +1211,7 @@ function renderAlertas() {
       <td style="font-weight:500;max-width:340px;min-width:220px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px;font-size:11px;color:var(--text-muted)"><span>${r.referencia || ''}</span>${r.curva_abc_valor ? badgeABC(r.curva_abc_valor) : ''}${demandaReprimida(r) ?'<span title="Demanda reprimida: zerado mas teve saída no último ano — a média recente pode estar subestimada pela falta de estoque. Avalie repor com folga." style="flex-shrink:0;font-size:12px;cursor:help"><i class="ic ic-sm" data-ic="circle-alert"></i> </span>' : ''}</div></td>
       <td class="right mono" style="color:${(r.estoque_total || 0) < 0 ? 'var(--orange)' : ''}">${(r.estoque_total || 0) < 0 ? `0 <span title="Estoque negativo no sistema (${fmtQtd(r.estoque_total, 0)}) — erro de contagem herdado da migração. Tratado como 0 para compras." style="color:var(--orange);font-weight:700;cursor:help">!</span>` : fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono" style="color:${cobColor};font-weight:600">${cobTxt}</td>
-      <td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(sug, 0)}</td>
+      <td class="right mono" style="font-weight:600;color: var(--text-action)">${fmtQtd(sug, 0)}</td>
       <td class="right mono" style="color:var(--text-muted)">${fmtQtd(r.pedido_aberto_total, 0)}</td>
       <td>${(itemCoberto(r) && (r.situacao_estoque === 'RUPTURA' || r.situacao_estoque === 'CRITICO')) ? '<span class="badge badge-blue" title="Sem ação: reposição já pedida e a caminho"><i class="ic ic-sm" data-ic="truck"></i> a caminho</span>' : badgeSituacao(r.situacao_estoque)}</td>
       <td onclick="event.stopPropagation()">
@@ -1207,7 +1226,7 @@ function renderAlertas() {
         const marc = fornPrincipalMap[r.id_produto];
         const lista = [...fornExterno];
         if (marc) lista.sort((a, b) => (b.id_fornecedor === marc.id_fornecedor ? 1 : 0) - (a.id_fornecedor === marc.id_fornecedor ? 1 : 0));
-        return lista.map(f => { const p = marc && marc.id_fornecedor === f.id_fornecedor; return `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap${p ? ';font-weight:700' : ''}" title="${f.id_fornecedor} · ${f.nome_fornecedor}${p ? ' (principal)' : ''}">${p ? '<i class="ic ic-sm" data-ic="star"></i> ' : ''}<span style="font-family:var(--font-mono);color:var(--blue-mid);font-size:10px">${f.id_fornecedor}</span> ${f.nome_fornecedor}</div>`; }).join('') || '—';
+        return lista.map(f => { const p = marc && marc.id_fornecedor === f.id_fornecedor; return `<div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap${p ? ';font-weight:700' : ''}" title="${f.id_fornecedor} · ${f.nome_fornecedor}${p ? ' (principal)' : ''}">${p ? '<i class="ic ic-sm" data-ic="star"></i> ' : ''}<span style="font-family:var(--font-mono);color: var(--text-action);font-size:10px">${f.id_fornecedor}</span> ${f.nome_fornecedor}</div>`; }).join('') || '—';
       })()}</td>
     </tr>`;
   }).join('');
@@ -1336,7 +1355,7 @@ function renderComprarAgora() {
     <div class="table-card" style="margin-bottom:14px">
       <div class="table-card-header">
         <div class="table-card-title"><i class="ic ic-sm" data-ic="factory"></i> ${g.forn} <span class="badge badge-gray">${g.arr.length} ${g.arr.length === 1 ? 'item' : 'itens'}</span></div>
-        <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color:var(--blue-dark)">${window.fmtFull(g.valor)}</div>
+        <div style="font-size:13px;font-weight:700;font-family:var(--font-mono);color: var(--text-action)">${window.fmtFull(g.valor)}</div>
       </div>
       <div style="overflow-x:auto"><table class="data-table">
         <thead><tr><th>Produto</th><th>Situação</th><th class="right">Estoque</th><th class="right">Comprar</th><th class="right">Custo est.</th></tr></thead>
@@ -1344,7 +1363,7 @@ function renderComprarAgora() {
           <td style="font-weight:500;max-width:300px"><div style="display:flex;align-items:center;gap:6px"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.nome || ''}">${r.nome || '—'}</span>${itemEsporadico(r) ? '<span class="badge badge-gray" title="Baixo giro / venda esporádica">esporádico</span>' : ''}</div><div style="font-size:11px;color:var(--text-muted)">${r.referencia || ''}</div></td>
           <td>${badgeSituacao(r.situacao_estoque)}</td>
           <td class="right mono" style="color:${(Number(r.estoque_total) || 0) <= 0 ? 'var(--red)' : ''}">${fmtQtd(r.estoque_total, 0)}</td>
-          <td class="right mono" style="font-weight:700;color:var(--blue-mid)">${fmtQtd(qtdComprar(r), 0)}</td>
+          <td class="right mono" style="font-weight:700;color: var(--text-action)">${fmtQtd(qtdComprar(r), 0)}</td>
           <td class="right mono">${window.fmtFull(custoItem(r))}</td>
         </tr>`).join('')}</tbody>
       </table></div>
@@ -1432,7 +1451,7 @@ function renderEstoqueParado() {
       <td style="font-size:12px;color:var(--text-secondary);max-width:150px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.grupo || ''}">${r.grupo || '—'}</div></td>
       <td class="right mono">${fmtQtd(r.estoque_total, 0)}</td>
       <td class="right mono">${window.fmtFull(Number(r.preco_compra) || 0)}</td>
-      <td class="right mono" style="font-weight:700;color:var(--blue-dark)">${window.fmtFull(capital(r))}</td>
+      <td class="right mono" style="font-weight:700;color: var(--text-action)">${window.fmtFull(capital(r))}</td>
       <td style="font-size:12px;color:var(--text-secondary);max-width:150px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${forn}">${forn}</div></td>
     </tr>`;
   }).join('');
@@ -1519,7 +1538,7 @@ async function loadDrawerResumo(prod) {
     const best = comPreco[0] || forns[0];
     const cd = prod.consumo_diario_total || 0, est = Math.max(0, prod.estoque_total || 0), aberto = prod.pedido_aberto_total || 0;
     const sug = Math.max(0, Math.ceil(prod.qtd_sugerida || 0));
-    const explica = `Sugestão: consumo ${fmtQtd(cd, 2)}/dia × 45d − estoque ${fmtQtd(est, 0)} − a caminho ${fmtQtd(aberto, 0)} = <b style="color:var(--blue-mid)">${fmtQtd(sug, 0)}</b>`;
+    const explica = `Sugestão: consumo ${fmtQtd(cd, 2)}/dia × 45d − estoque ${fmtQtd(est, 0)} − a caminho ${fmtQtd(aberto, 0)} = <b style="color: var(--text-action)">${fmtQtd(sug, 0)}</b>`;
     const aviso = demandaReprimida(prod) ? `<div style="margin-bottom:10px;padding:8px 12px;background:var(--status-crit-bg);border:1px solid var(--bnn-red-300);border-radius:var(--radius-md);font-size:12px;color:var(--status-crit-text)"><i class="ic ic-sm" data-ic="circle-alert"></i> <b>Demanda reprimida:</b> ficou zerado com saída no último ano — a média recente subestima a real. Avalie repor com folga.</div>` : '';
     if (best) {
       blocoForn.innerHTML = aviso + `
@@ -1529,7 +1548,7 @@ async function loadDrawerResumo(prod) {
           <div style="font-size:11px;color:var(--text-muted)">Ref forn: ${best.referencia_fornecedor || '—'}${forns.length > 1 ? ` · +${forns.length - 1} opção(ões)` : ''}</div>
           <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-top:6px">
             <div style="font-size:11px;color:var(--text-muted)">últ. compra: <span id="dr-forn-ultcompra" style="font-weight:600;color:var(--text-secondary)">…</span></div>
-            <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color:var(--blue-dark)">${best.preco_fornecedor ? fmt(best.preco_fornecedor) : '—'}</div>
+            <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color: var(--text-action)">${best.preco_fornecedor ? fmt(best.preco_fornecedor) : '—'}</div>
           </div>
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border);font-size:11px;color:var(--text-muted)">${explica}</div>
         </div>`;
@@ -1625,7 +1644,7 @@ function renderGiroBloco(arr) {
       ${arr.map(m => `<th style="text-align:right;padding:4px 6px;font-weight:600">${m.label}</th>`).join('')}
     </tr></thead>
     <tbody>
-      <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color:var(--blue-dark)">Saídas</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}</tr>
+      <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color: var(--text-action)">Saídas</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}</tr>
       <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color:var(--green)">Compras</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>`).join('')}</tr>
     </tbody>
   </table>`;
@@ -1737,7 +1756,7 @@ async function loadDrawerGiro(idProduto) {
     });
     const anosSaz = Object.keys(porAno).map(Number).sort();
     const maxSaz = Math.max(1, ...anosSaz.flatMap(y => porAno[y]));
-    const paletaSaz = [cssVar('--bnn-gray-400'), cssVar('--bnn-blue-500'), cssVar('--bnn-green-500'), cssVar('--bnn-amber-500'), cssVar('--bnn-ink-900')];
+    const paletaSaz = [cssVar('--bnn-gray-400'), cssVar('--bnn-blue-500'), cssVar('--bnn-green-500'), cssVar('--bnn-amber-500'), cssVar('--text-action')];
     const corAno = {}; anosSaz.forEach((y, i) => corAno[y] = paletaSaz[i % paletaSaz.length]);
     const chartSazonalHTML = anosSaz.length ? `
       <div class="chart-card" style="margin-top:12px">
@@ -1783,7 +1802,7 @@ async function loadDrawerGiro(idProduto) {
       </div>
 
       <div class="chart-card">
-        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span><span style="font-size:11px;color:var(--text-muted)">Σ Saídas <b style="color:var(--blue-dark)">${fmtQtd(totalVendido12m,0)}</b> · Compras <b style="color:var(--green)">${fmtQtd(totalComprado,0)}</b></span></div>
+        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span><span style="font-size:11px;color:var(--text-muted)">Σ Saídas <b style="color: var(--text-action)">${fmtQtd(totalVendido12m,0)}</b> · Compras <b style="color:var(--green)">${fmtQtd(totalComprado,0)}</b></span></div>
         <div>
           ${renderGiroBloco(meses.slice(0, 6))}
           ${renderGiroBloco(meses.slice(6))}
@@ -1898,9 +1917,9 @@ async function loadDrawerFornecedores(idProduto) {
             </div>
             <div style="text-align:right">
               <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px">Compras 12m</div>
-              <div style="font-weight:700;font-size:14px;color:var(--blue-mid)">${hm.qtd_12m}</div>
+              <div style="font-weight:700;font-size:14px;color: var(--text-action)">${hm.qtd_12m}</div>
             </div>
-            <span class="chev" style="color:var(--blue-mid);font-size:14px" id="forn-chev-${fornId}"><i class="ic ic-sm" data-ic="chevron-right"></i></span>
+            <span class="chev" style="color: var(--text-action);font-size:14px" id="forn-chev-${fornId}"><i class="ic ic-sm" data-ic="chevron-right"></i></span>
           </div>
         </div>
 
@@ -1911,7 +1930,7 @@ async function loadDrawerFornecedores(idProduto) {
             <div style="display:flex;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:4px 10px">
               <span style="font-size:11px;color:var(--text-muted)">${fmtData(c.data_compra)}</span>
               <span style="font-size:12px;font-weight:600;font-family:var(--font-mono)">${fmtQtd(c.qtd,0)} un</span>
-              ${c.vl_unit > 0 ? `<span style="font-size:11px;color:var(--blue-mid)">@ ${fmt(c.vl_unit)}</span>` : ''}
+              ${c.vl_unit > 0 ? `<span style="font-size:11px;color: var(--text-action)">@ ${fmt(c.vl_unit)}</span>` : ''}
               ${c.num_nf ? `<span style="font-size:10px;color:var(--text-muted)">NF${c.num_nf}</span>` : ''}
             </div>`).join('')}
         </div>` : ''}
@@ -2269,7 +2288,7 @@ function renderCarrinho() {
   const tbody = document.getElementById('cart-items-body'); if (!tbody) return;
   if (!cartItems.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Nenhum item</td></tr>'; return; }
   tbody.innerHTML = cartItems.map((c, i) => `<tr>
-    <td style="font-weight:500;font-size:13px">${c.nome_produto || '—'}${c.manual ? ' <span style="font-size:10px;font-weight:600;color:var(--blue-mid);border:1px solid var(--blue-mid);border-radius:var(--radius-sm);padding:0 4px;vertical-align:middle"><i class="ic ic-sm" data-ic="pen-line"></i> manual</span>' : ''}<br><span style="font-size:11px;color:var(--text-muted)">${c.referencia || ''}</span></td>
+    <td style="font-weight:500;font-size:13px">${c.nome_produto || '—'}${c.manual ? ' <span style="font-size:10px;font-weight:600;color: var(--text-action);border:1px solid var(--blue-mid);border-radius:var(--radius-sm);padding:0 4px;vertical-align:middle"><i class="ic ic-sm" data-ic="pen-line"></i> manual</span>' : ''}<br><span style="font-size:11px;color:var(--text-muted)">${c.referencia || ''}</span></td>
     <td style="font-size:12px;color:var(--text-secondary)">${c.nome_fornecedor || '—'}</td>
     <td class="right mono" style="color:var(--text-muted)">${c.manual ? '—' : fmtQtd(c.qtd_sugerida, 0)}</td>
     <td class="right"><input type="number" value="${c.qtd_pedido}" min="0" style="width:70px;height:28px;text-align:right;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;padding:0 6px" onchange="atualizarQtdCart(${i}, this.value)" /></td>
@@ -2591,7 +2610,7 @@ async function loadTotais() {
     rows.forEach(r => { const s = r.situacao_estoque || 'SEM_GIRO'; sitCount[s] = (sitCount[s] || 0) + 1; });
     const sitLabels = ['RUPTURA', 'CRITICO', 'BAIXO', 'OK', 'ESTOQUE_MORTO', 'SEM_GIRO'];
     const sitColors = [cssVar('--bnn-red-700'), cssVar('--bnn-red-500'), cssVar('--bnn-amber-500'),
-                       cssVar('--bnn-green-500'), cssVar('--bnn-ink-900'), cssVar('--bnn-gray-500')];
+                       cssVar('--bnn-green-500'), cssVar('--text-action'), cssVar('--bnn-gray-500')];
     const sitNames = ['Ruptura', 'Crítico', 'Baixo', 'OK', 'Estoque Morto', 'Sem Giro'];
     if (chartSituacao) chartSituacao.destroy();
     chartSituacao = new Chart(document.getElementById('chart-situacao').getContext('2d'), {
@@ -2613,7 +2632,7 @@ function renderTotGrupos(grupoMap) {
     const expandido = gruposExpandidos.has(grupo);
     const temSubs = Object.keys(v.subgrupos).length > 1;
     rows.push(`<tr style="cursor:${temSubs ? 'pointer' : 'default'}" onclick="${temSubs ? "toggleGrupo('" + grupo.replace(/'/g, "\\'") + "')" : ''}">
-      <td style="font-weight:600">${temSubs ? `<span class="chev${expandido ? ' open' : ''}" style="color:var(--blue-mid);margin-right:6px"><i class="ic ic-sm" data-ic="chevron-right"></i></span>` : '<span style="margin-right:18px"></span>'}${grupo}</td>
+      <td style="font-weight:600">${temSubs ? `<span class="chev${expandido ? ' open' : ''}" style="color: var(--text-action);margin-right:6px"><i class="ic ic-sm" data-ic="chevron-right"></i></span>` : '<span style="margin-right:18px"></span>'}${grupo}</td>
       <td class="right mono">${fmtQtd(v.skus.size)}</td>
       <td class="right mono">${fmt(v.valor)}</td>
       <td class="right mono" style="color:${v.rupturas > 0 ? 'var(--red)' : 'var(--text-muted)'}">${v.rupturas > 0 ? v.rupturas : '—'}</td>
@@ -2694,7 +2713,7 @@ function renderFornecedores() {
   if (!ctx) return;
   chartFornTop10 = new Chart(ctx.getContext('2d'), {
     type: 'bar',
-    data: { labels: top10.map(r => (r.nome_fornecedor || '').slice(0, 20)), datasets: [{ label: 'Volume R$', data: top10.map(r => r.valor_total_comprado || 0), backgroundColor: cssVar('--action-primary'), borderRadius: 4 }] },
+    data: { labels: top10.map(r => (r.nome_fornecedor || '').slice(0, 20)), datasets: [{ label: 'Volume R$', data: top10.map(r => r.valor_total_comprado || 0), backgroundColor: cssVar('--text-action'), borderRadius: 4 }] },
     options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { color: 'var(--border-subtle)' }, ticks: { font: { size: 10 }, callback: v => `R$${(v/1000).toFixed(0)}K` } }, y: { grid: { display: false }, ticks: { font: { size: 11 } } } } }
   });
 }
@@ -3147,7 +3166,7 @@ function loadFornTabResumo(f) {
     ${(rupturas + criticos + baixos) > 0 ? `
     <div style="font-size:13px;font-weight:600;margin-bottom:10px">Produtos que precisam de reposição</div>
     <div class="table-card"><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Produto</th><th>Ref.</th><th>Situação</th><th class="right">Estoque</th><th class="right">Cobertura</th><th class="right">Sugerido</th></tr></thead><tbody>
-    ${prodsForn.filter(p => ['RUPTURA','CRITICO','BAIXO'].includes(p.situacao_estoque)).sort((a,b) => ({RUPTURA:1,CRITICO:2,BAIXO:3}[a.situacao_estoque]||9) - ({RUPTURA:1,CRITICO:2,BAIXO:3}[b.situacao_estoque]||9)).map(p => `<tr><td style="font-size:12px;font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nome}</td><td class="mono" style="color:var(--text-muted)">${p.referencia||'—'}</td><td>${badgeSituacao(p.situacao_estoque)}</td><td class="right mono" style="color:${p.estoque_total<0?'var(--orange)':''}">${fmtQtd(p.estoque_total,0)}</td><td class="right mono" style="color:var(--red)">${p.cobertura_dias?Math.round(p.cobertura_dias)+'d':'—'}</td><td class="right mono" style="font-weight:600;color:var(--blue-mid)">${fmtQtd(p.qtd_sugerida,0)}</td></tr>`).join('')}
+    ${prodsForn.filter(p => ['RUPTURA','CRITICO','BAIXO'].includes(p.situacao_estoque)).sort((a,b) => ({RUPTURA:1,CRITICO:2,BAIXO:3}[a.situacao_estoque]||9) - ({RUPTURA:1,CRITICO:2,BAIXO:3}[b.situacao_estoque]||9)).map(p => `<tr><td style="font-size:12px;font-weight:500;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.nome}</td><td class="mono" style="color:var(--text-muted)">${p.referencia||'—'}</td><td>${badgeSituacao(p.situacao_estoque)}</td><td class="right mono" style="color:${p.estoque_total<0?'var(--orange)':''}">${fmtQtd(p.estoque_total,0)}</td><td class="right mono" style="color:var(--red)">${p.cobertura_dias?Math.round(p.cobertura_dias)+'d':'—'}</td><td class="right mono" style="font-weight:600;color: var(--text-action)">${fmtQtd(p.qtd_sugerida,0)}</td></tr>`).join('')}
     </tbody></table></div></div>` : '<div style="text-align:center;padding:20px;color:var(--green);font-size:13px"><i class="ic ic-sm" data-ic="circle-check"></i> Nenhum produto em alerta para este fornecedor</div>'}`;
 }
 
@@ -3859,7 +3878,7 @@ function renderImpProdutos() {
       <td style="font-size:12px;font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.nome_produto || '—'}</td>
       <td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor || '—'}</td>
       <td class="right mono" style="font-weight:600">${fmtQtd(r.qtd_solicitada, 0)}</td>
-      <td style="font-size:12px;font-weight:600;color:var(--blue-mid)">${r.processo_codigo || '—'}</td>
+      <td style="font-size:12px;font-weight:600;color: var(--text-action)">${r.processo_codigo || '—'}</td>
       <td style="font-size:12px;color:var(--text-muted)">${r.importadora || '—'}</td>
       <td class="right mono" style="color:var(--text-muted)">${r.data_prev_chegada ? fmtData(r.data_prev_chegada) : '—'}</td>
       <td><span class="badge" style="color:${st.color};background:${st.bg};font-size:11px">${st.label}</span></td>
@@ -4065,8 +4084,8 @@ async function loadImpTabInfo(p) {
           .in('id_pedido', numPedidos).limit(1);
         if (pedForn?.length) fornPedido = { nome: pedForn[0].nome_fornecedor||'—', id: pedForn[0].id_fornecedor||'—' };
       }
-      if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:12px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color:var(--blue-mid)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
-      pedidosHtml = pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color:var(--blue-mid);font-family:var(--font-mono)">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px"><i class="ic ic-sm" data-ic="x"></i> </button></div>`).join('');
+      if (prods?.length) produtosHtml = `<div class="table-card" style="margin-top:12px"><div class="table-card-header"><span class="table-card-title">Produtos dos Pedidos</span></div><div style="overflow-x:auto;max-height:260px;overflow-y:auto"><table class="data-table"><thead><tr><th>Pedido</th><th>Ref.</th><th>Produto</th><th class="right">Qtd</th><th>Fornecedor</th></tr></thead><tbody>${prods.map(r=>`<tr><td class="mono" style="color: var(--text-action)">#${r.id_pedido}</td><td class="mono" style="color:var(--text-muted)">${r.referencia||'—'}</td><td style="font-size:12px">${r.nome_produto||'—'}</td><td class="right mono">${fmtQtd(r.qtd_solicitada,0)}</td><td style="font-size:12px;color:var(--text-secondary)">${r.nome_fornecedor||'—'}</td></tr>`).join('')}</tbody></table></div></div>`;
+      pedidosHtml = pedidos.map(ped=>`<div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;color: var(--text-action);font-family:var(--font-mono)">#${ped.numero_pedido}</span><div style="font-size:12px;color:var(--text-muted)">${ped.observacao||''}</div><button onclick="removerPedidoProcesso('${ped.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px"><i class="ic ic-sm" data-ic="x"></i> </button></div>`).join('');
     } else {
       pedidosHtml = '<div style="text-align:center;padding:16px;color:var(--text-muted)">Nenhum pedido vinculado</div>';
     }
@@ -4086,7 +4105,7 @@ async function loadImpTabInfo(p) {
       <div class="card"><div class="card-label">Embarque</div><div class="card-value" style="font-size:18px">${p.data_embarque?fmtData(p.data_embarque):'—'}</div></div>
       <div class="card"><div class="card-label">Previsão Chegada</div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
-          <span id="ddt-${p.id}" onclick="this.style.display='none';document.getElementById('ddi-${p.id}').style.display='block'" style="font-size:18px;font-weight:700;font-family:var(--font-mono);color:var(--blue-mid);cursor:pointer;text-decoration:underline dotted" title="Clique para alterar">${p.data_prev_chegada?fmtData(p.data_prev_chegada):'—'}</span>
+          <span id="ddt-${p.id}" onclick="this.style.display='none';document.getElementById('ddi-${p.id}').style.display='block'" style="font-size:18px;font-weight:700;font-family:var(--font-mono);color: var(--text-action);cursor:pointer;text-decoration:underline dotted" title="Clique para alterar">${p.data_prev_chegada?fmtData(p.data_prev_chegada):'—'}</span>
           <input id="ddi-${p.id}" type="date" style="display:none;height:32px;font-size:14px;border:1px solid var(--border);border-radius:var(--radius-md);padding:0 8px;background:var(--surface);color:var(--text-primary);width:160px" value="${p.data_prev_chegada?p.data_prev_chegada.slice(0,10):''}" onblur="salvarPrevChegada('${p.id}',this.value,document.getElementById('ddt-${p.id}'),this)" onkeydown="if(event.key==='Enter')this.blur();if(event.key==='Escape'){this.style.display='none';document.getElementById('ddt-${p.id}').style.display=''}" />
           <span style="font-size:10px;color:var(--text-muted);opacity:0.7"><i class="ic ic-sm" data-ic="square-pen"></i> </span>
         </div>
@@ -4225,7 +4244,7 @@ async function loadImpTabPagamentos(p) {
               <td class="right mono" style="color:var(--text-muted)">${pg.valor_usd?'US$ '+fmtQtd(pg.valor_usd,2):'—'}</td>
               <td class="right mono" style="color:var(--text-muted);font-size:11px">${pg.valor_brl&&pg.valor_usd?'R$ '+fmtQtd(Math.abs(parseFloat(pg.valor_brl))/Math.abs(parseFloat(pg.valor_usd)),4):'—'}</td>
               <td><span class="badge ${pg.status==='PAGO'?'badge-ok':'badge-baixo'}">${pg.status==='PAGO'?'Pago':'A Pagar'}</span></td>
-              <td style="display:flex;gap:6px;align-items:center"><button onclick="editarPagamento('${pg.id}')" style="background:none;border:none;color:var(--blue-mid);cursor:pointer;font-size:13px" title="Editar"><i class="ic ic-sm" data-ic="square-pen"></i></button><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Remover"><i class="ic ic-sm" data-ic="x"></i></button></td>
+              <td style="display:flex;gap:6px;align-items:center"><button onclick="editarPagamento('${pg.id}')" style="background:none;border:none;color: var(--text-action);cursor:pointer;font-size:13px" title="Editar"><i class="ic ic-sm" data-ic="square-pen"></i></button><button onclick="removerPagamento('${pg.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px" title="Remover"><i class="ic ic-sm" data-ic="x"></i></button></td>
             </tr>${obs ? `<tr class="linha-obs"><td colspan="7"><i class="ic ic-sm" data-ic="message-square"></i> ${escHtml(obs)}</td></tr>` : ''}`; }).join('')}</tbody>
           </table></div></div>`}
 
@@ -4248,11 +4267,11 @@ async function loadImpTabPagamentos(p) {
         <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
           <div style="background:var(--surface2);border-radius:var(--radius-md);padding:12px;text-align:center">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Total Real BRL</div>
-            <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color:var(--blue-dark)">${fmt(totalReal)}</div>
+            <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color: var(--text-action)">${fmt(totalReal)}</div>
           </div>
           <div style="background:var(--surface2);border-radius:var(--radius-md);padding:12px;text-align:center">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Total USD</div>
-            <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color:var(--blue-mid)">${totalUsd>0?'US$ '+fmtQtd(totalUsd,2):'—'}</div>
+            <div style="font-size:16px;font-weight:700;font-family:var(--font-mono);color: var(--text-action)">${totalUsd>0?'US$ '+fmtQtd(totalUsd,2):'—'}</div>
           </div>
           <div style="background:var(--surface2);border-radius:var(--radius-md);padding:12px;text-align:center">
             <div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Coeficiente R$/US$</div>
@@ -4609,7 +4628,7 @@ async function buscarPedidoERP(valor, processoId) {
         } else {
           if (status) status.innerHTML = `<span style="color:var(--orange)"><i class="ic ic-sm" data-ic="triangle-alert"></i> ${pedidosLista.length} pedidos encontrados</span>`;
           selecao.style.display = 'block';
-          selecao.innerHTML = pedidosLista.map(ped => `<div onclick="selecionarEmpresaPedido('${ped.numero}','${ped.empresa}',${JSON.stringify(ped.prods).replace(/'/g,"\\'")})" style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:6px;cursor:pointer;background:var(--surface2)" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='var(--surface2)'"><div style="font-weight:600">#${ped.numero} — ${ped.empresa}</div><div style="font-size:12px;color:var(--blue-mid);font-weight:500">${ped.fornecedor}</div><div style="font-size:11px;color:var(--text-muted)">${ped.prods.length} produto${ped.prods.length>1?'s':''}</div></div>`).join('');
+          selecao.innerHTML = pedidosLista.map(ped => `<div onclick="selecionarEmpresaPedido('${ped.numero}','${ped.empresa}',${JSON.stringify(ped.prods).replace(/'/g,"\\'")})" style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:6px;cursor:pointer;background:var(--surface2)" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='var(--surface2)'"><div style="font-weight:600">#${ped.numero} — ${ped.empresa}</div><div style="font-size:12px;color: var(--text-action);font-weight:500">${ped.fornecedor}</div><div style="font-size:11px;color:var(--text-muted)">${ped.prods.length} produto${ped.prods.length>1?'s':''}</div></div>`).join('');
           if (preview) preview.innerHTML = '';
         }
         return;
@@ -4626,7 +4645,7 @@ async function buscarPedidoERP(valor, processoId) {
       } else {
         if (status) status.innerHTML = `<span style="color:var(--orange)"><i class="ic ic-sm" data-ic="triangle-alert"></i> Pedido #${valor} em ${empresasList.length} empresas — selecione:</span>`;
         selecao.style.display = 'block';
-        selecao.innerHTML = empresasList.map(e => `<div onclick="selecionarEmpresaPedido('${valor}','${e.empresa}',${JSON.stringify(e.prods).replace(/'/g,"\\'")})" style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:6px;cursor:pointer;background:var(--surface2)" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='var(--surface2)'"><div style="font-weight:600">${e.empresa}</div><div style="font-size:12px;color:var(--blue-mid);font-weight:500">${e.fornecedor}</div><div style="font-size:11px;color:var(--text-muted)">${e.prods.length} produto${e.prods.length>1?'s':''} · ${e.prods[0]?.status_pedido||'—'}</div></div>`).join('');
+        selecao.innerHTML = empresasList.map(e => `<div onclick="selecionarEmpresaPedido('${valor}','${e.empresa}',${JSON.stringify(e.prods).replace(/'/g,"\\'")})" style="padding:10px 14px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:6px;cursor:pointer;background:var(--surface2)" onmouseover="this.style.background='var(--blue-pale)'" onmouseout="this.style.background='var(--surface2)'"><div style="font-weight:600">${e.empresa}</div><div style="font-size:12px;color: var(--text-action);font-weight:500">${e.fornecedor}</div><div style="font-size:11px;color:var(--text-muted)">${e.prods.length} produto${e.prods.length>1?'s':''} · ${e.prods[0]?.status_pedido||'—'}</div></div>`).join('');
         if (preview) preview.innerHTML = '';
       }
     } catch(e) { if (status) status.innerHTML = '<span style="color:var(--red)">Erro ao buscar</span>'; }
@@ -4830,7 +4849,7 @@ async function loadImpTabDocs(p) {
           <input type="file" id="doc-upload-input" style="display:none" multiple onchange="uploadDocumentos('${p.id}',this)" />
         </label>
       </div>
-      <div id="doc-upload-progress" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--blue-pale);border-radius:var(--radius-md);font-size:12px;color:var(--blue-dark)">Enviando...</div>
+      <div id="doc-upload-progress" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--blue-pale);border-radius:var(--radius-md);font-size:12px;color: var(--text-action)">Enviando...</div>
       ${!docs?.length
         ? '<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhum documento anexado</div>'
         : `<div style="display:flex;flex-direction:column;gap:8px">
@@ -5031,7 +5050,7 @@ async function abrirHistoricoSugestoes() {
     if (!data?.length) { body.innerHTML='<div style="text-align:center;padding:32px;color:var(--text-muted)">Nenhuma sugestão salva ainda</div>'; return; }
     const sBadge = s => { const m={SUGERIDO:['var(--status-info-bg)','var(--status-info-text)','Sugerido'],EM_ANALISE:['var(--yellow-bg)','var(--yellow)','Em Análise'],APROVADO:['var(--green-bg)','var(--green)','Aprovado'],REJEITADO:['var(--red-bg)','var(--red)','Rejeitado']}; const [bg,c,l]=m[s]||['var(--surface2)','var(--text-muted)',s]; return `<span class="badge" style="background:${bg};color:${c}">${l}</span>`; };
     body.innerHTML = `<table class="data-table" style="width:100%"><thead><tr><th>Nº</th><th>Fornecedor</th><th>Status</th><th class="right">Itens</th><th class="right">Valor Est.</th><th>Por</th><th>Data</th></tr></thead><tbody>
-    ${data.map(r=>`<tr><td class="mono" style="font-weight:600;color:var(--blue-mid)">${r.numero_sugestao||'—'}</td><td style="font-weight:500">${r.fornecedor_nome||'—'}</td><td>${sBadge(r.status)}</td><td class="right mono">${r.itens_calculado||r.total_itens||0}</td><td class="right mono">${r.valor_calculado?fmt(r.valor_calculado):'—'}</td><td style="font-size:12px;color:var(--text-muted)">${r.criado_por||'—'}</td><td class="mono" style="font-size:12px;color:var(--text-muted)">${r.criado_em?new Date(r.criado_em).toLocaleDateString('pt-BR'):'—'}</td></tr>`).join('')}
+    ${data.map(r=>`<tr><td class="mono" style="font-weight:600;color: var(--text-action)">${r.numero_sugestao||'—'}</td><td style="font-weight:500">${r.fornecedor_nome||'—'}</td><td>${sBadge(r.status)}</td><td class="right mono">${r.itens_calculado||r.total_itens||0}</td><td class="right mono">${r.valor_calculado?fmt(r.valor_calculado):'—'}</td><td style="font-size:12px;color:var(--text-muted)">${r.criado_por||'—'}</td><td class="mono" style="font-size:12px;color:var(--text-muted)">${r.criado_em?new Date(r.criado_em).toLocaleDateString('pt-BR'):'—'}</td></tr>`).join('')}
     </tbody></table>`;
   } catch(e) { body.innerHTML='<div style="color:var(--red);padding:16px">Erro ao carregar</div>'; }
 }
@@ -5587,7 +5606,7 @@ async function loadCfgLogs() {
         ? rows.map(r => `<tr>
             <td class="mono" style="font-size:11px;white-space:nowrap">${new Date(r.criado_em).toLocaleString('pt-BR')}</td>
             <td style="font-size:12px;font-weight:600">${r.usuario||'—'}</td>
-            <td><span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:2px 6px;border-radius:var(--radius-sm)">${r.modulo||'—'}</span></td>
+            <td><span style="font-size:10px;background:var(--blue-pale);color: var(--text-action);padding:2px 6px;border-radius:var(--radius-sm)">${r.modulo||'—'}</span></td>
             <td><span style="font-size:10px;padding:2px 6px;border-radius:var(--radius-sm);font-weight:600;background:${r.acao==='DELETE'?'var(--status-crit-bg)':r.acao==='INSERT'?'var(--status-ok-bg)':'var(--status-warn-bg)'};color:${r.acao==='DELETE'?'var(--red)':r.acao==='INSERT'?'var(--green)':'var(--status-warn-text)'}">${r.acao||'—'}</span></td>
             <td style="font-size:12px">${r.descricao||'—'}</td>
             <td style="font-size:11px;color:var(--text-muted)">${r.entidade_id||''}</td>
@@ -5605,7 +5624,7 @@ async function loadCfgLogs() {
         ? rows.map(r => `<tr>
             <td class="mono" style="font-size:11px;white-space:nowrap">${new Date(r.criado_em).toLocaleString('pt-BR')}</td>
             <td style="font-size:12px">${r.usuario||'—'}</td>
-            <td><span style="font-size:10px;background:var(--blue-pale);color:var(--blue-mid);padding:2px 6px;border-radius:var(--radius-sm)">${r.modulo||'—'}</span></td>
+            <td><span style="font-size:10px;background:var(--blue-pale);color: var(--text-action);padding:2px 6px;border-radius:var(--radius-sm)">${r.modulo||'—'}</span></td>
             <td style="font-size:11px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.funcao||'—'}</td>
             <td style="font-size:12px;color:var(--red)">${r.mensagem||'—'}</td>
             <td><span style="font-size:10px;padding:2px 8px;border-radius:var(--radius-sm);font-weight:600;cursor:pointer;background:${r.resolvido?'var(--status-ok-bg)':'var(--status-crit-bg)'};color:${r.resolvido?'var(--green)':'var(--red)'}" onclick="cfgToggleResolvido(${r.id},${!!r.resolvido},this)">${r.resolvido?'<i class="ic ic-sm" data-ic="check"></i> Resolvido':'Aberto'}</span></td>
