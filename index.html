@@ -13,7 +13,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400..800;1,400..800&family=Barlow:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="ds/bononi-tema.js?v=20261020b"></script>
 <link rel="stylesheet" href="ds/bononi-ds.css?v=20260914a">
+<link rel="stylesheet" href="ds/bononi-dark.css?v=20261020a">
 
 <style>
 /* ══ RESET + TOKENS ══ */
@@ -205,8 +207,8 @@ html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); c
 .badge-critico { background: var(--bnn-red-50);    color: var(--bnn-red-500); }
 .badge-baixo   { background: var(--bnn-amber-50);  color: var(--bnn-amber-500); }
 .badge-ok      { background: var(--bnn-green-50);  color: var(--bnn-green-500); }
-.badge-morto   { background: var(--bnn-gray-100);  color: var(--bnn-ink-900); }
-.badge-sem_mov { background: transparent; color: var(--bnn-gray-500); box-shadow: var(--shadow-hairline); }
+.badge-morto   { background: var(--surface-sunken);  color: var(--text-strong); }
+.badge-sem_mov { background: transparent; color: var(--text-muted); box-shadow: var(--shadow-hairline); }
 .badge-ruptura::before, .badge-critico::before, .badge-baixo::before,
 .badge-ok::before, .badge-morto::before, .badge-sem_mov::before {
   content: ''; width: 6px; height: 6px; border-radius: var(--radius-pill);
@@ -261,8 +263,8 @@ html, body { height: 100%; font-family: var(--font-ui); background: var(--bg); c
 .semaforo-card.critico { color: var(--bnn-red-500); }
 .semaforo-card.baixo   { color: var(--bnn-amber-500); }
 .semaforo-card.ok      { color: var(--bnn-green-500); }
-.semaforo-card.morto   { color: var(--bnn-ink-900); }
-.semaforo-card.sem_mov { color: var(--bnn-gray-500); }
+.semaforo-card.morto   { color: var(--text-strong); }
+.semaforo-card.sem_mov { color: var(--text-muted); }
 .cart-panel { position: fixed; bottom: 0; left: var(--sidebar-w); right: 0; background: var(--surface); border-top: 2px solid var(--blue-mid); box-shadow: var(--shadow-overlay); transform: translateY(100%); transition: transform 0.25s ease; z-index: 90; }
 .cart-panel.open { transform: translateY(0); }
 .cart-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); }
@@ -557,6 +559,7 @@ input.search-input {
         </div>
       </div>
       <div class="sidebar-actions">
+        <span class="tema-slot" style="display:inline-flex"></span><script>BnnTema.botao(document.currentScript.previousElementSibling,{nav:true})</script>
         <button class="sidebar-action-btn danger" onclick="sair()" style="flex:1"><i class="ic ic-sm" data-ic="log-out"></i> Sair</button>
       </div>
     </div>
@@ -589,7 +592,7 @@ input.search-input {
 <!-- "Quem tem acesso aqui" (Configurações → Acessos). Cópia verbatim de
      bononi-hub/ds/geral-acesso.js — subir o ?v= junto ao trocar o arquivo. -->
 <script src="ds/geral-acesso.js?v=2"></script>
-<script src="ds/geral-central.js?v=19"></script>
+<script src="ds/geral-central.js?v=20"></script>
 <script>
 'use strict';
 
