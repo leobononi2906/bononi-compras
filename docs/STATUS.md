@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-20
+> Atualizado: 2026-10-27
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -259,6 +259,7 @@ Os arquivos já citados acima em contexto (`CONTEXTO-TECNICO.md`, `CHANGELOG.md`
 | `docs/PESQUISA-DEMANDA-E-REPOSICAO.md` (26/07) | estado da arte em demanda e reposição, com 17 afirmações confirmadas por verificação adversarial, e o que disso cabe aqui | antes de mexer na regra de sugestão de compra, ponto de pedido ou lead time. ⚠️ A síntese foi interrompida por limite de sessão; o que não fechou está sinalizado no próprio texto |
 
 ## Dev-log
+- 2026-10-27 — **Senha a cada 90 dias e sem repetir as últimas 5 (`geral-central.js` v21, `?v=` subido).** Cópia verbatim do `bononi-hub/ds/geral-central.js`: a troca forçada agora pergunta ao banco se a senha venceu (RPC `geral_senha_status`) e grava pela `geral_trocar_senha`, que recusa as últimas 5 senhas e menos de 8 caracteres (migrations 0069/0070 do `bononi-hub`, aplicadas em 27/10). Antes lia `user_metadata.senha_alterada_em`, que ninguém tinha — nunca bloqueou ninguém. Ninguém vence antes de 25/01/2027. Provado no navegador no Hub (mesmo arquivo, RPC simulada); detalhe no dev-log do Hub de 27/10.
 - 2026-10-20 — **Impressão sempre clara: o tema escuro vale só na tela.** Verificação de impressão (PDF real do Chrome, escuro × claro) mostrou que o bloco de impressão do kit devolvia ao claro só poucas variáveis: `--text-action`, `--text-accent`, as de status e as bordas saíam com o valor escuro, e Ctrl+P no modo escuro imprimia títulos e números em cinza-claro. O bloco escuro do CSS de tema (`ds/bononi-dark.css`) agora fica dentro de `@media screen`, sem lista de reset: no papel tudo é o claro. O cache-buster do CSS de tema subiu para `?v=20261020c`. Conferido com mídia de impressão emulada: nenhuma variável de texto ou borda difere entre escuro e claro, e a tela escura e a clara seguem como antes. PDF real nas 13 telas: idêntico nos dois temas (antes, as 13 saíam com títulos e números mais claros). Telas que exigem login não foram impressas em PDF (só o teste de variáveis, que vale para o app inteiro).
 - 2026-10-20 — **Tema escuro (claro / escuro / automático) no Compras (d4df0cb + correção de texto e gráficos no commit seguinte).** Pedido do dono: todas as aplicações com tema escuro, sem bugar. Botão de tema na barra lateral; o automático segue o aparelho, a escolha fica no navegador e é aplicada antes da página pintar. Paleta em `ds/bononi-dark.css`, tema em `ds/bononi-tema.js` (também troca o logotipo).
   - `--blue-dark` e `--blue-mid` valem a tinta do DS e serviam de fundo e de texto. Os 36 usos como texto viraram `--text-action` (tinta no claro, claro no escuro); sem isso o título da página e o número do primeiro cartão ficavam quase invisíveis.
