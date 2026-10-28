@@ -4977,7 +4977,7 @@ async function enviarChat() {
   const loadingMsg = adicionarMensagem('<i class="ic ic-sm" data-ic="sparkles"></i> Analisando dados...', 'loading');
   chatHistorico.push({ role: 'user', content: texto });
   try {
-    const response = await fetch('https://vishxwdxqiygbxmtpfoy.supabase.co/functions/v1/chat-compras', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pergunta: texto }) });
+    const response = await fetch('https://vishxwdxqiygbxmtpfoy.supabase.co/functions/v1/chat-compras', { method:'POST', headers: await cabecalhoFuncaoIA(), body: JSON.stringify({ pergunta: texto }) });
     const data = await response.json();
     const resposta = data?.resposta || data?.content?.[0]?.text || JSON.stringify(data).substring(0,500);
     loadingMsg?.remove();
@@ -5028,11 +5028,17 @@ function showToast(msg, tipo='success') {
   setTimeout(()=>{ t.style.display='none'; }, 4000);
 }
 
+// 28/10/2026: chat-compras e salvar-sugestao-compra-ia só aceitam quem entrou com o módulo compras.
+async function cabecalhoFuncaoIA() {
+  const { data } = await sb.auth.getSession();
+  return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + (data?.session?.access_token || '') };
+}
+
 async function salvarSugestaoCompraIA() {
   if (!ultimaRespostaIA) { showToast('Nenhuma resposta da IA para salvar.','error'); return; }
   try {
     const body = { fornecedor: fornecedorSugerido || 'Não identificado', pergunta: ultimaPergunta, resposta_ia: ultimaRespostaIA, usuario: 'Comprador', itens: itensSugeridosIA.map(i => ({ id_produto:i.id_produto, id_fornecedor:i.id_fornecedor, produto_nome:i.nome, referencia:i.referencia, fornecedor_nome:i.fornecedor, situacao_estoque:i.situacao, curva_abc:i.abc, estoque_atual:i.estoque, cobertura_dias:i.cobertura, qtd_sugerida_ia:i.qtd_sugerida, qtd_confirmada:i.qtd_sugerida, preco_unitario:i.preco_unitario, valor_total_estimado:(i.qtd_sugerida||0)*(i.preco_unitario||0) })) };
-    const r = await fetch('https://vishxwdxqiygbxmtpfoy.supabase.co/functions/v1/salvar-sugestao-compra-ia', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+    const r = await fetch('https://vishxwdxqiygbxmtpfoy.supabase.co/functions/v1/salvar-sugestao-compra-ia', { method:'POST', headers: await cabecalhoFuncaoIA(), body: JSON.stringify(body) });
     const data = await r.json();
     if (data.sucesso || data.numero_sugestao || data.id) { showToast(`Sugestão ${data.numero_sugestao||''} salva!`); const sb2 = document.getElementById('chat-save-bar'); if (sb2) sb2.style.display = 'none'; }
     else { showToast('Erro: '+(data.erro||JSON.stringify(data)),'error'); }
