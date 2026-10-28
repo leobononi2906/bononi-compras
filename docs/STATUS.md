@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-27
+> Atualizado: 2026-10-28
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,10 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 28/10/2026 — Chat de IA só com login (`63cdb86`)
+
+As Edge Functions `chat-compras` (pergunta à IA sobre compras) e `salvar-sugestao-compra-ia` estavam publicadas fora de repo e aceitavam qualquer chamador, sem login: qualquer um com a URL usava a IA (custo) e lia/gravava sugestões de compra. Agora estão versionadas em `supabase/functions/` e só aceitam quem entrou com o módulo `compras` (admin global, ou `compras` em `modulos`/`admin_modulos` do `app_metadata`). O `compras.js` manda o token da sessão (`cabecalhoFuncaoIA()`). Ordem: push do front primeiro, depois publicar as duas com `--no-verify-jwt`. Auditoria: `bononi-hub/docs/2026-10-27-edge-functions-fora-de-repo.md`.
 
 ## 19/10/2026 — Ruptura sem os esporádicos (card e selo), NÃO publicado
 
