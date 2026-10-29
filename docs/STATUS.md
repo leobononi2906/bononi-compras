@@ -15,6 +15,25 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 29/10/2026 — Prazo de entrega por grupo de produto (Configurações)
+
+Pedido do Leo: o prazo de entrega (lead time) passa a ser **por grupo de produto**, digitado em
+**Configurações → Prazo de entrega**. Grupo sem prazo = **15 dias**.
+- **Banco:** tabela nova `comp_prazo_grupo` (grupo, prazo_dias 1–365, quem/quando), RLS só
+  `authenticated` (`sql/2026-10-29_prazo_entrega_por_grupo.sql`, **aplicada em produção 29/10**, vazia).
+  Chave = nome do grupo (`comp_produtos_consolidado.grupo`), mesmo padrão do `comp_ignorados`: se o
+  ERP renomear o grupo, o prazo antigo aparece marcado "grupo não existe mais" e o grupo volta a 15.
+- **Onde vale:** filtro **Vai faltar** da tela Compras (o que não chega a tempo) e a Qtd Sugerida nesse
+  modo (`leadDe`). O semáforo (Crítico = cobertura < 15 dias) é da view no banco e **não mudou**.
+- **Saiu:** o prazo por fornecedor (`comp_produto_lead`: 100 dias China / 15 resto, automático e nunca
+  ajustado). A view continua no banco, sem uso no front. Efeito imediato: os ~280 produtos de
+  fornecedor importado (139 STONNI AR CONDICIONADO, 61 STONNI DIVERSOS, 47 STONNI GELADEIRAS, 15 RP AR
+  G2…) caem de 100 para 15 dias **até alguém preencher o prazo desses grupos**.
+- Toda alteração vai para o histórico (`comp_audit_log`, módulo configuracoes).
+- **Provado:** sintaxe, exports dos `onclick`, regra em Node (grupo com prazo, sem prazo, sem grupo),
+  gravação/atualização como `authenticated` e leitura `anon` = 0 (SQL com rollback). **Não provado na
+  tela com login.**
+
 ## 28/10/2026 — Chat de IA só com login (`63cdb86`)
 
 As Edge Functions `chat-compras` (pergunta à IA sobre compras) e `salvar-sugestao-compra-ia` estavam publicadas fora de repo e aceitavam qualquer chamador, sem login: qualquer um com a URL usava a IA (custo) e lia/gravava sugestões de compra. Agora estão versionadas em `supabase/functions/` e só aceitam quem entrou com o módulo `compras` (admin global, ou `compras` em `modulos`/`admin_modulos` do `app_metadata`). O `compras.js` manda o token da sessão (`cabecalhoFuncaoIA()`). Ordem: push do front primeiro, depois publicar as duas com `--no-verify-jwt`. Auditoria: `bononi-hub/docs/2026-10-27-edge-functions-fora-de-repo.md`.

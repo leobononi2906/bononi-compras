@@ -235,9 +235,9 @@ const PAGINAS_HTML = {
         <div id="forn-filtro-badges" style="display:none;position:absolute;top:36px;left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-md);width:280px;max-height:240px;overflow-y:auto"></div>
       </div>
       <div id="forn-selecionados-chips" style="display:flex;flex-wrap:wrap;gap:4px;align-items:center"></div>
-      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary);font-weight:600" title="Mostra só o que NÃO chega a tempo pelo prazo de entrega do fornecedor (China/importado ~100 dias, detectado do cadastro). Nesse modo a Qtd Sugerida usa o prazo real de cada fornecedor, não o horizonte fixo.">
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary);font-weight:600" title="Mostra só o que NÃO chega a tempo pelo prazo de entrega do grupo do produto (Configurações → Prazo de entrega; grupo sem prazo = 15 dias). Nesse modo a Qtd Sugerida cobre esse prazo, não o horizonte fixo.">
         <span class="switch"><input type="checkbox" id="chk-vai-faltar" onchange="onVaiFaltarToggle()"><span class="switch-slider"></span></span>
-        Vai faltar (prazo do fornecedor)
+        Vai faltar (prazo de entrega)
       </label>
       <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:12px;color:var(--text-secondary)" title="Produto marcado como fora de linha no ERP (descontinuado). Por padrão fica escondido — não faz sentido sugerir comprar de novo. Ligue pra ver também.">
         <span class="switch"><input type="checkbox" id="chk-fora-linha" onchange="onForaLinhaChange()"><span class="switch-slider"></span></span>
@@ -526,8 +526,8 @@ const PAGINAS_HTML = {
   'cmp-config': `<div class="page-content" id="page-cmp-config">
   <div class="content">
     <div style="margin-bottom:20px">
-      <div style="font-size:15px;font-weight:700">Produtos Ignorados nos Alertas</div>
-      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Grupos, subgrupos ou produtos que não aparecem na lista de alertas e reposição</div>
+      <div style="font-size:15px;font-weight:700">Configurações</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Produtos ignorados nos alertas, prazo de entrega por grupo, logs e acessos</div>
     </div>
 
     <!-- ABAS -->
@@ -535,6 +535,7 @@ const PAGINAS_HTML = {
       <button class="drawer-tab active" id="cfg-tab-ignorar" onclick="setCfgTab('ignorar',this)"><i class="ic ic-sm" data-ic="plus"></i> Ignorar Produtos</button>
       <button class="drawer-tab" id="cfg-tab-lista" onclick="setCfgTab('lista',this);renderCfgTabela()"><i class="ic ic-sm" data-ic="clipboard-list"></i> Ignorados</button>
       <button class="drawer-tab" id="cfg-tab-logs" onclick="setCfgTab('logs',this);loadCfgLogs()"><i class="ic ic-sm" data-ic="search"></i> Logs</button>
+      <button class="drawer-tab" id="cfg-tab-prazo" onclick="setCfgTab('prazo',this);loadPrazoGrupos()" title="Quantos dias o fornecedor leva para entregar, por grupo de produto. Usado no filtro Vai faltar."><i class="ic ic-sm" data-ic="truck"></i> Prazo de entrega</button>
       <button class="drawer-tab" id="cfg-tab-acessos" onclick="setCfgTab('acessos',this);carregarQuemTemAcesso()"><i class="ic ic-sm" data-ic="shield-check"></i> Acessos</button>
     </div>
 
@@ -606,6 +607,22 @@ const PAGINAS_HTML = {
             <tbody id="cfg-log-body"><tr class="loading-row"><td colspan="6">Selecione um tipo de log</td></tr></tbody>
           </table>
         </div>
+      </div>
+    </div>
+
+    <!-- ABA PRAZO DE ENTREGA — por grupo de produto (comp_prazo_grupo). Vazio = 15 dias. -->
+    <div id="cfg-panel-prazo" style="display:none">
+      <div style="font-size:12px;color:var(--text-secondary);margin-bottom:12px;line-height:1.5">
+        Quantos dias, em média, leva do pedido até a mercadoria chegar, para cada grupo de produto.
+        O filtro <b>Vai faltar</b> da tela Compras usa este prazo: avisa o que acaba antes de a compra chegar
+        e calcula a quantidade sugerida para cobrir esse prazo. <b>Grupo sem prazo usa 15 dias.</b>
+        A alteração grava sozinha ao sair do campo.
+      </div>
+      <div class="table-card">
+        <table class="data-table">
+          <thead><tr><th>Grupo</th><th class="right">Produtos</th><th class="right" style="width:170px">Prazo de entrega (dias)</th></tr></thead>
+          <tbody id="cfg-prazo-body"><tr class="loading-row"><td colspan="3">Carregando...</td></tr></tbody>
+        </table>
       </div>
     </div>
 
@@ -1153,7 +1170,7 @@ function sugeridaCalc(r) {
   const consumoDia = Number(r.consumo_diario_total) || 0;
   const est = Math.max(0, Number(r.estoque_total) || 0);
   const ped = Number(r.pedido_aberto_total) || 0;
-  // Modo "Vai faltar": horizonte = prazo real do fornecedor (China ~100d). Senão, horizonte fixo do topo.
+  // Modo "Vai faltar": horizonte = prazo de entrega do grupo do produto. Senão, horizonte fixo do topo.
   const horizonte = filtroVaiFaltar ? leadDe(r) : horizonteCompra;
   return Math.max(0, consumoDia * horizonte - est - ped);
 }
@@ -1164,13 +1181,13 @@ function renderAlertas() {
   sincronizarSemaforo();
   let dados = baseFiltradaAlertas();
   if (filtroStatus.size) dados = dados.filter(r => filtroStatus.has(r.situacao_estoque));
-  // Modo "Vai faltar (prazo do fornecedor)": só o que não chega a tempo pelo lead real.
+  // Modo "Vai faltar": só o que não chega a tempo pelo prazo de entrega do grupo.
   if (filtroVaiFaltar) dados = dados.filter(r => r.fora_linha !== 'S' && vaiFaltarLead(r));
   const prioMap = { RUPTURA: 1, CRITICO: 2, BAIXO: 3, OK: 4, ESTOQUE_MORTO: 5, SEM_GIRO: 6 };
   const abcMap  = { A: 1, B: 2, C: 3 };
   const dir = ordemDir === 'asc' ? 1 : -1;
   if (filtroVaiFaltar) {
-    // mais urgente primeiro: quem está mais aquém do prazo do fornecedor
+    // mais urgente primeiro: quem está mais aquém do prazo de entrega
     dados.sort((a, b) => deficitLead(b) - deficitLead(a));
   } else if (ordemAlertas === 'prioridade') {
     dados.sort((a, b) => {
@@ -2202,34 +2219,28 @@ function removerDoCarrinho(idProduto) { cartItems = cartItems.filter(c => c.id_p
 
 // ═══════════════════════════════════════════════════════════
 // VAI FALTAR — filtro lead-aware DENTRO da tela Compras.
-// Liga/desliga: mostra só o que não chega a tempo pelo PRAZO do fornecedor
-// (China/importado ~100d, auto do cadastro UF='EX' via comp_produto_lead).
+// Liga/desliga: mostra só o que não chega a tempo pelo PRAZO DE ENTREGA do grupo
+// do produto (Configurações → Prazo de entrega, tabela comp_prazo_grupo).
+// Grupo sem prazo = 15 dias. Até 29/10/2026 o prazo vinha por fornecedor
+// (comp_produto_lead: 100d China / 15d resto, automático e nunca ajustado).
 // ═══════════════════════════════════════════════════════════
-let leadMap = {};             // id_produto -> { lead_time_dias, origem, nome_fornecedor, principal_marcado }
+const PRAZO_PADRAO = 15;
+let prazoGrupo = {};          // grupo -> prazo_dias
 let filtroVaiFaltar = false;
 
 async function loadLeadMap() {
   try {
-    // Eram páginas de 1.000 em fila e sem `.order()`: 8 idas de ~1,2 s (~9 s), a maior
-    // espera da tela Compras, e um erro no meio parava calado com o mapa pela metade.
-    const linhas = await buscarTudoParalelo(
-      (de, ate) => sb.from('comp_produto_lead')
-        .select('id_produto,lead_time_dias,origem,nome_fornecedor,principal_marcado')
-        .order('id_produto')
-        .range(de, ate),
-      () => sb.from('comp_produto_lead').select('id_produto', { count: 'exact', head: true })
-    );
+    const { data, error } = await sb.from('comp_prazo_grupo').select('grupo,prazo_dias');
+    if (error) throw error;
     const out = {};
-    linhas.forEach(r => { out[r.id_produto] = r; });
-    leadMap = out;
+    (data || []).forEach(r => { out[r.grupo] = r.prazo_dias; });
+    prazoGrupo = out;
   } catch (e) { console.warn('loadLeadMap', e); }
 }
 
-function leadDe(r) { return (leadMap[r.id_produto]?.lead_time_dias) || 15; }
-function origemDe(r) { return leadMap[r.id_produto]?.origem || 'NACIONAL'; }
-function fornLeadDe(r) { return leadMap[r.id_produto]?.nome_fornecedor || ''; }
+function leadDe(r) { return prazoGrupo[r.grupo] || PRAZO_PADRAO; }
 
-// Não chega a tempo: (estoque + a caminho) ÷ consumo/dia < prazo do fornecedor.
+// Não chega a tempo: (estoque + a caminho) ÷ consumo/dia < prazo de entrega do grupo.
 function vaiFaltarLead(r) {
   const c = Number(r.consumo_diario_total) || 0;
   if (c <= 0) return false;
@@ -2248,11 +2259,11 @@ function deficitLead(r) {
 
 function onVaiFaltarToggle() {
   filtroVaiFaltar = document.getElementById('chk-vai-faltar')?.checked || false;
-  // no modo "prazo do fornecedor", o horizonte fixo não manda mais na sugestão
+  // no modo "Vai faltar", o horizonte fixo não manda mais na sugestão
   const hz = document.getElementById('horizonte-compra');
   const hzBox = hz?.closest('div');
   if (hz) hz.disabled = filtroVaiFaltar;
-  if (hzBox) { hzBox.style.opacity = filtroVaiFaltar ? '0.4' : '1'; hzBox.title = filtroVaiFaltar ? 'Desligado no modo "Vai faltar": a sugestão usa o prazo real de cada fornecedor.' : 'Horizonte de compra: por quantos dias você quer ter estoque. Sugestão = consumo/dia × dias − estoque − pedido em aberto.'; }
+  if (hzBox) { hzBox.style.opacity = filtroVaiFaltar ? '0.4' : '1'; hzBox.title = filtroVaiFaltar ? 'Desligado no modo "Vai faltar": a sugestão usa o prazo de entrega de cada grupo (Configurações → Prazo de entrega).' : 'Horizonte de compra: por quantos dias você quer ter estoque. Sugestão = consumo/dia × dias − estoque − pedido em aberto.'; }
   paginaAtual = 1;
   renderAlertas();
 }
@@ -5581,8 +5592,91 @@ async function carregarQuemTemAcesso() {
   if (vazio) vazio.style.display = ok ? 'none' : 'block';
 }
 
+// Prazo de entrega por grupo de produto (comp_prazo_grupo). A lista de grupos vem da
+// própria base do Compras, para aparecer o grupo mesmo sem prazo gravado (= 15 dias).
+let _prazoGrupos = [];        // [{ grupo, produtos, prazo }] na ordem da tabela
+
+async function loadPrazoGrupos() {
+  const tbody = document.getElementById('cfg-prazo-body');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr class="loading-row"><td colspan="3">Carregando...</td></tr>';
+  try {
+    const [linhas] = await Promise.all([
+      buscarTudoParalelo(
+        (de, ate) => sb.from('comp_produtos_consolidado').select('id_produto,grupo').order('id_produto').range(de, ate),
+        () => sb.from('comp_produtos_consolidado').select('id_produto', { count: 'exact', head: true })
+      ),
+      loadLeadMap(),
+    ]);
+    const contagem = {};
+    linhas.forEach(r => { if (r.grupo) contagem[r.grupo] = (contagem[r.grupo] || 0) + 1; });
+    // grupo com prazo gravado que sumiu da base (renomeado no ERP) continua visível para poder apagar
+    Object.keys(prazoGrupo).forEach(g => { if (!(g in contagem)) contagem[g] = 0; });
+    _prazoGrupos = Object.keys(contagem).sort((a, b) => a.localeCompare(b, 'pt-BR'))
+      .map(g => ({ grupo: g, produtos: contagem[g], prazo: prazoGrupo[g] || null }));
+    renderPrazoGrupos();
+  } catch (e) {
+    console.error('loadPrazoGrupos', e);
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--red)">Não foi possível carregar os grupos. Tente de novo em instantes.</td></tr>';
+  }
+}
+
+function renderPrazoGrupos() {
+  const tbody = document.getElementById('cfg-prazo-body');
+  if (!tbody) return;
+  if (!_prazoGrupos.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--text-muted)">Nenhum grupo encontrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _prazoGrupos.map((g, i) => `
+    <tr>
+      <td>${escHtml(g.grupo)}${g.produtos === 0 ? ' <span style="font-size:11px;color:var(--text-muted)">(grupo não existe mais no ERP)</span>' : ''}</td>
+      <td class="right mono" style="color:var(--text-muted)">${fmtQtd(g.produtos, 0)}</td>
+      <td class="right">
+        <input type="number" min="1" max="365" step="1" class="search-input" style="width:90px;height:30px;text-align:right"
+               value="${g.prazo || ''}" placeholder="${PRAZO_PADRAO}"
+               title="Deixe vazio para usar o padrão de ${PRAZO_PADRAO} dias"
+               onchange="salvarPrazoGrupo(${i}, this)">
+      </td>
+    </tr>`).join('');
+}
+
+async function salvarPrazoGrupo(i, input) {
+  const g = _prazoGrupos[i];
+  if (!g) return;
+  const txt = String(input.value || '').trim();
+  const novo = txt === '' ? null : parseInt(txt, 10);
+  if (novo !== null && (!Number.isFinite(novo) || novo < 1 || novo > 365)) {
+    input.value = g.prazo || '';
+    return showToast('Prazo deve ser de 1 a 365 dias', 'error');
+  }
+  if (novo === g.prazo) return;
+  input.disabled = true;
+  try {
+    const usuario = window.getUsuario?.()?.nome || '';
+    const { error } = novo === null
+      ? await sb.from('comp_prazo_grupo').delete().eq('grupo', g.grupo)
+      : await sb.from('comp_prazo_grupo').upsert(
+          { grupo: g.grupo, prazo_dias: novo, atualizado_em: new Date().toISOString(), atualizado_por: usuario },
+          { onConflict: 'grupo' });
+    if (error) throw error;
+    const antes = g.prazo;
+    g.prazo = novo;
+    if (novo === null) delete prazoGrupo[g.grupo]; else prazoGrupo[g.grupo] = novo;
+    auditLog('configuracoes', novo === null ? 'DELETE' : 'UPDATE', 'comp_prazo_grupo', g.grupo,
+      `Prazo de entrega do grupo ${g.grupo}: ${antes || PRAZO_PADRAO + ' (padrão)'} → ${novo || PRAZO_PADRAO + ' (padrão)'} dias`);
+    showToast(`${g.grupo}: ${novo || PRAZO_PADRAO} dias${novo === null ? ' (padrão)' : ''}`, 'success');
+  } catch (e) {
+    console.error('salvarPrazoGrupo', e);
+    input.value = g.prazo || '';
+    showToast('Erro ao salvar o prazo: ' + (e.message || e), 'error');
+  } finally {
+    input.disabled = false;
+  }
+}
+
 function setCfgTab(tab, btn) {
-  ['ignorar','lista','logs','acessos'].forEach(t => {
+  ['ignorar','lista','logs','prazo','acessos'].forEach(t => {
     const panel = document.getElementById(`cfg-panel-${t}`);
     const tabEl = document.getElementById(`cfg-tab-${t}`);
     if (panel) panel.style.display = t === tab ? 'block' : 'none';
@@ -5779,6 +5873,8 @@ window.salvarPrevChegada         = salvarPrevChegada;
 window.auditLog                  = auditLog;
 window._flushErrosFila           = _flushErrosFila;
 window.setCfgTab                 = setCfgTab;
+window.loadPrazoGrupos           = loadPrazoGrupos;
+window.salvarPrazoGrupo          = salvarPrazoGrupo;
 window.carregarQuemTemAcesso     = carregarQuemTemAcesso;
 window.cfgBuscarProdutos         = cfgBuscarProdutos;
 window.cfgMarcarTodos            = cfgMarcarTodos;
