@@ -224,7 +224,7 @@ const PAGINAS_HTML = {
       <input type="text" id="busca-produto" class="search-input" placeholder="Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
       <select id="filtro-grupo" class="filter-select" onchange="onGrupoChange()"><option value="">Todos os grupos</option></select>
       <select id="filtro-subgrupo" class="filter-select" onchange="onFilterChange()"><option value="">Todos os subgrupos</option></select>
-      <select id="filtro-origem" class="filter-select" onchange="onFilterChange()" title="Origem pelo fornecedor do produto: o marcado como principal (estrela); sem marcação, aquele de quem mais se comprou. Produto sem fornecedor conta como nacional."><option value="">Nacionais e importados</option><option value="NACIONAL">Só nacionais</option><option value="IMPORTADO">Só importados</option></select>
+      <select id="filtro-origem" class="filter-select" onchange="onFilterChange()" title="STONNI Ar Condicionado, STONNI Diversos e STONNI Geladeiras são sempre importados. Nos outros grupos vale o fornecedor do produto: o marcado como principal (estrela); sem marcação, aquele de quem mais se comprou. Produto sem fornecedor conta como nacional."><option value="">Nacionais e importados</option><option value="NACIONAL">Só nacionais</option><option value="IMPORTADO">Só importados</option></select>
       <div style="display:flex;align-items:center;gap:6px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-md);height:34px" title="Horizonte de compra: por quantos dias você quer ter estoque. Sugestão = consumo/dia × dias − estoque − pedido em aberto.">
         <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Comprar p/</span>
         <input type="number" id="horizonte-compra" min="1" max="365" value="45" onchange="onHorizonteChange()" oninput="onHorizonteChange()" style="width:46px;height:26px;text-align:right;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;padding:0 5px" />
@@ -865,6 +865,13 @@ async function loadFornProdCache() {
 // o de menor prazo) e traz a origem dele, cadastrada em comp_fornecedor_lead.
 let origemProduto = {};
 let origemCarregada = false;
+// Grupos que são inteiros de importação (Leo, 29/10/2026): valem IMPORTADO seja qual for o
+// fornecedor — 512 produtos deles tinham fornecedor nacional ou nenhum no cadastro.
+const GRUPOS_IMPORTADOS = new Set(['STONNI AR CONDICIONADO', 'STONNI DIVERSOS', 'STONNI GELADEIRAS']);
+function origemDe(r) {
+  if (GRUPOS_IMPORTADOS.has(r.grupo)) return 'IMPORTADO';
+  return origemProduto[r.id_produto] || 'NACIONAL';
+}
 async function loadOrigemProdutos() {
   try {
     const linhas = await buscarTudoParalelo(
@@ -1094,7 +1101,7 @@ function baseFiltradaAlertas() {
   if (grupo) dados = dados.filter(r => r.grupo === grupo);
   if (subgrupo) dados = dados.filter(r => r.subgrupo === subgrupo);
   const origem = origemCarregada ? (document.getElementById('filtro-origem')?.value || '') : '';
-  if (origem) dados = dados.filter(r => (origemProduto[r.id_produto] || 'NACIONAL') === origem);
+  if (origem) dados = dados.filter(r => origemDe(r) === origem);
   if (fornSelecionados.size > 0) dados = dados.filter(r => (fornProdMap[r.id_produto] || []).some(f => fornSelecionados.has(f.id_fornecedor)));
   return dados;
 }
