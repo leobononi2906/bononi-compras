@@ -15,6 +15,18 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 29/10/2026 — Filtro de origem (nacionais × importados) na tela Compras
+
+Pedido do Leo: seletor **Nacionais e importados / Só nacionais / Só importados** ao lado de "Todos
+subgrupos". Recorta a tabela e os cards do semáforo, como os outros filtros (`baseFiltradaAlertas`).
+- **Origem do produto:** `comp_produto_lead.origem` (fornecedor principal marcado → o mais comprado →
+  o de menor prazo; origem cadastrada em `comp_fornecedor_lead`). Sem fornecedor = nacional. A view
+  volta a ser lida no front, só para isso (`loadOrigemProdutos`); se falhar, o seletor desliga e avisa.
+- Produção em 29/10: 281 produtos importados × 6.832 nacionais; só **11 fornecedores** marcados
+  IMPORTADO. Fornecedor chinês cadastrado como nacional cai em "Só nacionais" — **não conferido**.
+- **Provado:** sintaxe; banco de teste 16 nacionais + 1 importado = 17 do total. Não visto em produção
+  com login.
+
 ## 29/10/2026 — Card "Pedido de compra em aberto" com a previsão da Importação
 
 Pedido do Gustavo (print da Geladeira ST 30L): as datas do card no drawer do produto não batiam com a

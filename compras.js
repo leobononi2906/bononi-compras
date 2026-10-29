@@ -224,6 +224,7 @@ const PAGINAS_HTML = {
       <input type="text" id="busca-produto" class="search-input" placeholder="Buscar produto ou referência..." oninput="onSearch()" style="width:240px" />
       <select id="filtro-grupo" class="filter-select" onchange="onGrupoChange()"><option value="">Todos os grupos</option></select>
       <select id="filtro-subgrupo" class="filter-select" onchange="onFilterChange()"><option value="">Todos os subgrupos</option></select>
+      <select id="filtro-origem" class="filter-select" onchange="onFilterChange()" title="Origem pelo fornecedor do produto: o marcado como principal (estrela); sem marcação, aquele de quem mais se comprou. Produto sem fornecedor conta como nacional."><option value="">Nacionais e importados</option><option value="NACIONAL">Só nacionais</option><option value="IMPORTADO">Só importados</option></select>
       <div style="display:flex;align-items:center;gap:6px;padding:0 8px;border:1px solid var(--border);border-radius:var(--radius-md);height:34px" title="Horizonte de compra: por quantos dias você quer ter estoque. Sugestão = consumo/dia × dias − estoque − pedido em aberto.">
         <span style="font-size:12px;color:var(--text-muted);white-space:nowrap">Comprar p/</span>
         <input type="number" id="horizonte-compra" min="1" max="365" value="45" onchange="onHorizonteChange()" oninput="onHorizonteChange()" style="width:46px;height:26px;text-align:right;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;padding:0 5px" />
@@ -800,7 +801,7 @@ async function loadAll() {
   // ida inteira. loadAlertas espera por eles só na hora de desenhar a tabela.
   const ignorados = compIgnorados.length ? null
     : sb.from('comp_ignorados').select('*').then(({ data }) => { compIgnorados = data || []; });
-  await Promise.all([ignorados, loadAlertas(ignorados), loadFornProdCache(), loadLeadMap()]);
+  await Promise.all([ignorados, loadAlertas(ignorados), loadFornProdCache(), loadLeadMap(), loadOrigemProdutos()]);
   popularFiltroFornecedores();
   atualizarBadgeSidebar();
   renderAlertas();
@@ -857,6 +858,29 @@ async function loadFornProdCache() {
     const { data: fp } = await sb.from('comp_fornecedor_principal').select('id_produto,id_fornecedor,nome_fornecedor');
     (fp || []).forEach(r => { fornPrincipalMap[r.id_produto] = { id_fornecedor: r.id_fornecedor, nome_fornecedor: r.nome_fornecedor }; });
   } catch(e) { console.error('Erro ao carregar fornecedores:', e); }
+}
+
+// Origem (NACIONAL / IMPORTADO) por produto, para o filtro "Só nacionais / Só importados".
+// comp_produto_lead escolhe o fornecedor do produto (principal marcado → o mais comprado →
+// o de menor prazo) e traz a origem dele, cadastrada em comp_fornecedor_lead.
+let origemProduto = {};
+let origemCarregada = false;
+async function loadOrigemProdutos() {
+  try {
+    const linhas = await buscarTudoParalelo(
+      (de, ate) => sb.from('comp_produto_lead').select('id_produto,origem').order('id_produto').range(de, ate),
+      () => sb.from('comp_produto_lead').select('id_produto', { count: 'exact', head: true })
+    );
+    const out = {};
+    linhas.forEach(r => { out[r.id_produto] = r.origem; });
+    origemProduto = out;
+    origemCarregada = true;
+  } catch (e) {
+    // Sem a origem, "Só importados" daria 0 calado: desliga o filtro e avisa no próprio campo.
+    console.warn('loadOrigemProdutos', e);
+    const sel = document.getElementById('filtro-origem');
+    if (sel) { sel.value = ''; sel.disabled = true; sel.title = 'Não foi possível carregar a origem dos produtos. Atualize a página.'; }
+  }
 }
 
 // Fornecedor principal do produto: o marcado no app; se não houver, cai no 1º fornecedor externo (fallback).
@@ -1069,6 +1093,8 @@ function baseFiltradaAlertas() {
   if (busca) dados = dados.filter(r => (r.nome || '').toLowerCase().includes(busca) || (r.referencia || '').toLowerCase().includes(busca));
   if (grupo) dados = dados.filter(r => r.grupo === grupo);
   if (subgrupo) dados = dados.filter(r => r.subgrupo === subgrupo);
+  const origem = origemCarregada ? (document.getElementById('filtro-origem')?.value || '') : '';
+  if (origem) dados = dados.filter(r => (origemProduto[r.id_produto] || 'NACIONAL') === origem);
   if (fornSelecionados.size > 0) dados = dados.filter(r => (fornProdMap[r.id_produto] || []).some(f => fornSelecionados.has(f.id_fornecedor)));
   return dados;
 }
