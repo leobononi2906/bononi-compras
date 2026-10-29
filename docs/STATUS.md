@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-28
+> Atualizado: 2026-10-29
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,16 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 29/10/2026 — Card "Pedido de compra em aberto" com a previsão da Importação
+
+Pedido do Gustavo (print da Geladeira ST 30L): as datas do card no drawer do produto não batiam com a
+Importação. O card usava `data_prev_recebimento` do pedido no SGA, que não acompanha o ajuste da
+"Previsão chegada" do processo. Agora, se o pedido está em `import_pedidos`, vale
+`import_processos.data_prev_chegada` e o card mostra o código do processo (com a letra A–E) no lugar do
+nome do fornecedor, que vem cortado do SGA ("…TECHNOLOGY C"). Pedidos em ordem de chegada; sem vínculo,
+fica como antes (`loadDrawerPedidoAberto`). Provado: os 5 pedidos (2646–2652) em produção batem com
+os processos QXBO 261009 A–E; não visto na tela com login.
 
 ## 29/10/2026 — Prazo de entrega por grupo de produto (Configurações)
 

@@ -1638,13 +1638,31 @@ async function loadDrawerPedidoAberto(idProduto) {
       porPedido[r.id_pedido].qtd += Number(r.qtd_solicitada) || 0;
     });
     const pedidos = Object.values(porPedido);
+    // Pedido vinculado a processo de Importação: vale a previsão de chegada e o código do processo
+    // (a previsão do SGA fica velha quando o comprador ajusta a chegada na Importação).
+    try {
+      const { data: vinc } = await sb.from('import_pedidos').select('processo_id,numero_pedido')
+        .in('numero_pedido', pedidos.map(p => String(p.id)));
+      const procIds = [...new Set((vinc || []).map(v => v.processo_id))];
+      if (procIds.length) {
+        const { data: procs } = await sb.from('import_processos').select('id,codigo,data_prev_chegada').in('id', procIds);
+        const procPorId = Object.fromEntries((procs || []).map(pr => [pr.id, pr]));
+        (vinc || []).forEach(v => {
+          const p = porPedido[v.numero_pedido]; const pr = procPorId[v.processo_id];
+          if (!p || !pr) return;
+          p.processo = pr.codigo;
+          if (pr.data_prev_chegada) p.prev = pr.data_prev_chegada;
+        });
+      }
+    } catch (_) { /* sem vínculo: fica a previsão do SGA */ }
+    pedidos.sort((a, b) => (a.prev || '9').localeCompare(b.prev || '9'));
     const totalQtd = pedidos.reduce((a, p) => a + p.qtd, 0);
     box.innerHTML = `
       <div class="card" style="padding:12px 16px;border-left:3px solid var(--orange);width:100%;height:100%;box-sizing:border-box;background:var(--orange-bg,var(--status-warn-bg))">
         <div class="card-label" style="color:var(--orange)"><i class="ic ic-sm" data-ic="package"></i> Pedido de compra em aberto</div>
         <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
           ${pedidos.map(p => `<div style="font-size:12px;display:flex;justify-content:space-between;gap:10px">
-            <span><b>#${p.id}</b> · ${p.forn || '—'}</span>
+            <span><b>#${p.id}</b> · ${p.processo || p.forn || '—'}</span>
             <span style="color:var(--text-muted);white-space:nowrap">${fmtQtd(p.qtd,0)} un · ${p.data ? fmtData(p.data) : '—'}${p.prev ? ` → prev. ${fmtData(p.prev)}` : ''}</span>
           </div>`).join('')}
         </div>
