@@ -22,10 +22,10 @@ subgrupos". Recorta a tabela e os cards do semáforo, como os outros filtros (`b
 - **Origem do produto:** `comp_produto_lead.origem` (fornecedor principal marcado → o mais comprado →
   o de menor prazo; origem cadastrada em `comp_fornecedor_lead`). Sem fornecedor = nacional. A view
   volta a ser lida no front, só para isso (`loadOrigemProdutos`); se falhar, o seletor desliga e avisa.
-- **STONNI AR CONDICIONADO, STONNI DIVERSOS e STONNI GELADEIRAS são sempre importados** (Leo,
-  29/10), seja qual for o fornecedor (`GRUPOS_IMPORTADOS` / `origemDe`): pelo fornecedor, só 247 dos
-  759 produtos desses grupos davam importado — 273 tinham fornecedor nacional e 239 nenhum.
-  `RP AR G2 CONDIC.STONNI S2` (33 produtos, 15 importados pelo fornecedor) **não** entrou: não citado.
+- **STONNI AR CONDICIONADO, STONNI DIVERSOS, STONNI GELADEIRAS e RP AR G2 CONDIC.STONNI S2 são
+  sempre importados** (Leo, 29/10), seja qual for o fornecedor (`GRUPOS_IMPORTADOS` / `origemDe`):
+  pelo fornecedor, só 262 dos 792 produtos desses grupos davam importado — 287 tinham fornecedor
+  nacional e 243 nenhum.
 - Fora desses grupos, só **11 fornecedores** estão marcados IMPORTADO em `comp_fornecedor_lead`.
 - **Provado:** sintaxe; banco de teste 12 nacionais + 5 importados = 17, e STONNI AR CONDICIONADO
   com "Só nacionais" = 0. Não visto em produção com login.
