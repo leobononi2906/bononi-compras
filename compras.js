@@ -311,7 +311,7 @@ const PAGINAS_HTML = {
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px">
           <div class="card" style="padding:16px 18px"><div class="card-label">Estoque Total</div><div class="card-value" id="dr-estoque-total" style="font-size:26px">—</div><div class="card-sub" id="dr-estoque-sub"></div><div id="dr-pedido-aberto-badge" style="display:none;margin-top:6px;font-size:11px;font-weight:600;color: var(--text-action);background:var(--blue-pale);border-radius:var(--radius-sm);padding:3px 7px"></div></div>
           <div class="card" style="padding:16px 18px"><div class="card-label">Qtd Sugerida</div><div class="card-value blue" id="dr-sugerida" style="font-size:26px">—</div><div class="card-sub">reposição sugerida</div></div>
-          <div class="card" style="padding:16px 18px"><div class="card-label">Lead Time</div><div class="card-value" id="dr-lead-time" style="font-size:26px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
+          <div class="card" style="padding:16px 18px"><div class="card-label" title="Prazo de entrega configurado para o grupo do produto (Configurações → Prazo de entrega). Embaixo, o prazo medido nas compras (pedido→NF).">Prazo de entrega</div><div class="card-value" id="dr-lead-time" style="font-size:26px">—</div><div class="card-sub" id="dr-lead-time-sub"></div></div>
         </div>
         <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
           <div class="card" style="padding:16px 18px"><div class="card-label">Consumo/dia</div><div class="card-value" id="dr-consumo" style="font-size:22px">—</div><div class="card-sub" id="dr-consumo-sub">média 90 dias</div></div>
@@ -1636,19 +1636,25 @@ async function loadDrawerResumo(prod) {
       } else { set('dr-margem', '—'); set('dr-margem-sub', 'sem preço'); }
     }
   } catch(_) { set('dr-ultimo-preco', '—'); set('dr-margem', '—'); }
-  set('dr-lead-time', '...'); set('dr-lead-time-sub', 'calculando...');
+  // Valor principal = prazo CONFIGURADO do grupo (Configurações → Prazo de entrega), o mesmo
+  // que o filtro Vai faltar usa. O medido nas compras (pedido→NF) vai embaixo, só de referência.
+  const prazoCfg = leadDe(prod);
+  const origemCfg = prazoGrupo[prod.grupo] ? 'grupo ' + (prod.grupo || '') : 'padrão (grupo sem prazo)';
+  set('dr-lead-time', prazoCfg + 'd');
+  set('dr-lead-time-sub', origemCfg + ' · medido: calculando...');
   try {
     const fornIds = (fornProdMap[prod.id_produto] || []).filter(f => !IDS_INTERGRUPO_FORN.has(f.id_fornecedor)).map(f => f.id_fornecedor);
+    let medido = 'sem histórico';
     if (fornIds.length > 0) {
       const { data: leads } = await sb.from('comp_lead_time_pedido').select('id_fornecedor,lead_pedido_medio,qtd_pares').in('id_fornecedor', fornIds).order('qtd_pares', { ascending: false }).range(0, 9);
       if (leads?.length) {
         const totalPares = leads.reduce((a, l) => a + (l.qtd_pares || 0), 0);
         const media = totalPares > 0 ? Math.round(leads.reduce((a, l) => a + (l.lead_pedido_medio || 0) * (l.qtd_pares || 0), 0) / totalPares) : null;
-        set('dr-lead-time', media ? media + 'd' : '—');
-        set('dr-lead-time-sub', media ? `pedido→NF · ${leads.length} fornec.` : 'sem histórico');
-      } else { set('dr-lead-time', '—'); set('dr-lead-time-sub', 'sem histórico'); }
-    } else { set('dr-lead-time', '—'); set('dr-lead-time-sub', 'sem fornecedor'); }
-  } catch(e) { set('dr-lead-time', '—'); set('dr-lead-time-sub', 'erro'); }
+        if (media) medido = media + 'd pedido→NF';
+      }
+    } else medido = 'sem fornecedor';
+    set('dr-lead-time-sub', origemCfg + ' · medido: ' + medido);
+  } catch(e) { set('dr-lead-time-sub', origemCfg); }
 }
 
 // Pedido de compra em aberto (a caminho) — mesmo filtro da view: cancelado=N, gerou_nf=N, status=F

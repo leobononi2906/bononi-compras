@@ -15,6 +15,15 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 29/10/2026 — Ficha do produto mostra o prazo de entrega configurado
+
+Pergunta do Leo: o número de Configurações → Prazo de entrega é o que aparece ao abrir o produto?
+**Não era:** o cartão "Lead Time" da ficha mostrava só o prazo MEDIDO nas compras
+(`comp_lead_time_pedido`, pedido→NF dos fornecedores do produto). Agora o cartão chama
+**"Prazo de entrega"** e o número grande é o configurado do grupo (`leadDe`, o mesmo do filtro Vai
+faltar; grupo sem prazo = "padrão" 15 dias). Embaixo: de onde veio (grupo X ou padrão) e o medido,
+como referência. Provado: sintaxe. Não provado na tela com login.
+
 ## 29/10/2026 — Filtro de origem (nacionais × importados) na tela Compras
 
 Pedido do Leo: seletor **Nacionais e importados / Só nacionais / Só importados** ao lado de "Todos
