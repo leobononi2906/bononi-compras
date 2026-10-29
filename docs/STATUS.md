@@ -33,6 +33,8 @@ Pedido do Leo: o prazo de entrega (lead time) passa a ser **por grupo de produto
 - **Provado:** sintaxe, exports dos `onclick`, regra em Node (grupo com prazo, sem prazo, sem grupo),
   gravação/atualização como `authenticated` e leitura `anon` = 0 (SQL com rollback). **Não provado na
   tela com login.**
+- **Publicado 29/10** (commit `6b7e392`, OK do Leo); produção já serve o código novo. Prazos dos grupos
+  STONNI ainda **não preenchidos** — pendente o Leo/equipe digitar.
 
 ## 28/10/2026 — Chat de IA só com login (`63cdb86`)
 
