@@ -302,6 +302,7 @@ const PAGINAS_HTML = {
         <div class="drawer-tab" onclick="switchDrawerTab('historico',this)"><i class="ic ic-sm" data-ic="clipboard-list"></i> Histórico</div>
         <div class="drawer-tab" onclick="switchDrawerTab('fornecedores',this)"><i class="ic ic-sm" data-ic="factory"></i> Fornecedores</div>
         <div class="drawer-tab" onclick="switchDrawerTab('estoque',this)"><i class="ic ic-sm" data-ic="store"></i> Estoque</div>
+        <div class="drawer-tab" onclick="switchDrawerTab('acoes',this)" title="Ações que mexeram na venda deste produto (promoção, ação do atacado...)"><i class="ic ic-sm" data-ic="megaphone"></i> Ações <span id="dr-acoes-count" style="display:none;margin-left:4px;font-size:10px;padding:1px 6px;border-radius:var(--radius-sm);background:var(--status-warn-bg);color:var(--status-warn-text)"></span></div>
       </div>
     </div>
     <div style="flex:1;overflow-y:auto">
@@ -321,6 +322,7 @@ const PAGINAS_HTML = {
           <div class="card" style="padding:16px 18px"><div class="card-label">Margem Estimada</div><div class="card-value" id="dr-margem" style="font-size:22px">—</div><div class="card-sub" id="dr-margem-sub"></div></div>
           <div class="card" style="padding:16px 18px"><div class="card-label">Última Compra / Venda</div><div style="margin-top:6px"><span style="font-size:11px;color:var(--text-muted)">Compra:</span> <span id="dr-ultima-compra" style="font-size:13px;font-weight:600">—</span></div><div style="margin-top:3px"><span style="font-size:11px;color:var(--text-muted)">Venda:</span> <span id="dr-ultima-venda" style="font-size:13px;font-weight:600">—</span></div></div>
         </div>
+        <div id="dr-acoes-aviso"></div>
         <div id="dtab-giro-inner"></div>
       </div>
       <div class="drawer-tab-content" id="dtab-historico" style="padding:20px 24px">
@@ -332,6 +334,7 @@ const PAGINAS_HTML = {
         <div class="table-card"><div style="overflow-x:auto;max-height:420px;overflow-y:auto"><table class="data-table"><thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Empresa</th><th class="right">Qtd</th></tr></thead><tbody id="dr-historico-body"><tr class="loading-row"><td colspan="5">Carregando...</td></tr></tbody></table></div></div>
       </div>
       <div class="drawer-tab-content" id="dtab-fornecedores" style="padding:20px 24px"><div id="dr-forn-container"></div></div>
+      <div class="drawer-tab-content" id="dtab-acoes" style="padding:20px 24px"><div id="dr-acoes-container"></div></div>
       <div class="drawer-tab-content" id="dtab-estoque" style="padding:20px 24px"><div class="table-card"><div style="overflow-x:auto;max-height:480px;overflow-y:auto"><table class="data-table"><thead><tr><th>Empresa</th><th>Centro</th><th class="right">Estoque</th><th class="right">Reserva</th><th>Status</th></tr></thead><tbody id="dr-estoque-body"></tbody></table></div></div></div>
     </div>
   </div>
@@ -1562,6 +1565,7 @@ async function abrirProduto(idProduto) {
   if (overlay) overlay.classList.add('open');
   loadDrawerResumo(prod);
   loadDrawerGiro(prod.id_produto);
+  loadAcoesProduto(prod.id_produto);
 }
 
 function fecharDrawer() {
@@ -1581,6 +1585,134 @@ function switchDrawerTab(tab, btn) {
   if (tab === 'historico'   && produtoAtual) loadDrawerHistorico(produtoAtual.id_produto);
   if (tab === 'fornecedores'&& produtoAtual) loadDrawerFornecedores(produtoAtual.id_produto);
   if (tab === 'estoque'     && produtoAtual) loadDrawerEstoque(produtoAtual.id_produto);
+  if (tab === 'acoes'       && produtoAtual) renderDrawerAcoes();
+}
+
+// ═══════════════════════════════════════════════════════════
+// AÇÕES DO PRODUTO (pedido de melhoria 28) — anotação fixa no produto de que uma venda fora
+// do normal veio de uma ação (ex.: atacado), para o comprador não repor como se fosse demanda.
+// Tabela comp_produto_acoes. Aparece na aba "Ações", num aviso no Resumo e marcada no mês do giro.
+// ═══════════════════════════════════════════════════════════
+let acoesProduto = [];        // ações do produto aberto no drawer
+let acoesProdutoId = null;
+
+async function loadAcoesProduto(idProduto) {
+  acoesProduto = []; acoesProdutoId = idProduto;
+  renderAvisoAcoes();
+  try {
+    const { data, error } = await sb.from('comp_produto_acoes').select('*')
+      .eq('id_produto', idProduto).order('data_inicio', { ascending: false });
+    if (error) throw error;
+    if (acoesProdutoId !== idProduto) return;   // usuário já abriu outro produto
+    acoesProduto = data || [];
+  } catch (e) { console.warn('loadAcoesProduto', e); }
+  renderAvisoAcoes();
+  if (document.getElementById('dtab-acoes')?.classList.contains('active')) renderDrawerAcoes();
+  // O giro pode ter sido desenhado antes das ações chegarem: redesenha para marcar os meses.
+  if (acoesProduto.length && produtoAtual?.id_produto === idProduto) loadDrawerGiro(idProduto);
+}
+
+// Meses (YYYY-MM) cobertos por cada ação — usado para marcar a tabela Saídas×Compras.
+function mesesDaAcao(a) {
+  const out = [];
+  const ini = new Date(a.data_inicio + 'T00:00:00');
+  const fim = new Date((a.data_fim || a.data_inicio) + 'T00:00:00');
+  for (let d = new Date(ini.getFullYear(), ini.getMonth(), 1); d <= fim && out.length < 24; d.setMonth(d.getMonth() + 1))
+    out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  return out;
+}
+
+function periodoAcao(a) {
+  return a.data_fim && a.data_fim !== a.data_inicio ? `${fmtData(a.data_inicio)} a ${fmtData(a.data_fim)}` : fmtData(a.data_inicio);
+}
+
+function renderAvisoAcoes() {
+  const n = acoesProduto.length;
+  const cnt = document.getElementById('dr-acoes-count');
+  if (cnt) { cnt.textContent = n; cnt.style.display = n ? 'inline-block' : 'none'; }
+  const box = document.getElementById('dr-acoes-aviso');
+  if (!box) return;
+  const limite = new Date(); limite.setFullYear(limite.getFullYear() - 1);
+  const limStr = limite.toISOString().slice(0, 10);
+  const recentes = acoesProduto.filter(a => (a.data_fim || a.data_inicio) >= limStr);
+  box.innerHTML = recentes.length ? `
+    <div style="margin-bottom:12px;padding:10px 14px;background:var(--status-warn-bg);border:1px solid var(--status-warn-text);border-radius:var(--radius-md);font-size:12px;color:var(--status-warn-text)">
+      <b><i class="ic ic-sm" data-ic="megaphone"></i> ${recentes.length === 1 ? 'Houve uma ação' : `Houve ${recentes.length} ações`} neste produto no último ano</b> — a venda desses meses não é a demanda normal. Considere isso antes de comprar.
+      ${recentes.slice(0, 3).map(a => `<div style="margin-top:4px">• <b>${periodoAcao(a)}</b>: ${escHtml(a.descricao)}${a.qtd_extra ? ` <span style="white-space:nowrap">(~${fmtQtd(a.qtd_extra, 0)} un. a mais)</span>` : ''}</div>`).join('')}
+      ${recentes.length > 3 ? `<div style="margin-top:4px">… e mais ${recentes.length - 3} na aba Ações.</div>` : ''}
+    </div>` : '';
+}
+
+function renderDrawerAcoes() {
+  const box = document.getElementById('dr-acoes-container');
+  if (!box) return;
+  const hoje = new Date().toISOString().slice(0, 10);
+  box.innerHTML = `
+    <div class="card" style="padding:14px 16px;margin-bottom:14px">
+      <div class="card-label">Registrar ação</div>
+      <div style="font-size:11px;color:var(--text-muted);margin:2px 0 10px">Ex.: ação do atacado, promoção, venda grande pontual. Fica gravado no produto para quem for comprar depois.</div>
+      <div style="display:grid;grid-template-columns:140px 140px 1fr;gap:8px;margin-bottom:8px">
+        <label style="font-size:11px;color:var(--text-muted)">Início<input type="date" id="acao-ini" class="filter-select" value="${hoje}" style="width:100%;margin-top:3px"></label>
+        <label style="font-size:11px;color:var(--text-muted)">Fim <span style="opacity:.7">(opcional)</span><input type="date" id="acao-fim" class="filter-select" style="width:100%;margin-top:3px"></label>
+        <label style="font-size:11px;color:var(--text-muted)">Qtd. vendida a mais pela ação <span style="opacity:.7">(opcional)</span><input type="number" min="0" step="1" id="acao-qtd" class="filter-select" placeholder="ex.: 450" style="width:100%;margin-top:3px;cursor:text"></label>
+      </div>
+      <textarea id="acao-desc" class="filter-select" rows="2" maxlength="500" placeholder="O que aconteceu? Ex.: ação do atacado com a Distribuidora X — 500 un no mês" style="width:100%;height:auto;padding:8px 10px;resize:vertical;cursor:text"></textarea>
+      <div style="display:flex;justify-content:flex-end;margin-top:8px"><button class="btn btn-primary" id="acao-salvar" onclick="salvarAcaoProduto()"><i class="ic ic-sm" data-ic="plus"></i> Registrar</button></div>
+    </div>
+    ${acoesProduto.length ? `<div class="table-card"><table class="data-table"><thead><tr><th>Período</th><th>O que aconteceu</th><th class="right">A mais</th><th>Registrado por</th><th></th></tr></thead><tbody>
+      ${acoesProduto.map(a => `<tr>
+        <td style="white-space:nowrap">${periodoAcao(a)}</td>
+        <td>${escHtml(a.descricao)}</td>
+        <td class="right mono">${a.qtd_extra ? fmtQtd(a.qtd_extra, 0) : '—'}</td>
+        <td style="font-size:11px;color:var(--text-muted)">${escHtml(a.criado_por || '—')}<br>${fmtData(a.criado_em)}</td>
+        <td class="right"><button class="btn btn-outline" style="height:26px;font-size:11px" title="Excluir esta ação" onclick="excluirAcaoProduto(${a.id})"><i class="ic ic-sm" data-ic="trash-2"></i></button></td>
+      </tr>`).join('')}
+    </tbody></table></div>` : '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:13px">Nenhuma ação registrada para este produto.</div>'}`;
+}
+
+async function salvarAcaoProduto() {
+  if (!produtoAtual) return;
+  const ini = document.getElementById('acao-ini')?.value;
+  const fim = document.getElementById('acao-fim')?.value || null;
+  const desc = (document.getElementById('acao-desc')?.value || '').trim();
+  const qtdTxt = document.getElementById('acao-qtd')?.value;
+  const qtd = qtdTxt === '' || qtdTxt == null ? null : Number(qtdTxt);
+  if (!ini) return showToast('Informe a data de início', 'error');
+  if (!desc) return showToast('Descreva a ação', 'error');
+  if (fim && fim < ini) return showToast('O fim não pode ser antes do início', 'error');
+  if (qtd !== null && (!Number.isFinite(qtd) || qtd < 0)) return showToast('Quantidade inválida', 'error');
+  const btn = document.getElementById('acao-salvar'); if (btn) btn.disabled = true;
+  try {
+    const nova = { id_produto: produtoAtual.id_produto, data_inicio: ini, data_fim: fim, descricao: desc, qtd_extra: qtd, criado_por: window.getUsuario?.()?.nome || '' };
+    const { data, error } = await sb.from('comp_produto_acoes').insert(nova).select();
+    if (error) throw error;
+    if (!data?.length) throw new Error('não gravou (sem permissão?)');
+    auditLog('produtos', 'INSERT', 'comp_produto_acoes', String(data[0].id),
+      `Ação no produto ${produtoAtual.referencia || produtoAtual.id_produto} (${periodoAcao(data[0])}): ${desc}`);
+    showToast('Ação registrada', 'success');
+    await loadAcoesProduto(produtoAtual.id_produto);
+    renderDrawerAcoes();
+  } catch (e) {
+    console.error('salvarAcaoProduto', e);
+    showToast('Erro ao registrar a ação: ' + (e.message || e), 'error');
+  } finally { if (btn) btn.disabled = false; }
+}
+
+async function excluirAcaoProduto(id) {
+  const a = acoesProduto.find(x => x.id === id);
+  if (!a || !confirm(`Excluir a ação de ${periodoAcao(a)}?\n\n${a.descricao}`)) return;
+  try {
+    const { data, error } = await sb.from('comp_produto_acoes').delete().eq('id', id).select();
+    if (error) throw error;
+    if (!data?.length) throw new Error('não excluiu (sem permissão?)');
+    auditLog('produtos', 'DELETE', 'comp_produto_acoes', String(id), `Excluída ação do produto ${produtoAtual?.referencia || a.id_produto} (${periodoAcao(a)}): ${a.descricao}`);
+    showToast('Ação excluída', 'success');
+    await loadAcoesProduto(a.id_produto);
+    renderDrawerAcoes();
+  } catch (e) {
+    console.error('excluirAcaoProduto', e);
+    showToast('Erro ao excluir: ' + (e.message || e), 'error');
+  }
 }
 
 async function loadDrawerResumo(prod) {
@@ -1734,7 +1866,10 @@ function renderGiroBloco(arr) {
       ${arr.map(m => `<th style="text-align:right;padding:4px 6px;font-weight:600">${m.label}</th>`).join('')}
     </tr></thead>
     <tbody>
-      <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color: var(--text-action)">Saídas</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}</tr>
+      <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color: var(--text-action)">Saídas</td>${arr.map(m => m.acoes?.length
+        // Mês com ação registrada: destacado, com o motivo no title (aba Ações tem o detalhe).
+        ? `<td class="mono" title="${escHtml('Ação: ' + m.acoes.join(' | ')).replace(/"/g, '&quot;')}" style="text-align:right;padding:5px 6px;font-weight:600;color:var(--status-warn-text);background:var(--status-warn-bg);cursor:help"><i class="ic ic-sm" data-ic="megaphone"></i> ${fmtQtd(m.saidas, 0)}</td>`
+        : `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.saidas > 0 ? 'var(--blue-dark)' : 'var(--text-muted)'}">${fmtQtd(m.saidas, 0)}</td>`).join('')}</tr>
       <tr style="border-top:1px solid var(--border)"><td style="text-align:left;padding:5px 6px;font-weight:600;color:var(--green)">Compras</td>${arr.map(m => `<td class="mono" style="text-align:right;padding:5px 6px;font-weight:600;color:${m.compras > 0 ? 'var(--green)' : 'var(--text-muted)'}">${m.compras > 0 ? fmtQtd(m.compras, 0) : '—'}</td>`).join('')}</tr>
     </tbody>
   </table>`;
@@ -1792,6 +1927,10 @@ async function loadDrawerGiro(idProduto) {
         saidas: 0, compras: 0
       });
     }
+    if (acoesProdutoId === idProduto) acoesProduto.forEach(a => mesesDaAcao(a).forEach(k => {
+      const m = meses.find(m => m.key === k);
+      if (m) (m.acoes = m.acoes || []).push(a.descricao);
+    }));
     todasSaidas.forEach(r => {
       const key = (r.data_faturamento||'').slice(0,7);
       const m = meses.find(m => m.key === key);
@@ -1892,7 +2031,7 @@ async function loadDrawerGiro(idProduto) {
       </div>
 
       <div class="chart-card">
-        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span><span style="font-size:11px;color:var(--text-muted)">Σ Saídas <b style="color: var(--text-action)">${fmtQtd(totalVendido12m,0)}</b> · Compras <b style="color:var(--green)">${fmtQtd(totalComprado,0)}</b></span></div>
+        <div class="chart-header"><span class="chart-title">Saídas vs Compras — 12 meses</span><span style="font-size:11px;color:var(--text-muted)">${meses.some(m => m.acoes) ? `<span style="color:var(--status-warn-text)"><i class="ic ic-sm" data-ic="megaphone"></i> mês com ação</span> · ` : ''}Σ Saídas <b style="color: var(--text-action)">${fmtQtd(totalVendido12m,0)}</b> · Compras <b style="color:var(--green)">${fmtQtd(totalComprado,0)}</b></span></div>
         <div>
           ${renderGiroBloco(meses.slice(0, 6))}
           ${renderGiroBloco(meses.slice(6))}
@@ -6047,7 +6186,9 @@ Object.assign(window, {
   switchImpTab,
   abrirModalNovoProcesso,
   fecharModalProcesso,
-  novasSessao
+  novasSessao,
+  salvarAcaoProduto,
+  excluirAcaoProduto
 });
 
 })();

@@ -15,6 +15,18 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 30/10/2026 — Aba "Ações" na ficha do produto (pedido de melhoria 28, Lucas)
+
+Pedido: registrar no produto que uma venda fora do normal veio de uma ação (ex.: 10018/8 vende
+50/mês, vendeu 500 num mês por ação do atacado), para o comprador não repor como se fosse demanda.
+Tabela nova **`comp_produto_acoes`** (`sql/2026-10-30_acoes_produto.sql`, aplicada em produção em
+30/10: RLS ligado, policy só `authenticated`, nasceu vazia). No drawer do produto: aba **Ações**
+(registrar período/descrição/qtd a mais, excluir; contador na aba), **aviso amarelo no Resumo** quando
+há ação no último ano, e o **mês marcado** na tabela Saídas×Compras (motivo no title). Não mexe na
+média nem na sugestão — é informação para quem compra. Grava `comp_audit_log` (módulo `produtos`).
+**Provado:** no preview local (banco de teste, sem a tabela) com a tabela simulada no navegador:
+aviso, mês marcado, incluir e excluir. A gravação real só no app publicado.
+
 ## 30/10/2026 — Card do detalhe: "Já pedido · aguardando chegada"
 
 Reclamação (print do 019318 e do 019349): o card do drawer dizia "Pedido de compra em aberto" em
