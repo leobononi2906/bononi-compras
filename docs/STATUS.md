@@ -1,6 +1,6 @@
 # STATUS — Bononi Compras
 
-> Atualizado: 2026-10-29
+> Atualizado: 2026-10-30
 
 ## O que é
 App de **reposição/compras** por gestão de exceção: dá pra equipe uma worklist priorizada (o que comprar, de quem, quanto) em cima do mesmo estoque/giro do ERP. Substitui a agenda em papel + o uso do ERP cru (dados mais pobres).
@@ -14,6 +14,24 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
+
+## 30/10/2026 — Situação nova "Aguardando chegada" (produto sem estoque, sem venda e já pedido)
+
+Reclamação (print da busca "Air Fryer"): o 019318 COZ.AIR FRYER 24V 3LT 800W (MOD.NOVO), produto novo
+que ainda não chegou, aparecia como **Sem giro** ("faltou estoque — avaliar").
+- **Causa (produção, 30/10):** estoque 0, saída 90d = 0, saída 365d = 0, nenhuma movimentação no SGA,
+  500 em pedido aberto. Na view `comp_produtos_consolidado_src`, sem venda vai para o 1º ramo do CASE;
+  sem movimento, `min_saldo_3m` = 0, então não é Estoque morto → **SEM_GIRO**. A view não olha o pedido
+  em aberto.
+- **Regra nova (só no front, `ajustarSituacao`):** SEM_GIRO + estoque ≤ 0 + pedido aberto > 0 →
+  **AGUARDANDO**. 7º card no topo ("Aguardando · já pedido"), checkbox, selo azul com caminhão (o mesmo
+  "a caminho" que Ruptura/Crítico já mostram), fim da fila na ordenação, e o gráfico de situação dos
+  Totais. Em produção move **58 de 4.230** produtos de Sem giro (47 sem nenhuma venda no ano). As outras
+  situações não mudam: Ruptura/Crítico com pedido continuam com o selo "a caminho" de antes.
+- O banco não mudou: Edge Function `chat-compras` e o que mais ler a view ainda veem SEM_GIRO (ela só
+  filtra Ruptura/Crítico/Baixo, sem efeito). Se um dia a regra for para a view, levar junto.
+- **Provado:** sintaxe; preview local (banco de teste): card conta 1, filtro mostra o 009011 (estoque 0,
+  55 pedidos) com o selo Aguardando. Não visto em produção.
 
 ## 29/10/2026 — Ficha do produto mostra o prazo de entrega configurado
 
