@@ -15,6 +15,16 @@ App de **reposição/compras** por gestão de exceção: dá pra equipe uma work
 ## Stack
 HTML/JS puro + Supabase. Sem build. `compras.js` tem cache-bust (`?v=Date.now()`); `index.html` **não** — ver armadilha abaixo.
 
+## 30/10/2026 — Card do detalhe: "Já pedido · aguardando chegada"
+
+Reclamação (print do 019318 e do 019349): o card do drawer dizia "Pedido de compra em aberto" em
+vermelho/laranja, lido como alarme ou compra por fazer, mas os dois estão comprados (PC 2527 e 2669,
+processos EM_PRODUCAO, sem NF de entrada). Agora o card (`loadDrawerPedidoAberto`) é **azul**
+(`--status-info-*`) com o título **"Já pedido · aguardando chegada"** e, quando o pedido tem processo
+de Importação, um selo com a etapa (`IMP_STATUS`, ex.: "Em Produção"). Os dados não mudaram.
+**Provado:** card azul no preview local (banco de teste, 009001/PC 9500). O selo da etapa não foi
+visto: no teste nenhum pedido aberto tem processo ligado.
+
 ## 30/10/2026 — Situação nova "Aguardando chegada" (produto sem estoque, sem venda e já pedido)
 
 Reclamação (print da busca "Air Fryer"): o 019318 COZ.AIR FRYER 24V 3LT 800W (MOD.NOVO), produto novo

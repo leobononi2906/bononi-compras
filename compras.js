@@ -1698,24 +1698,26 @@ async function loadDrawerPedidoAberto(idProduto) {
         .in('numero_pedido', pedidos.map(p => String(p.id)));
       const procIds = [...new Set((vinc || []).map(v => v.processo_id))];
       if (procIds.length) {
-        const { data: procs } = await sb.from('import_processos').select('id,codigo,data_prev_chegada').in('id', procIds);
+        const { data: procs } = await sb.from('import_processos').select('id,codigo,status,data_prev_chegada').in('id', procIds);
         const procPorId = Object.fromEntries((procs || []).map(pr => [pr.id, pr]));
         (vinc || []).forEach(v => {
           const p = porPedido[v.numero_pedido]; const pr = procPorId[v.processo_id];
           if (!p || !pr) return;
           p.processo = pr.codigo;
+          p.etapa = IMP_STATUS[pr.status];
           if (pr.data_prev_chegada) p.prev = pr.data_prev_chegada;
         });
       }
     } catch (_) { /* sem vínculo: fica a previsão do SGA */ }
     pedidos.sort((a, b) => (a.prev || '9').localeCompare(b.prev || '9'));
     const totalQtd = pedidos.reduce((a, p) => a + p.qtd, 0);
+    // Já pedido = informação, não alarme: o item está comprado e só falta chegar.
     box.innerHTML = `
-      <div class="card" style="padding:12px 16px;border-left:3px solid var(--orange);width:100%;height:100%;box-sizing:border-box;background:var(--orange-bg,var(--status-warn-bg))">
-        <div class="card-label" style="color:var(--orange)"><i class="ic ic-sm" data-ic="package"></i> Pedido de compra em aberto</div>
+      <div class="card" style="padding:12px 16px;border-left:3px solid var(--status-info-text);width:100%;height:100%;box-sizing:border-box;background:var(--status-info-bg)">
+        <div class="card-label" style="color:var(--status-info-text)"><i class="ic ic-sm" data-ic="package"></i> Já pedido · aguardando chegada</div>
         <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
           ${pedidos.map(p => `<div style="font-size:12px;display:flex;justify-content:space-between;gap:10px">
-            <span><b>#${p.id}</b> · ${p.processo || p.forn || '—'}</span>
+            <span><b>#${p.id}</b> · ${p.processo || p.forn || '—'}${p.etapa ? ` <span style="font-size:10px;padding:1px 6px;border-radius:var(--radius-sm);font-weight:600;white-space:nowrap;color:${p.etapa.color};background:${p.etapa.bg}">${p.etapa.label}</span>` : ''}</span>
             <span style="color:var(--text-muted);white-space:nowrap">${fmtQtd(p.qtd,0)} un · ${p.data ? fmtData(p.data) : '—'}${p.prev ? ` → prev. ${fmtData(p.prev)}` : ''}</span>
           </div>`).join('')}
         </div>
